@@ -1,0 +1,1 @@
+from .onboarding import ONBOARDING_PROMPT as ONBOARDING_PROMPT

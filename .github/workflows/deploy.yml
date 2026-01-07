@@ -1,0 +1,72 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+    tags:
+      - 'v*'
+
+env:
+  PYTHON_VERSION: '3.11'
+  NODE_VERSION: '18'
+
+jobs:
+  deploy-backend:
+    name: Deploy Backend
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      
+      - name: Install dependencies
+        run: |
+          cd backend
+          pip install -e ".[dev]"
+      
+      - name: Run tests
+        run: |
+          cd backend
+          pytest -xvs tests/
+      
+      - name: Deploy to server
+        if: github.ref == 'refs/heads/main'
+        run: |
+          echo "Deploy backend to production server"
+          # Add deployment commands here
+          # Example: SSH to server and deploy
+          # ssh user@server "cd /app/hellosales && git pull && ./deploy.sh"
+      
+  deploy-mobile:
+    name: Deploy Mobile
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: |
+          cd mobile
+          npm ci
+      
+      - name: Build web
+        run: |
+          cd mobile
+          npm run build:web
+      
+      - name: Deploy to hosting
+        if: github.ref == 'refs/heads/main'
+        run: |
+          echo "Deploy mobile web to production"
+          # Add deployment commands here
+          # Example: Upload to Netlify, Vercel, S3, etc.
