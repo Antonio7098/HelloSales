@@ -25,6 +25,7 @@ from app.api.http.orgs import router as orgs_router
 from app.api.http.profile import router as profile_router
 from app.api.http.progress import router as progress_router
 from app.api.http.pulse import router as pulse_router
+from app.api.http.users.router import router as users_router
 from app.api.http.sailwind import router as sailwind_router
 from app.api.ws import websocket_endpoint
 from app.config import get_settings
@@ -130,6 +131,7 @@ app.include_router(feedback_router)
 app.include_router(legal_router)
 app.include_router(orgs_router)
 app.include_router(pulse_router)
+app.include_router(users_router)
 app.include_router(sailwind_router)
 
 

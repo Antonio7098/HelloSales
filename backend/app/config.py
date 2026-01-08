@@ -51,6 +51,10 @@ class Settings(BaseSettings):
     # ==========================================================================
     # WorkOS Authentication (Enterprise)
     # ==========================================================================
+    workos_auth_enabled: bool = Field(
+        default=True,
+        description="Enable WorkOS authentication (required for SSO)",
+    )
     workos_client_id: str = Field(
         default="",
         description="WorkOS client ID (used to derive JWKS URL)",
@@ -447,6 +451,7 @@ class Settings(BaseSettings):
                 "environment": self.environment,
                 "database": self._redact_url(self.database_url),
                 "redis": self._redact_url(self.redis_url),
+                "workos_auth_enabled": self.workos_auth_enabled,
                 "workos_configured": bool(self.workos_client_id) and bool(self.workos_api_key),
                 "groq_configured": bool(self.groq_api_key),
                 "openrouter_configured": bool(self.openrouter_api_key),

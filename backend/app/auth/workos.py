@@ -56,6 +56,9 @@ async def verify_workos_jwt(token: str) -> dict[str, Any]:
     """Verify a WorkOS AuthKit access token and return claims."""
     settings = get_settings()
 
+    if not settings.workos_auth_enabled:
+        raise WorkOSJWTError("WorkOS auth is disabled")
+
     if not settings.workos_client_id:
         raise WorkOSJWTError("WorkOS is not configured")
 
