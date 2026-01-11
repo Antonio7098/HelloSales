@@ -11,6 +11,27 @@ from app.infrastructure.auth.workos import WorkOSAuth, get_workos_auth
 
 security = HTTPBearer()
 
+# Demo token storage (from auth.py)
+_demo_tokens: dict[str, dict] = {}
+
+
+def _register_demo_token(token: str, user_data: dict) -> None:
+    """Register a demo token."""
+    global _demo_tokens
+    _demo_tokens[token] = user_data
+
+
+def _verify_demo_token(token: str) -> dict | None:
+    """Verify a demo token and return user data."""
+    global _demo_tokens
+    return _demo_tokens.get(token)
+
+
+def _invalidate_demo_token(token: str) -> None:
+    """Invalidate a demo token."""
+    global _demo_tokens
+    _demo_tokens.pop(token, None)
+
 
 @dataclass
 class AuthContext:
@@ -50,10 +71,30 @@ async def get_current_user(
 ) -> AuthContext:
     """FastAPI dependency to get authenticated user context.
 
-    Extracts and validates JWT from Authorization header.
+    Supports both WorkOS JWT tokens and demo tokens.
     """
+    token = credentials.credentials
+
+    # Try demo token first (for demo mode)
+    demo_data = _verify_demo_token(token)
+    if demo_data:
+        user_id = UUID(demo_data.get("user_id", "00000000-0000-0000-0000-000000000000"))
+        email = demo_data.get("email", "")
+
+        return AuthContext(
+            user_id=user_id,
+            email=email,
+            org_id=None,
+            org_external_id=None,
+            role=demo_data.get("role", "user"),
+            permissions=[],
+            raw_token=token,
+            claims={"sub": str(user_id), "email": email, "demo": True},
+        )
+
+    # Otherwise, verify as WorkOS JWT token
     try:
-        claims = await workos.verify_token(credentials.credentials)
+        claims = await workos.verify_token(token)
 
         # Extract user ID (sub claim is the WorkOS user ID)
         user_id_str = claims.get("sub")
@@ -62,10 +103,6 @@ async def get_current_user(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid token: missing subject",
             )
-
-        # WorkOS uses string IDs, we need to handle conversion
-        # For now, we'll use the auth_subject to look up our UUID later
-        # The user_id here is a placeholder - actual UUID comes from our database
 
         # Extract organization if present
         org_id = None
@@ -82,7 +119,7 @@ async def get_current_user(
             org_external_id=org_external_id,
             role=role,
             permissions=permissions,
-            raw_token=credentials.credentials,
+            raw_token=token,
             claims=claims,
         )
 
@@ -106,8 +143,26 @@ async def get_optional_auth(
     if credentials is None:
         return None
 
+    token = credentials.credentials
+
+    # Try demo token first
+    demo_data = _verify_demo_token(token)
+    if demo_data:
+        user_id = UUID(demo_data.get("user_id", "00000000-0000-0000-0000-000000000000"))
+        return AuthContext(
+            user_id=user_id,
+            email=demo_data.get("email", ""),
+            org_id=None,
+            org_external_id=None,
+            role=demo_data.get("role", "user"),
+            permissions=[],
+            raw_token=token,
+            claims={"sub": str(user_id), "email": demo_data.get("email", ""), "demo": True},
+        )
+
+    # Otherwise, try to verify as WorkOS JWT token
     try:
-        claims = await workos.verify_token(credentials.credentials)
+        claims = await workos.verify_token(token)
 
         user_id_str = claims.get("sub")
         org_id = None
@@ -122,7 +177,7 @@ async def get_optional_auth(
             org_external_id=org_external_id,
             role=role,
             permissions=permissions,
-            raw_token=credentials.credentials,
+            raw_token=token,
             claims=claims,
         )
 
