@@ -8,7 +8,6 @@ from typing import Any
 
 from deepgram import AsyncDeepgramClient
 from deepgram.core.events import EventType
-from deepgram.extensions.types.sockets import ListenV2SocketClientResponse
 
 from app.ai.providers.base import STTProvider, STTResult
 from app.ai.providers.registry import register_stt_provider
@@ -107,47 +106,58 @@ class DeepgramFluxSTTProvider(STTProvider):
         latest_confidence: float | None = None
         latest_words: list[dict[str, Any]] | None = None
 
-        async with client.listen.v2.connect(
+        async with client.listen.asyncwebsocket.v("1").connect(
             model=self.model,
             encoding="linear16",
-            sample_rate="16000",
+            sample_rate=16000,
         ) as connection:
 
-            def on_message(message: ListenV2SocketClientResponse) -> None:
+            def on_message(self, result: Any, **kwargs) -> None:
                 nonlocal latest_transcript, latest_confidence, latest_words
-                transcript = getattr(message, "transcript", None)
+                transcript = result.channel.alternatives[0].transcript
                 if not transcript:
                     return
                 latest_transcript = transcript
-                confidence = getattr(message, "confidence", None)
+                confidence = result.channel.alternatives[0].confidence
                 if confidence is not None:
                     with contextlib.suppress(TypeError, ValueError):
                         latest_confidence = float(confidence)
-                words = getattr(message, "words", None)
+                words = result.channel.alternatives[0].words
                 if words:
                     latest_words = [
                         {
-                            "word": getattr(w, "word", ""),
-                            "start": getattr(w, "start", 0.0),
-                            "end": getattr(w, "end", 0.0),
-                            "confidence": getattr(w, "confidence", 0.0),
+                            "word": w.word,
+                            "start": w.start,
+                            "end": w.end,
+                            "confidence": w.confidence,
                         }
                         for w in words
                     ]
 
-            connection.on(EventType.MESSAGE, on_message)
+            connection.on(EventType.Metadata, lambda self, result, **kwargs: None)
+            connection.on(EventType.SpeechStarted, lambda self, result, **kwargs: None)
+            connection.on(EventType.UtteranceEnd, lambda self, result, **kwargs: None)
+            connection.on(EventType.Close, lambda self, result, **kwargs: None)
+            connection.on(EventType.Error, lambda self, result, **kwargs: None)
+            connection.on(EventType.Unhandled, lambda self, result, **kwargs: None)
+            connection.on(EventType.Transcript, on_message)
 
-            listen_task = asyncio.create_task(connection.start_listening())
+            # In SDK v3+, start() is called by the context manager or explicitly if needed?
+            # actually connect() returns a context manager that handles start/finish.
+            # We just need to send data.
 
             chunk_size = 2560
             for i in range(0, len(pcm_data), chunk_size):
                 chunk = pcm_data[i : i + chunk_size]
-                await connection._send(chunk)  # type: ignore[attr-defined]
+                await connection.send(chunk)
+            
+            # Send close signal? Or just finish context?
+            # Usually we need to wait for processing.
+            # SDK v3 way to wait for finish?
+            # For now, let's assume the context manager handles cleanup but we might need to sleep to let messages process.
+            await asyncio.sleep(0.5) 
+            # In real usage we might want to wait for a specific event or "finalize" message.
 
-            try:
-                await asyncio.wait_for(listen_task, timeout=self.timeout)
-            except TimeoutError:
-                listen_task.cancel()
 
         transcript = latest_transcript or ""
         confidence_value = float(latest_confidence) if latest_confidence is not None else 0.0

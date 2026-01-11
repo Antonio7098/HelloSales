@@ -11,12 +11,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
 if TYPE_CHECKING:
-    from app.models.meta_summary import UserMetaSummary
     from app.models.organization import OrganizationMembership
-    from app.models.profile import UserProfile
-    from app.models.skill import UserSkill
-
-    from .assessment import Assessment
 
 
 class User(Base):
@@ -60,32 +55,6 @@ class User(Base):
     sessions: Mapped[list["Session"]] = relationship(  # noqa: F821
         "Session",
         back_populates="user",
-        cascade="all, delete-orphan",
-    )
-
-    user_skills: Mapped[list["UserSkill"]] = relationship(
-        "UserSkill",
-        back_populates="user",
-        cascade="all, delete-orphan",
-    )
-
-    profile: Mapped["UserProfile | None"] = relationship(
-        "UserProfile",
-        back_populates="user",
-        uselist=False,
-        cascade="all, delete-orphan",
-    )
-
-    assessments: Mapped[list["Assessment"]] = relationship(
-        "Assessment",
-        back_populates="user",
-        cascade="all, delete-orphan",
-    )
-
-    meta_summary: Mapped["UserMetaSummary | None"] = relationship(
-        "UserMetaSummary",
-        back_populates="user",
-        uselist=False,
         cascade="all, delete-orphan",
     )
 

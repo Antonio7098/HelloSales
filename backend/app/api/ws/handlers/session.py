@@ -11,10 +11,8 @@ from sqlalchemy import select
 from app.api.ws.manager import ConnectionManager
 from app.api.ws.router import get_router
 from app.database import get_session_context
-from app.domains.assessment.meta_summary import MetaSummaryService
 from app.domains.chat.service import SUMMARY_THRESHOLD
 from app.models import Interaction, ProviderCall, Session, SessionSummary, SummaryState
-from app.models.assessment import Assessment, TriageLog
 from app.services.session_state import SessionStateService
 
 logger = logging.getLogger("session")

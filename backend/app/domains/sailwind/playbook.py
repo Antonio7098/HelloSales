@@ -232,6 +232,10 @@ class PlaybookService:
         organization_id: UUID,
         name: str,
         product_archetype_id: UUID | None,
+        category: str | None = None,
+        price: float = 0.0,
+        stock: int = 0,
+        status: str = "active",
         user_id: UUID,
     ) -> Product:
         resolved_archetype_id: UUID | None = None
@@ -248,7 +252,15 @@ class PlaybookService:
                 raise PlaybookValidationError("Product archetype is archived")
             resolved_archetype_id = archetype.id
 
-        product = Product(organization_id=organization_id, name=name, product_archetype_id=resolved_archetype_id)
+        product = Product(
+            organization_id=organization_id,
+            name=name,
+            product_archetype_id=resolved_archetype_id,
+            category=category,
+            price=price,
+            stock=stock,
+            status=status,
+        )
         self.db.add(product)
         await self.db.flush()
         logger.info(
@@ -273,6 +285,10 @@ class PlaybookService:
         name: str | None = None,
         product_archetype_id: UUID | None = None,
         product_archetype_id_provided: bool = False,
+        category: str | None = None,
+        price: float | None = None,
+        stock: int | None = None,
+        status: str | None = None,
         archived: bool | None = None,
     ) -> Product:
         product = await self.db.scalar(
@@ -283,6 +299,14 @@ class PlaybookService:
 
         if name is not None:
             product.name = name
+        if category is not None:
+            product.category = category
+        if price is not None:
+            product.price = price
+        if stock is not None:
+            product.stock = stock
+        if status is not None:
+            product.status = status
 
         if product_archetype_id_provided:
             if product_archetype_id is None:
@@ -335,6 +359,11 @@ class PlaybookService:
         name: str,
         industry: str | None,
         client_archetype_id: UUID | None,
+        email: str | None = None,
+        phone: str | None = None,
+        company: str | None = None,
+        status: str = "prospect",
+        total_revenue: float = 0.0,
         user_id: UUID,
     ) -> Client:
         resolved_archetype_id: UUID | None = None
@@ -356,6 +385,11 @@ class PlaybookService:
             name=name,
             industry=industry,
             client_archetype_id=resolved_archetype_id,
+            email=email,
+            phone=phone,
+            company=company,
+            status=status,
+            total_revenue=total_revenue,
         )
         self.db.add(client)
         await self.db.flush()
@@ -383,6 +417,11 @@ class PlaybookService:
         industry: str | None = None,
         client_archetype_id: UUID | None = None,
         client_archetype_id_provided: bool = False,
+        email: str | None = None,
+        phone: str | None = None,
+        company: str | None = None,
+        status: str | None = None,
+        total_revenue: float | None = None,
         archived: bool | None = None,
     ) -> Client:
         client = await self.db.scalar(
@@ -395,6 +434,16 @@ class PlaybookService:
             client.name = name
         if industry is not None:
             client.industry = industry
+        if email is not None:
+            client.email = email
+        if phone is not None:
+            client.phone = phone
+        if company is not None:
+            client.company = company
+        if status is not None:
+            client.status = status
+        if total_revenue is not None:
+            client.total_revenue = total_revenue
 
         if client_archetype_id_provided:
             if client_archetype_id is None:

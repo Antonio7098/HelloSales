@@ -59,27 +59,6 @@ class EnricherPrefetchStage(Stage):
 
 
 @register_stage(kind=StageKind.ENRICH)
-class SkillsContextStage(Stage):
-    """Fetch skills context for chat."""
-
-    name = "skills_context"
-    kind = StageKind.ENRICH
-
-    async def execute(self, ctx: StageContext) -> StageOutput:
-        try:
-            skills_context = []
-
-            ctx.emit_event("skills_context_completed", {"skills_count": len(skills_context)})
-
-            return StageOutput.ok(
-                skills_context=skills_context,
-            )
-        except Exception as exc:
-            ctx.emit_event("skills_context_failed", {"error": str(exc)})
-            return StageOutput.fail(error=str(exc))
-
-
-@register_stage(kind=StageKind.ENRICH)
 class ChatContextBuildStage(Stage):
     """Build chat context using staged data."""
 

@@ -42,21 +42,15 @@ from app.config import get_settings
 from app.database import get_session_context
 from app.infrastructure.pricing import estimate_llm_cost_cents
 from app.models import (
-    Assessment,
     Interaction,
     ProviderCall,
     Session,
     SessionSummary,
-    SkillAssessment,
     SummaryState,
     User,
-    UserMetaSummary,
-    UserProfile,
 )
 from app.models.observability import PipelineRun
 from app.prompts import ONBOARDING_PROMPT
-from app.schemas.assessment import AssessmentResponse
-from app.schemas.skill import SkillContextForLLM
 
 if TYPE_CHECKING:
     pass
@@ -277,9 +271,7 @@ class ContextBuildStage:
         self,
         *,
         session_id: uuid.UUID,
-        skills_context: list[SkillContextForLLM] | None,
         platform: str | None,
-        precomputed_assessment: AssessmentResponse | None,
         pipeline_run_id: uuid.UUID | None,
         request_id: uuid.UUID | None,
         user_id: uuid.UUID | None,
@@ -287,9 +279,7 @@ class ContextBuildStage:
     ) -> ChatContext:
         return await self._service._build_context_with_enrichers(
             session_id=session_id,
-            skills_context=skills_context,
             platform=platform,
-            precomputed_assessment=precomputed_assessment,
             pipeline_run_id=pipeline_run_id,
             request_id=request_id,
             user_id=user_id,
@@ -338,10 +328,8 @@ class ChatService:
         request_id: uuid.UUID | None = None,
         org_id: uuid.UUID | None = None,
         _quality_mode: str = "fast",
-        skills_context: list[SkillContextForLLM] | None = None,
         model_id: str | None = None,
         platform: str | None = None,
-        precomputed_assessment: AssessmentResponse | None = None,
     ) -> tuple[str, uuid.UUID]:
         """Handle an incoming chat message.
 
@@ -391,9 +379,7 @@ class ChatService:
         context_stage = ContextBuildStage(self)
         context = await context_stage.run(
             session_id=session_id,
-            skills_context=skills_context,
             platform=platform,
-            precomputed_assessment=precomputed_assessment,
             pipeline_run_id=pipeline_run_id,
             request_id=request_id,
             user_id=user_id,
@@ -652,7 +638,6 @@ class ChatService:
         interaction_id: uuid.UUID | None = None,
         topology: str = "chat_fast",
         behavior: str = "practice",
-        skills_context: list[SkillContextForLLM] | None = None,
         model_id: str | None = None,
         platform: str | None = None,
         skill_ids: list[str] | None = None,
@@ -687,7 +672,6 @@ class ChatService:
             interaction_id=interaction_id,
             topology=topology,
             behavior=behavior,
-            skills_context=skills_context,
             model_id=model_id,
             platform=platform,
             skill_ids=skill_ids,
@@ -698,9 +682,7 @@ class ChatService:
     async def build_context(
         self,
         session_id: uuid.UUID,
-        skills_context: list[SkillContextForLLM] | None = None,
         platform: str | None = None,
-        precomputed_assessment: AssessmentResponse | None = None,
         pipeline_run_id: uuid.UUID | None = None,
         request_id: uuid.UUID | None = None,
         user_id: uuid.UUID | None = None,
@@ -716,9 +698,7 @@ class ChatService:
 
         return await self._build_context_with_enrichers(
             session_id=session_id,
-            skills_context=skills_context,
             platform=platform,
-            precomputed_assessment=precomputed_assessment,
             pipeline_run_id=pipeline_run_id,
             request_id=request_id,
             user_id=user_id,
@@ -780,9 +760,7 @@ class ChatService:
         self,
         *,
         session_id: uuid.UUID,
-        skills_context: list[SkillContextForLLM] | None,
         platform: str | None,
-        precomputed_assessment: AssessmentResponse | None,
         pipeline_run_id: uuid.UUID | None,
         request_id: uuid.UUID | None,
         user_id: uuid.UUID | None,
@@ -793,11 +771,6 @@ class ChatService:
 
         Always includes the last N messages for immediate context continuity,
         even right after a summary is generated.
-
-        Args:
-            session_id: Session ID
-            precomputed_assessment: Optional assessment for the current/latest turn
-                                    (used in accurate pipeline mode).
 
         Returns:
             ChatContext with messages ready for LLM
@@ -972,42 +945,7 @@ class ChatService:
 
         # 2. CONTEXT DATA (less dynamic than conversation history)
 
-        # Skills context (changes less frequently than conversation)
-        skills_enabled = bool(getattr(settings, "context_enricher_skills_enabled", True))
-        if skills_context and skills_enabled and not is_onboarding:
-            # Build a compact description of tracked skills and next-level goals
-            lines: list[str] = []
-            for ctx in skills_context:
-                level_desc = f"current level {ctx.current_level}"
-                if ctx.next_level is not None:
-                    level_desc += f", next level {ctx.next_level}"
-                line_parts = [f"- {ctx.title} ({level_desc})"]
-
-                if ctx.current_level_examples:
-                    current_examples = ", ".join(ctx.current_level_examples[:3])
-                    line_parts.append(f"  Current examples: {current_examples}")
-
-                if ctx.next_level_criteria:
-                    line_parts.append(f"  Next focus: {ctx.next_level_criteria}")
-
-                if ctx.next_level_examples:
-                    next_examples = ", ".join(ctx.next_level_examples[:3])
-                    line_parts.append(f"  Next-level examples: {next_examples}")
-
-                lines.append("\n".join(line_parts))
-
-            skills_text = "\n".join(lines)
-            messages.append(
-                LLMMessage(
-                    role="system",
-                    content=(
-                        "User is practicing the following tracked skills. "
-                        "Tailor your coaching and feedback to these skills and gently "
-                        "nudge the user toward the next level criteria.\n"
-                        f"{skills_text}"
-                    ),
-                )
-            )
+        # Note: Skills context removed as skills feature is disabled
 
         # Profile context (user-specific but relatively stable)
         if profile_text and not is_onboarding:
@@ -1056,7 +994,8 @@ class ChatService:
 
         # Fetch assessments for these interactions in ONE query (no N+1)
         interaction_ids = [i.id for i in merged if i.role == "user"]
-        assessments_by_interaction = await self._get_assessments_for_interactions(interaction_ids)
+        # Note: Assessment fetching disabled as assessment feature is removed
+        assessments_by_interaction = {}
 
         # Add interactions to context with interleaved assessments
         for interaction in merged:
@@ -1066,20 +1005,7 @@ class ChatService:
                     content=interaction.content,
                 )
             )
-            # Inject assessment right after the user message it assessed
-            if interaction.role == "user" and interaction.id in assessments_by_interaction:
-                assessment_text = self._format_assessment_context(
-                    assessments_by_interaction[interaction.id]
-                )
-                if assessment_text:
-                    messages.append(LLMMessage(role="system", content=assessment_text))
-            elif (
-                interaction.role == "user" and precomputed_assessment and interaction == merged[-1]
-            ):
-                # If we have a precomputed assessment for the latest user message, use it
-                assessment_text = self._format_pydantic_assessment_context(precomputed_assessment)
-                if assessment_text:
-                    messages.append(LLMMessage(role="system", content=assessment_text))
+            # Note: Assessment context injection removed as assessment feature is disabled
 
         logger.debug(
             "Context built",
@@ -1091,7 +1017,6 @@ class ChatService:
                 "after_summary_count": len(after_summary),
                 "last_n_count": len(last_n),
                 "merged_count": len(merged),
-                "has_precomputed": precomputed_assessment is not None,
             },
         )
 
@@ -1368,192 +1293,11 @@ class ChatService:
 
         return state
 
-    async def _get_assessments_for_interactions(
-        self,
-        interaction_ids: list[uuid.UUID],
-    ) -> dict[uuid.UUID, list[SkillAssessment]]:
-        """Batch fetch assessments for multiple interactions in one query.
+    # Note: _get_assessments_for_interactions method removed as assessment feature is disabled
 
-        Returns a dict mapping interaction_id -> list of SkillAssessment records.
-        This avoids N+1 queries when building context.
-        """
-        if not interaction_ids:
-            return {}
+    # Note: _format_assessment_context method removed as assessment feature is disabled
 
-        # Single query: JOIN Assessment -> SkillAssessment, filter by interaction_ids
-        result = await self.db.execute(
-            select(Assessment)
-            .where(Assessment.interaction_id.in_(interaction_ids))
-            .options(selectinload(Assessment.skill_assessments).selectinload(SkillAssessment.skill))
-        )
-        assessments = list(result.scalars().all())
-
-        # Group by interaction_id
-        by_interaction: dict[uuid.UUID, list[SkillAssessment]] = {}
-        for assessment in assessments:
-            if assessment.interaction_id:
-                skill_assessments = assessment.skill_assessments or []
-                if assessment.interaction_id not in by_interaction:
-                    by_interaction[assessment.interaction_id] = []
-                by_interaction[assessment.interaction_id].extend(skill_assessments)
-
-        return by_interaction
-
-    def _format_assessment_context(
-        self,
-        skill_assessments: list[SkillAssessment],
-    ) -> str | None:
-        """Format assessment data as a compact context string for the LLM.
-
-        Keeps it brief to avoid bloating context. Includes:
-        - Skill name + level
-        - Short summary (if available)
-        - Key improvement focus (next_level_criteria from feedback)
-        """
-        if not skill_assessments:
-            return None
-
-        lines: list[str] = ["[Prior assessment of user's response:]"]
-
-        for sa in skill_assessments:
-            skill_name = sa.skill.title if sa.skill else "Unknown"
-            line = f"- {skill_name}: Level {sa.level}/10"
-
-            if sa.confidence is not None:
-                line += f" (conf: {sa.confidence:.0%})"
-
-            lines.append(line)
-
-            # Add short summary, truncating if very long so the context stays compact
-            if sa.summary:
-                summary_text = str(sa.summary)
-                if len(summary_text) > 160:
-                    summary_text = summary_text[:157] + "..."
-                lines.append(f"  {summary_text}")
-
-            feedback = sa.feedback or {}
-
-            # Add primary takeaway (most important insight)
-            primary = feedback.get("primary_takeaway")
-            if primary:
-                lines.append(f"  Key: {primary[:120]}")
-
-            # Add specific strengths (what to reinforce)
-            strengths = feedback.get("strengths", [])
-            if strengths:
-                lines.append(f"  Strengths: {', '.join(strengths[:2])}")
-
-            # Add specific improvements (what to work on)
-            improvements = feedback.get("improvements", [])
-            if improvements:
-                lines.append(f"  Work on: {', '.join(improvements[:2])}")
-
-            # Add example quotes if available (concrete evidence)
-            quotes = feedback.get("example_quotes", [])
-            improvement_quotes = [q for q in quotes if q.get("type") == "improvement"][:1]
-            for q in improvement_quotes:
-                quote_text = q.get("quote", "")[:60]
-                annotation = q.get("annotation", "")[:40]
-                if quote_text:
-                    lines.append(f'  Example: "{quote_text}" → {annotation}')
-
-            # Add next-level focus, labelled as "Focus" for clarity
-            next_criteria = feedback.get("next_level_criteria")
-            if next_criteria:
-                lines.append(f"  Focus: {next_criteria[:100]}")
-
-        result = "\n".join(lines)
-
-        # Hard cap to avoid extremely long context blocks
-        if len(result) > 400:
-            result = result[:397] + "..."
-
-        return result
-
-    def _format_pydantic_assessment_context(
-        self,
-        assessment: AssessmentResponse,
-    ) -> str | None:
-        """Format a precomputed Pydantic assessment as a compact context string.
-
-        Mirror of _format_assessment_context but for Pydantic models.
-        """
-        if not assessment.skills:
-            return None
-
-        lines: list[str] = ["[Prior assessment of user's response:]"]
-
-        for sa in assessment.skills:
-            # sa is SkillAssessmentResponse (Pydantic)
-            # We don't have skill title in the response model, only ID.
-            # But wait, we need the title for the prompt.
-            # The Pydantic model `SkillAssessmentResponse` only has `skill_id`.
-            # We might need to look up the title? Or maybe we can skip it?
-            # Actually, `AssessmentResponse` doesn't carry titles.
-            # BUT, the `skills_context` passed to `build_context` has titles.
-            # Or we can just use "Skill <uuid>" if desperate, but that's bad prompt.
-            # Let's check if we can fetch titles.
-            # Since this is "accurate" mode, we care about quality.
-            # However, doing a DB lookup here is annoying.
-            # Ideally, `AssessmentResponse` should include skill title?
-            # Or we assume the LLM knows the skill from the `User is practicing...` block?
-            # The `skills_context` block lists skills with their titles.
-            # So if we say "Skill ID: <uuid>", the LLM might not map it.
-            # Let's try to map it using the ID if we can.
-            # But `_format_pydantic_assessment_context` doesn't have access to `skills_context`.
-            # For now, let's just output the feedback content which is the most important part.
-            # The feedback usually talks about the skill implicitly.
-            # Actually, let's look at `SkillAssessmentResponse` again.
-            # It has `skill_id`.
-            # We can label it "Skill Assessment:" if we don't have the title.
-            # Or better: The `AssessmentService` could return titles?
-            # Let's assume for now we just output the level and feedback.
-
-            line = f"- Skill {sa.skill_id}: Level {sa.level}/10"
-
-            if sa.confidence is not None:
-                line += f" (conf: {sa.confidence:.0%})"
-
-            lines.append(line)
-
-            if sa.summary:
-                summary_text = str(sa.summary)
-                if len(summary_text) > 160:
-                    summary_text = summary_text[:157] + "..."
-                lines.append(f"  {summary_text}")
-
-            feedback = sa.feedback
-
-            # Add primary takeaway
-            if feedback.primary_takeaway:
-                lines.append(f"  Key: {feedback.primary_takeaway[:120]}")
-
-            # Add specific strengths
-            if feedback.strengths:
-                lines.append(f"  Strengths: {', '.join(feedback.strengths[:2])}")
-
-            # Add specific improvements
-            if feedback.improvements:
-                lines.append(f"  Work on: {', '.join(feedback.improvements[:2])}")
-
-            # Add example quotes
-            improvement_quotes = [q for q in feedback.example_quotes if q.type == "improvement"][:1]
-            for q in improvement_quotes:
-                quote_text = q.quote[:60]
-                annotation = q.annotation[:40]
-                if quote_text:
-                    lines.append(f'  Example: "{quote_text}" → {annotation}')
-
-            # Add next-level focus
-            if feedback.next_level_criteria:
-                lines.append(f"  Focus: {feedback.next_level_criteria[:100]}")
-
-        result = "\n".join(lines)
-
-        if len(result) > 400:
-            result = result[:397] + "..."
-
-        return result
+    # Note: _format_pydantic_assessment_context method removed as assessment feature is disabled
 
     async def _stream_with_fallback(
         self,

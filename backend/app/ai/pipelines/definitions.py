@@ -21,17 +21,14 @@ class ChatFastPipeline(Pipeline):
     """Standard fast chat pipeline with assessment and safety rails."""
 
     def __init__(self) -> None:
-        from app.ai.stages.chat.assessment import AssessmentStage
         from app.ai.stages.chat.context_build import (
             ChatContextBuildStage,
             ChatPersistStage,
             EnricherPrefetchStage,
-            SkillsContextStage,
         )
         from app.ai.stages.chat.dispatch import DispatchStage
         from app.ai.stages.chat.llm_stream import LlmStreamStage
         from app.ai.stages.chat.router import RouterStage
-        from app.ai.stages.chat.triage import TriageStage
         from app.ai.stages.chat.validation import ValidationStage
         from app.ai.stages.voice import PolicyStage, VoiceGuardrailsStage
 
@@ -47,30 +44,11 @@ class ChatFastPipeline(Pipeline):
                 kind=StageKind.ENRICH,
                 dependencies=("router",),
             ),
-            "skills_context": UnifiedStageSpec(
-                name="skills_context",
-                runner=make_runner(SkillsContextStage),
-                kind=StageKind.ENRICH,
-                dependencies=("router",),
-            ),
-            "triage": UnifiedStageSpec(
-                name="triage",
-                runner=make_runner(TriageStage),
-                kind=StageKind.WORK,
-                dependencies=("skills_context",),
-            ),
-            "assessment": UnifiedStageSpec(
-                name="assessment",
-                runner=make_runner(AssessmentStage),
-                kind=StageKind.WORK,
-                dependencies=("triage",),
-                conditional=True,  # Only runs if needed
-            ),
             "context_build": UnifiedStageSpec(
                 name="context_build",
                 runner=make_runner(ChatContextBuildStage),
                 kind=StageKind.ENRICH,
-                dependencies=("enricher_prefetch", "skills_context"),
+                dependencies=("enricher_prefetch",),
             ),
             "dispatch": UnifiedStageSpec(
                 name="dispatch",
@@ -121,18 +99,15 @@ class ChatAccuratePipeline(Pipeline):
     """Accurate chat pipeline where assessment runs before LLM generation."""
 
     def __init__(self) -> None:
-        # Same as ChatFast but assessment is NOT conditional
-        from app.ai.stages.chat.assessment import AssessmentStage
+        # Simplified chat pipeline without assessment
         from app.ai.stages.chat.context_build import (
             ChatContextBuildStage,
             ChatPersistStage,
             EnricherPrefetchStage,
-            SkillsContextStage,
         )
         from app.ai.stages.chat.dispatch import DispatchStage
         from app.ai.stages.chat.llm_stream import LlmStreamStage
         from app.ai.stages.chat.router import RouterStage
-        from app.ai.stages.chat.triage import TriageStage
         from app.ai.stages.chat.validation import ValidationStage
         from app.ai.stages.voice import PolicyStage, VoiceGuardrailsStage
 
@@ -148,30 +123,11 @@ class ChatAccuratePipeline(Pipeline):
                 kind=StageKind.ENRICH,
                 dependencies=("router",),
             ),
-            "skills_context": UnifiedStageSpec(
-                name="skills_context",
-                runner=make_runner(SkillsContextStage),
-                kind=StageKind.ENRICH,
-                dependencies=("router",),
-            ),
-            "triage": UnifiedStageSpec(
-                name="triage",
-                runner=make_runner(TriageStage),
-                kind=StageKind.WORK,
-                dependencies=("skills_context",),
-            ),
-            "assessment": UnifiedStageSpec(
-                name="assessment",
-                runner=make_runner(AssessmentStage),
-                kind=StageKind.WORK,
-                dependencies=("triage",),
-                conditional=False,  # Always runs in accurate mode
-            ),
             "context_build": UnifiedStageSpec(
                 name="context_build",
                 runner=make_runner(ChatContextBuildStage),
                 kind=StageKind.ENRICH,
-                dependencies=("enricher_prefetch", "skills_context"),
+                dependencies=("enricher_prefetch",),
             ),
             "dispatch": UnifiedStageSpec(
                 name="dispatch",

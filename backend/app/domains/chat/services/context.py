@@ -18,11 +18,8 @@ from app.models import (
     Session,
     SessionSummary,
     SummaryState,
-    UserMetaSummary,
 )
 from app.prompts import ONBOARDING_PROMPT
-from app.schemas.assessment import AssessmentResponse
-from app.schemas.skill import SkillContextForLLM
 
 if TYPE_CHECKING:
     from app.ai.providers.base import LLMMessage
@@ -84,9 +81,7 @@ class ChatContextService:
     async def build_context(
         self,
         session_id: uuid.UUID,
-        skills_context: list[SkillContextForLLM] | None = None,
         platform: str | None = None,
-        precomputed_assessment: AssessmentResponse | None = None,
         pipeline_run_id: uuid.UUID | None = None,
         request_id: uuid.UUID | None = None,
         user_id: uuid.UUID | None = None,
@@ -100,7 +95,6 @@ class ChatContextService:
 
         Args:
             session_id: Session ID
-            precomputed_assessment: Optional assessment for the current/latest turn
             prefetched: Optional pre-fetched enricher data
 
         Returns:
@@ -108,9 +102,7 @@ class ChatContextService:
         """
         return await self._build_context_with_enrichers(
             session_id=session_id,
-            skills_context=skills_context,
             _platform=platform,
-            precomputed_assessment=precomputed_assessment,
             _pipeline_run_id=pipeline_run_id,
             _request_id=request_id,
             _user_id=user_id,
@@ -143,9 +135,7 @@ class ChatContextService:
         self,
         *,
         session_id: uuid.UUID,
-        skills_context: list[SkillContextForLLM] | None,
         _platform: str | None,
-        precomputed_assessment: AssessmentResponse | None,
         _pipeline_run_id: uuid.UUID | None,
         _request_id: uuid.UUID | None,
         _user_id: uuid.UUID | None,
@@ -256,16 +246,8 @@ Target skill: {precomputed_assessment.skill_name}"""
         if not resolved_user_id:
             return None
 
-        meta_result = await self.db.execute(
-            select(UserMetaSummary.summary_text).where(
-                UserMetaSummary.user_id == resolved_user_id
-            )
-        )
-        text = meta_result.scalar_one_or_none()
-        if not text:
-            return None
-        cleaned = str(text).strip()
-        return cleaned or None
+        # Note: _get_meta_summary_text method disabled as UserMetaSummary feature is removed
+        return None
 
     async def _get_latest_summary(self, session_id: uuid.UUID) -> SummaryState | None:
         """Get the latest summary state for a session."""

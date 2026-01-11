@@ -18,7 +18,6 @@ from typing import Any, TypeVar
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.providers.base import STTProvider, TTSProvider
-from app.ai.stages.chat.context_build import SkillsContextStage
 from app.ai.stages.chat.llm_stream import StreamingLlmStage
 from app.ai.stages.voice import (
     StreamingTtsStage,
@@ -32,7 +31,6 @@ from app.ai.substrate.stages.base import SttOutput
 from app.ai.substrate.stages.context import PipelineContext
 from app.config import get_settings
 from app.core.di import get_container
-from app.domains.assessment.pipeline import backfill_interaction_id
 from app.domains.chat.service import ChatService
 from app.domains.chat.stages import ChatResponsePersistStage
 from app.infrastructure.pricing import estimate_llm_cost_cents, estimate_tts_cost_cents
@@ -454,22 +452,10 @@ class VoicePipelineOrchestrator:
                     )
                 )
 
-            # Skills Stage
-            skills_stage = SkillsContextStage(skill_service=container.skill_service)
-            skills_context = await skills_stage.run(
-                user_id=user_id,
-                skill_ids=None,
-                session_id=session_id,
-                pipeline_run_id=pipeline_run_id,
-                request_id=request_id,
-                org_id=org_id,
-            )
-
             # Context Build Stage
             context_stage = VoiceContextBuildStage(chat_service=self.chat)
             chat_context = await context_stage.run(
                 session_id=session_id,
-                skills_context=skills_context,
                 platform=platform,
                 precomputed_assessment=None,
                 pipeline_run_id=pipeline_run_id,
@@ -646,12 +632,6 @@ class VoicePipelineOrchestrator:
                 tts_duration_ms=tts_duration_ms,
                 stt_duration_ms=stt_output.audio_duration_ms,
                 stt_confidence=stt_output.confidence,
-            )
-
-            await backfill_interaction_id(
-                db=self.db,
-                provider_call_id=None,
-                interaction_id=assistant_message_id,
             )
 
             logger.info(

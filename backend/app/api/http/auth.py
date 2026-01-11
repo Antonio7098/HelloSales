@@ -4,9 +4,14 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, EmailStr
 from typing import Optional
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.auth.workos import verify_workos_jwt, WorkOSJWTError
+from app.api.http.dependencies import get_current_user, get_identity_claims
+from app.database import get_session
+from app.models import User, OrganizationMembership, Organization
 
 router = APIRouter()
 
@@ -24,6 +29,7 @@ class LoginResponse(BaseModel):
 class ExchangeCodeRequest(BaseModel):
     code: str
     code_verifier: str
+    redirect_uri: str | None = None
 
 
 class TokenResponse(BaseModel):
@@ -89,20 +95,32 @@ async def exchange_workos_code(
         raise HTTPException(status_code=400, detail="WorkOS is not configured")
 
     try:
+        payload = {
+            "client_id": settings.workos_client_id,
+            "client_secret": settings.workos_api_key,
+            "grant_type": "authorization_code",
+            "code": request.code,
+            "code_verifier": request.code_verifier,
+        }
+        
+        if request.redirect_uri:
+            payload["redirect_uri"] = request.redirect_uri
+
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 "https://api.workos.com/user_management/authenticate",
-                json={
-                    "client_id": settings.workos_client_id,
-                    "client_secret": settings.workos_api_key,
-                    "grant_type": "authorization_code",
-                    "code": request.code,
-                    "code_verifier": request.code_verifier,
-                },
+                json=payload,
             )
 
         if response.status_code != 200:
-            raise HTTPException(status_code=400, detail="Failed to exchange code")
+            error_detail = response.text
+            print(f"WorkOS Error: {error_detail}")  # Simple logging
+            try:
+                error_json = response.json()
+                error_detail = error_json.get("message") or error_json.get("error_description") or response.text
+            except Exception:
+                pass
+            raise HTTPException(status_code=400, detail=f"Failed to exchange code: {error_detail}")
 
         data = response.json()
         access_token = data.get("access_token")
@@ -126,34 +144,30 @@ async def logout():
 
 
 @router.get("/auth/me")
-async def get_me(request: Request):
+async def get_me(
+    user: User = Depends(get_current_user),
+    identity=Depends(get_identity_claims),
+    session: AsyncSession = Depends(get_session),
+):
     """Get current user from WorkOS JWT token."""
-    authorization = request.headers.get("Authorization")
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Missing or invalid authorization header")
-
-    token = authorization.replace("Bearer ", "")
-
-    # First try to verify as WorkOS JWT
-    try:
-        claims = await verify_workos_jwt(token)
-        # Return user info from WorkOS claims
-        return {
-            "id": claims.get("sub"),
-            "email": claims.get("email"),
-            "name": claims.get("name"),
-            "role": claims.get("role", "viewer"),
-        }
-    except WorkOSJWTError:
-        pass  # Fall back to in-memory token check for demo mode
-
-    # Fall back to in-memory token for demo
-    token_data = tokens.get(token)
-    if not token_data:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    # Find membership for the current org
+    membership = None
+    if identity.org_id:
+        # User is already synced by get_current_user
+        # We just need to find the correct membership to return the role
+        stmt = select(OrganizationMembership).where(
+            OrganizationMembership.user_id == user.id,
+            OrganizationMembership.organization_id == (
+                select(Organization.id).where(Organization.org_id == str(identity.org_id))
+            ).scalar_subquery()
+        )
+        result = await session.execute(stmt)
+        membership = result.scalar_one_or_none()
 
     return {
-        "id": token_data["user_id"],
-        "email": token_data["email"],
-        "role": token_data["role"],
+        "id": str(user.id),
+        "email": user.email,
+        "name": user.display_name,
+        "role": (membership.role if membership and membership.role else "viewer"),
+        "org_id": str(identity.org_id) if identity.org_id else None,
     }

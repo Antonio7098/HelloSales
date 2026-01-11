@@ -32,7 +32,6 @@ from app.ai.substrate.stages.inputs import create_stage_inputs
 from app.ai.substrate.stages.ports import create_stage_ports
 from app.config import get_settings
 from app.core.di import get_container
-from app.domains.assessment.pipeline import backfill_interaction_id
 from app.domains.chat.service import ChatService
 from app.models import Interaction
 
@@ -997,17 +996,9 @@ class VoiceService:
                 },
             )
 
-            # Backfill interaction_id on any assessment records created during
-            # background assessment (they were created without interaction_id
-            # because the interaction wasn't committed yet)
-            await backfill_interaction_id(
-                db=self.db,
-                session_id=recording.session_id,
-                interaction_id=message_id,
-            )
-            await self.db.commit()  # Commit the backfill updates
+            await self.db.commit()  # Commit the interaction
             logger.info(
-                "Voice pipeline: Persist + backfill committed",
+                "Voice pipeline: Persist committed",
                 extra={
                     "service": "voice",
                     "session_id": str(recording.session_id),

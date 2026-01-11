@@ -54,11 +54,19 @@ class ClientArchetypeResponse(BaseModel):
 class ProductCreate(BaseModel):
     name: str
     product_archetype_id: UUID | None = None
+    category: str | None = None
+    price: float = 0.00
+    stock: int = 0
+    status: str = "active"
 
 
 class ProductUpdate(BaseModel):
     name: str | None = None
     product_archetype_id: UUID | None = None
+    category: str | None = None
+    price: float | None = None
+    stock: int | None = None
+    status: str | None = None
     archived: bool | None = None
 
 
@@ -67,6 +75,10 @@ class ProductResponse(BaseModel):
     organization_id: UUID
     product_archetype_id: UUID | None = None
     name: str
+    category: str | None = None
+    price: float = 0.00
+    stock: int = 0
+    status: str = "active"
     archived_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
@@ -79,12 +91,22 @@ class ClientCreate(BaseModel):
     name: str
     industry: str | None = None
     client_archetype_id: UUID | None = None
+    email: str | None = None
+    phone: str | None = None
+    company: str | None = None
+    status: str = "prospect"
+    total_revenue: float = 0.00
 
 
 class ClientUpdate(BaseModel):
     name: str | None = None
     industry: str | None = None
     client_archetype_id: UUID | None = None
+    email: str | None = None
+    phone: str | None = None
+    company: str | None = None
+    status: str | None = None
+    total_revenue: float | None = None
     archived: bool | None = None
 
 
@@ -94,6 +116,11 @@ class ClientResponse(BaseModel):
     client_archetype_id: UUID | None = None
     name: str
     industry: str | None = None
+    email: str | None = None
+    phone: str | None = None
+    company: str | None = None
+    status: str = "prospect"
+    total_revenue: float = 0.00
     archived_at: datetime | None = None
     created_at: datetime
     updated_at: datetime

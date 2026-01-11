@@ -14,9 +14,7 @@ from app.api.ws.manager import ConnectionManager
 from app.api.ws.router import get_router
 from app.auth.identity import IdentityTokenError, verify_identity_token
 from app.database import get_session_context
-from app.domains.assessment.meta_summary import MetaSummaryService
-from app.domains.assessment.service import AssessmentService
-from app.domains.assessment.triage import TriageService
+from app.domains.summary.meta_summary import MetaSummaryService
 from app.domains.organization.service import OrganizationService
 from app.logging_config import set_request_context
 from app.models import Session, User
@@ -298,14 +296,6 @@ async def handle_auth(
                 stt = get_stt_provider()
                 if hasattr(stt, "warm_up"):
                     await stt.warm_up()
-
-                triage_service = TriageService(db_session, llm_provider=get_llm_provider())
-                if hasattr(triage_service, "warm_up"):
-                    await triage_service.warm_up()
-
-                assessment_service = AssessmentService(db_session, llm_provider=get_llm_provider())
-                if hasattr(assessment_service, "warm_up"):
-                    await assessment_service.warm_up()
             except Exception as warm_up_err:
                 logger.debug(
                     "STT warm-up failed (non-critical)",

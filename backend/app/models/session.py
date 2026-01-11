@@ -11,7 +11,6 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
 if TYPE_CHECKING:
-    from app.models.assessment import Assessment
     from app.models.interaction import Interaction
     from app.models.observability import SummaryState
     from app.models.summary import SessionSummary
@@ -81,12 +80,6 @@ class Session(Base):
         back_populates="session",
         cascade="all, delete-orphan",
         order_by="SessionSummary.version",
-    )
-
-    assessments: Mapped[list["Assessment"]] = relationship(
-        "Assessment",
-        back_populates="session",
-        cascade="all, delete-orphan",
     )
 
     def __init__(self, **kwargs):

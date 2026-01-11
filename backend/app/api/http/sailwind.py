@@ -266,6 +266,10 @@ async def create_product(
             organization_id=org_context.organization.id,
             name=payload.name,
             product_archetype_id=payload.product_archetype_id,
+            category=payload.category,
+            price=payload.price,
+            stock=payload.stock,
+            status=payload.status,
             user_id=org_context.membership.user_id,
         )
     except PlaybookNotFoundError as exc:
@@ -298,6 +302,10 @@ async def update_product(
             name=payload.name,
             product_archetype_id=payload.product_archetype_id,
             product_archetype_id_provided=("product_archetype_id" in payload.model_fields_set),
+            category=payload.category,
+            price=payload.price,
+            stock=payload.stock,
+            status=payload.status,
             archived=payload.archived,
         )
     except PlaybookNotFoundError as exc:
@@ -385,6 +393,11 @@ async def update_client(
             industry=payload.industry,
             client_archetype_id=payload.client_archetype_id,
             client_archetype_id_provided=("client_archetype_id" in payload.model_fields_set),
+            email=payload.email,
+            phone=payload.phone,
+            company=payload.company,
+            status=payload.status,
+            total_revenue=payload.total_revenue,
             archived=payload.archived,
         )
     except PlaybookNotFoundError as exc:

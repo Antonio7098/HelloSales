@@ -19,11 +19,8 @@ from sqlalchemy import case, func, select
 from app.ai.substrate.events import clear_event_sink
 from app.api.http.account import router as account_router
 from app.api.http.auth import router as auth_router
-from app.api.http.feedback import router as feedback_router
 from app.api.http.legal import router as legal_router
 from app.api.http.orgs import router as orgs_router
-from app.api.http.profile import router as profile_router
-from app.api.http.progress import router as progress_router
 from app.api.http.pulse import router as pulse_router
 from app.api.http.users.router import router as users_router
 from app.api.http.sailwind import router as sailwind_router
@@ -125,9 +122,6 @@ app.add_middleware(
 
 app.include_router(account_router)
 app.include_router(auth_router)
-app.include_router(profile_router)
-app.include_router(progress_router)
-app.include_router(feedback_router)
 app.include_router(legal_router)
 app.include_router(orgs_router)
 app.include_router(pulse_router)
@@ -827,9 +821,7 @@ async def ws_endpoint(websocket: WebSocket):
 
 
 if settings.is_development:
-    from app.api.http.test import router as test_router
-
-    app.include_router(test_router)
+    pass  # Test router removed
 
     @app.get("/")
     async def root():
