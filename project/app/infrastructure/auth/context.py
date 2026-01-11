@@ -95,6 +95,41 @@ async def get_current_user(
         ) from e
 
 
+async def get_optional_auth(
+    credentials: HTTPAuthorizationCredentials | None = Depends(HTTPBearer(auto_error=False)),
+    workos: WorkOSAuth = Depends(get_workos_auth),
+) -> AuthContext | None:
+    """FastAPI dependency to optionally get authenticated user context.
+
+    Returns None if no Authorization header is provided.
+    """
+    if credentials is None:
+        return None
+
+    try:
+        claims = await workos.verify_token(credentials.credentials)
+
+        user_id_str = claims.get("sub")
+        org_id = None
+        org_external_id = claims.get("org_id")
+        role = claims.get("role")
+        permissions = claims.get("permissions", [])
+
+        return AuthContext(
+            user_id=UUID(user_id_str) if user_id_str and _is_uuid(user_id_str) else UUID(int=0),
+            email=claims.get("email", ""),
+            org_id=org_id,
+            org_external_id=org_external_id,
+            role=role,
+            permissions=permissions,
+            raw_token=credentials.credentials,
+            claims=claims,
+        )
+
+    except Exception:
+        return None
+
+
 def _is_uuid(value: str) -> bool:
     """Check if string is a valid UUID."""
     try:

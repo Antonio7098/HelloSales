@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.entities.client import Client
-from app.infrastructure.auth.context import AuthContext, get_auth
+from app.infrastructure.auth.context import AuthContext, get_current_user
 from app.infrastructure.database.connection import get_db
 from app.infrastructure.repositories.client_repository import ClientRepositoryImpl
 from app.infrastructure.telemetry import get_logger
@@ -69,7 +69,7 @@ class ClientResponse(BaseModel):
 async def create_client(
     request: CreateClientRequest,
     db: AsyncSession = Depends(get_db),
-    auth: AuthContext = Depends(get_auth),
+    auth: AuthContext = Depends(get_current_user),
 ) -> ClientResponse:
     """Create a new client."""
     if not auth.org_id:
@@ -107,7 +107,7 @@ async def list_clients(
     limit: int = Query(100, ge=1, le=1000),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
-    auth: AuthContext = Depends(get_auth),
+    auth: AuthContext = Depends(get_current_user),
 ) -> list[ClientResponse]:
     """List clients for the organization."""
     if not auth.org_id:
@@ -129,7 +129,7 @@ async def search_clients(
     q: str = Query(..., min_length=1),
     limit: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
-    auth: AuthContext = Depends(get_auth),
+    auth: AuthContext = Depends(get_current_user),
 ) -> list[ClientResponse]:
     """Search clients by name or company."""
     if not auth.org_id:
@@ -145,7 +145,7 @@ async def search_clients(
 async def get_client(
     client_id: UUID,
     db: AsyncSession = Depends(get_db),
-    auth: AuthContext = Depends(get_auth),
+    auth: AuthContext = Depends(get_current_user),
 ) -> ClientResponse:
     """Get a client by ID."""
     if not auth.org_id:
@@ -165,7 +165,7 @@ async def update_client(
     client_id: UUID,
     request: UpdateClientRequest,
     db: AsyncSession = Depends(get_db),
-    auth: AuthContext = Depends(get_auth),
+    auth: AuthContext = Depends(get_current_user),
 ) -> ClientResponse:
     """Update a client."""
     if not auth.org_id:
@@ -209,7 +209,7 @@ async def update_client(
 async def delete_client(
     client_id: UUID,
     db: AsyncSession = Depends(get_db),
-    auth: AuthContext = Depends(get_auth),
+    auth: AuthContext = Depends(get_current_user),
 ) -> dict[str, bool]:
     """Delete (deactivate) a client."""
     if not auth.org_id:

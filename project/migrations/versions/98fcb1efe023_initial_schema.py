@@ -1,6 +1,6 @@
 """Initial schema - all tables for HelloSales backend
 
-Revision ID: 001_initial
+Revision ID: 98fcb1efe023
 Revises:
 Create Date: 2026-01-09
 
@@ -13,7 +13,7 @@ from alembic import op
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = "001_initial"
+revision: str = "98fcb1efe023"
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -134,12 +134,8 @@ def upgrade() -> None:
         sa.Column("typical_buying_cycle", postgresql.JSONB, nullable=False, server_default="{}"),
         # Competitive context
         sa.Column("main_competitors", postgresql.JSONB, nullable=False, server_default="[]"),
-        sa.Column(
-            "competitive_advantages", postgresql.JSONB, nullable=False, server_default="[]"
-        ),
-        sa.Column(
-            "unique_selling_points", postgresql.JSONB, nullable=False, server_default="[]"
-        ),
+        sa.Column("competitive_advantages", postgresql.JSONB, nullable=False, server_default="[]"),
+        sa.Column("unique_selling_points", postgresql.JSONB, nullable=False, server_default="[]"),
         # Additional context
         sa.Column("company_description", sa.Text, nullable=True),
         sa.Column("notes", sa.Text, nullable=True),
@@ -191,7 +187,7 @@ def upgrade() -> None:
         sa.Column("duration_ms", sa.Integer, nullable=True),
         # Metadata
         sa.Column("session_type", sa.String(50), nullable=False, server_default="chat"),
-        sa.Column("metadata", postgresql.JSONB, nullable=False, server_default="{}"),
+        sa.Column("session_metadata", postgresql.JSONB, nullable=False, server_default="{}"),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -461,9 +457,7 @@ def upgrade() -> None:
         sa.Column("subject", sa.Text, nullable=False),
         sa.Column("body", sa.Text, nullable=False),
         sa.Column("call_to_action", sa.Text, nullable=True),
-        sa.Column(
-            "personalization_fields", postgresql.JSONB, nullable=False, server_default="[]"
-        ),
+        sa.Column("personalization_fields", postgresql.JSONB, nullable=False, server_default="[]"),
         sa.Column(
             "generated_by_session_id",
             postgresql.UUID(as_uuid=True),

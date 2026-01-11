@@ -17,7 +17,7 @@ class AppError(Exception):
     """Base application error with full context."""
 
     code: str
-    message: str
+    message: str = ""
     details: dict[str, Any] = field(default_factory=dict)
     retryable: bool = False
     timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
@@ -48,6 +48,8 @@ class NotFoundError(AppError):
 
     code: str = "NOT_FOUND"
     retryable: bool = False
+    message: str = ""
+    details: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass

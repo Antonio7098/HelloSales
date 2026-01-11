@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.entities.product import Product
-from app.infrastructure.auth.context import AuthContext, get_auth
+from app.infrastructure.auth.context import AuthContext, get_current_user
 from app.infrastructure.database.connection import get_db
 from app.infrastructure.repositories.product_repository import ProductRepositoryImpl
 from app.infrastructure.telemetry import get_logger
@@ -70,7 +70,7 @@ class ProductResponse(BaseModel):
 async def create_product(
     request: CreateProductRequest,
     db: AsyncSession = Depends(get_db),
-    auth: AuthContext = Depends(get_auth),
+    auth: AuthContext = Depends(get_current_user),
 ) -> ProductResponse:
     """Create a new product."""
     if not auth.org_id:
@@ -109,7 +109,7 @@ async def list_products(
     limit: int = Query(100, ge=1, le=1000),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
-    auth: AuthContext = Depends(get_auth),
+    auth: AuthContext = Depends(get_current_user),
 ) -> list[ProductResponse]:
     """List products for the organization."""
     if not auth.org_id:
@@ -132,7 +132,7 @@ async def search_products(
     q: str = Query(..., min_length=1),
     limit: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
-    auth: AuthContext = Depends(get_auth),
+    auth: AuthContext = Depends(get_current_user),
 ) -> list[ProductResponse]:
     """Search products by name or description."""
     if not auth.org_id:
@@ -148,7 +148,7 @@ async def search_products(
 async def get_product(
     product_id: UUID,
     db: AsyncSession = Depends(get_db),
-    auth: AuthContext = Depends(get_auth),
+    auth: AuthContext = Depends(get_current_user),
 ) -> ProductResponse:
     """Get a product by ID."""
     if not auth.org_id:
@@ -168,7 +168,7 @@ async def update_product(
     product_id: UUID,
     request: UpdateProductRequest,
     db: AsyncSession = Depends(get_db),
-    auth: AuthContext = Depends(get_auth),
+    auth: AuthContext = Depends(get_current_user),
 ) -> ProductResponse:
     """Update a product."""
     if not auth.org_id:
@@ -212,7 +212,7 @@ async def update_product(
 async def delete_product(
     product_id: UUID,
     db: AsyncSession = Depends(get_db),
-    auth: AuthContext = Depends(get_auth),
+    auth: AuthContext = Depends(get_current_user),
 ) -> dict[str, bool]:
     """Delete (deactivate) a product."""
     if not auth.org_id:

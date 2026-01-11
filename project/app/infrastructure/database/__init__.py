@@ -2,8 +2,9 @@
 
 from app.infrastructure.database.connection import (
     AsyncSessionFactory,
+    close_db,
     get_db,
     init_db,
 )
 
-__all__ = ["init_db", "get_db", "AsyncSessionFactory"]
+__all__ = ["init_db", "close_db", "get_db", "AsyncSessionFactory"]

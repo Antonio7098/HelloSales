@@ -43,7 +43,9 @@ class SessionModel(Base, TimestampMixin):
 
     # Metadata
     session_type: Mapped[str] = mapped_column(String(50), nullable=False, default="chat")
-    metadata: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    extra_metadata: Mapped[dict[str, Any]] = mapped_column(
+        "metadata", JSONB, nullable=False, default=dict
+    )
 
     # Relationships
     user = relationship("UserModel", back_populates="sessions")
@@ -69,7 +71,7 @@ class SessionModel(Base, TimestampMixin):
             total_cost_cents=self.total_cost_cents,
             duration_ms=self.duration_ms,
             session_type=self.session_type,  # type: ignore
-            metadata=self.metadata or {},
+            metadata=self.extra_metadata or {},
             created_at=self.created_at,
             updated_at=self.updated_at,
         )
@@ -88,7 +90,55 @@ class SessionModel(Base, TimestampMixin):
             total_cost_cents=entity.total_cost_cents,
             duration_ms=entity.duration_ms,
             session_type=entity.session_type,
-            metadata=entity.metadata,
+            extra_metadata=entity.metadata,
+            created_at=entity.created_at,
+            updated_at=entity.updated_at,
+        )
+
+    # Relationships
+    user = relationship("UserModel", back_populates="sessions")
+    organization = relationship("OrganizationModel", back_populates="sessions")
+    interactions = relationship(
+        "InteractionModel", back_populates="session", order_by="InteractionModel.sequence_number"
+    )
+    summaries = relationship(
+        "SessionSummaryModel", back_populates="session", order_by="SessionSummaryModel.version"
+    )
+    summary_state = relationship("SummaryStateModel", back_populates="session", uselist=False)
+
+    def to_entity(self) -> Session:
+        """Convert to domain entity."""
+        return Session(
+            id=self.id,
+            user_id=self.user_id,
+            org_id=self.org_id,
+            state=self.state,  # type: ignore
+            started_at=self.started_at,
+            ended_at=self.ended_at,
+            interaction_count=self.interaction_count,
+            total_cost_cents=self.total_cost_cents,
+            duration_ms=self.duration_ms,
+            session_type=self.session_type,  # type: ignore
+            metadata=self.session_metadata or {},
+            created_at=self.created_at,
+            updated_at=self.updated_at,
+        )
+
+    @classmethod
+    def from_entity(cls, entity: Session) -> "SessionModel":
+        """Create from domain entity."""
+        return cls(
+            id=entity.id,
+            user_id=entity.user_id,
+            org_id=entity.org_id,
+            state=entity.state,
+            started_at=entity.started_at,
+            ended_at=entity.ended_at,
+            interaction_count=entity.interaction_count,
+            total_cost_cents=entity.total_cost_cents,
+            duration_ms=entity.duration_ms,
+            session_type=entity.session_type,
+            session_metadata=entity.metadata,
             created_at=entity.created_at,
             updated_at=entity.updated_at,
         )

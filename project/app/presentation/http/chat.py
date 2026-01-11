@@ -12,7 +12,7 @@ from app.application.services.session_service import SessionService
 from app.config import Settings, get_settings
 from app.domain.entities.session import Session
 from app.domain.errors import SessionNotFoundError, ValidationError
-from app.infrastructure.auth.context import AuthContext, get_auth
+from app.infrastructure.auth.context import AuthContext, get_current_user
 from app.infrastructure.database.connection import get_db
 from app.infrastructure.telemetry import get_logger, request_id_var
 
@@ -81,7 +81,7 @@ class InteractionResponse(BaseModel):
 async def create_session(
     request: CreateSessionRequest,
     db: AsyncSession = Depends(get_db),
-    auth: AuthContext = Depends(get_auth),
+    auth: AuthContext = Depends(get_current_user),
 ) -> SessionResponse:
     """Create a new chat session."""
     service = SessionService(db)
@@ -101,7 +101,7 @@ async def create_session(
 async def list_sessions(
     limit: int = 10,
     db: AsyncSession = Depends(get_db),
-    auth: AuthContext = Depends(get_auth),
+    auth: AuthContext = Depends(get_current_user),
 ) -> list[SessionResponse]:
     """List active chat sessions for the current user."""
     service = SessionService(db)
@@ -113,7 +113,7 @@ async def list_sessions(
 async def get_session(
     session_id: UUID,
     db: AsyncSession = Depends(get_db),
-    auth: AuthContext = Depends(get_auth),
+    auth: AuthContext = Depends(get_current_user),
 ) -> SessionResponse:
     """Get a chat session by ID."""
     service = SessionService(db)
@@ -134,7 +134,7 @@ async def get_session(
 async def end_session(
     session_id: UUID,
     db: AsyncSession = Depends(get_db),
-    auth: AuthContext = Depends(get_auth),
+    auth: AuthContext = Depends(get_current_user),
 ) -> SessionResponse:
     """End a chat session."""
     service = SessionService(db)
@@ -161,7 +161,7 @@ async def send_message(
     session_id: UUID,
     request: ChatMessageRequest,
     db: AsyncSession = Depends(get_db),
-    auth: AuthContext = Depends(get_auth),
+    auth: AuthContext = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
 ) -> ChatMessageResponse:
     """Send a message in a chat session."""
@@ -216,7 +216,7 @@ async def get_history(
     session_id: UUID,
     limit: int = 50,
     db: AsyncSession = Depends(get_db),
-    auth: AuthContext = Depends(get_auth),
+    auth: AuthContext = Depends(get_current_user),
 ) -> list[InteractionResponse]:
     """Get conversation history for a session."""
     service = SessionService(db)
