@@ -31,6 +31,7 @@ Before coding, confirm:
 - the reasoning document exists and covers the sprint scope
 - applicable requirements are identified
 - known risks, assumptions, ambiguities, and deviations are visible
+- you are on the correct git branch for the sprint (e.g., `sprint/sprint-XX-name`)
 
 ### Step 2: Execute The Sprint Against The Reasoning
 

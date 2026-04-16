@@ -56,11 +56,11 @@
 - **AGENT-EXPOSE-001 and PRE-SCOPE-004:** A canonical `/metrics` endpoint is operational rather than product-facing, but it still adds a public transport surface. The safe interpretation is to keep it narrow, generic, and owned as infrastructure rather than as an agent or product capability.
 - **OBS-DIAG-001 and PRE-SCOPE-004:** Diagnostics should expose telemetry runtime state, but the sprint should avoid turning diagnostics into a full monitoring dashboard.
 
-### Open Questions
+### Resolved Decisions
 
-- Which exporter path should be first-class in scaffold stage: Prometheus metrics only, or Prometheus plus OpenTelemetry tracing in the same sprint?
-- Should `/metrics` be enabled in all environments by default, or gated behind explicit settings in non-development environments?
-- How much agent/provider/workflow instrumentation should be included now versus deferred to the next sprint after the base telemetry runtime exists?
+- **Exporter path:** Treat both Prometheus metrics and OpenTelemetry tracing as first-class in this sprint, with the implementation designed so either can be disabled independently by configuration.
+- **`/metrics` exposure:** Gate `/metrics` behind explicit settings outside development-oriented defaults so the operational surface remains intentionally narrow and operator-controlled.
+- **Instrumentation scope:** Implement the base telemetry runtime plus first-sprint instrumentation for HTTP, readiness, and background tasks, and include initial low-risk provider, workflow, and agent hooks where the current seams already make them straightforward; leave deeper subsystem-specific metric sets for a follow-up sprint.
 
 ## Feature Analysis
 
@@ -99,16 +99,19 @@
 
 **Chosen Approach**
 - Build a small platform-owned observability runtime seam with environment-driven enablement, safe defaults, and composition-root assembly.
+- Build a small platform-owned observability runtime seam with environment-driven enablement, safe defaults, composition-root assembly, first-class Prometheus metrics support, first-class OpenTelemetry tracing support, and granular metric family enablement controls.
 
 **Decision Justification**
 - Option B best fits the current codebase because the backend already centralizes observability concerns in `platform/observability/` and composes them through `AppContainer`.
 - Option A would create scattered instrumentation ownership and make label/cardinality discipline harder to review.
 - Option C would block a safe class of scaffold-stage operational work that the contracts explicitly allow.
 - The main trade-off is introducing a new runtime abstraction now, but that cost is justified because it preserves replaceability and keeps future provider/agent instrumentation coherent.
+- Granular metric enablement is worth carrying in the first design because it gives operators a safe way to tune telemetry cost and noise without editing code, while sensible defaults preserve an easy out-of-the-box scaffold experience.
 
 **Execution Notes**
 - Preserve existing logging, event emission, and correlation behavior unchanged unless explicitly extended.
 - Keep disabled-mode behavior cheap and safe.
+- Make metrics configurable at a granular family level with sensible defaults so operators can disable selected metric groups without dismantling the whole telemetry runtime.
 - If the exporter choice requires invasive startup behavior or network dependencies, revise reasoning before implementation.
 
 **Expected Evidence**
@@ -155,18 +158,19 @@
 - **Option C:** Instrument every subsystem including providers, workflows, and agents immediately.
 
 **Chosen Approach**
-- Implement `/metrics` and instrument HTTP, readiness, and background tasks first; leave provider, workflow, and agent-specific depth for a follow-up sprint.
+- Implement `/metrics` and instrument HTTP, readiness, and background tasks first; add initial low-risk provider, workflow, and agent hooks where the current seams already make them straightforward; leave deeper subsystem-specific metric sets for a follow-up sprint.
 
 **Decision Justification**
 - Option B gives the best first-sprint coverage because these are already the highest-signal scaffold boundaries with clear existing truth models.
 - Option A is safer but too shallow; it would create the endpoint without enough evidence that the telemetry model works across runtime boundaries.
 - Option C is too broad for the first sprint and increases the risk of mixing foundational telemetry work with subsystem-specific instrumentation.
-- The trade-off is that provider and agent telemetry remains incomplete after this sprint, but the foundation becomes testable and extensible.
+- The trade-off is that provider, workflow, and agent telemetry remains intentionally shallow after this sprint, but the foundation becomes testable, extensible, and immediately useful across the most important operational boundaries.
 
 **Execution Notes**
 - Metric labels must avoid request ids, trace ids, raw messages, and other high-cardinality values.
 - Readiness metrics should derive from the same dependency checks used by health responses.
 - Background task metrics should use explicit lifecycle transitions already represented by task snapshots.
+- Default metric families should be enabled sensibly, but each family should be individually configurable so expensive or noisy groups can be disabled without code changes.
 - If `/metrics` cannot be exposed cleanly without violating current architecture, revisit whether it belongs in app-level operational wiring instead of route-level code.
 
 **Expected Evidence**
@@ -194,8 +198,10 @@
 
 ### Assumptions
 
-- It is acceptable in scaffold stage to add a narrow operational `/metrics` surface.
+- It is acceptable in scaffold stage to add a narrow operational `/metrics` surface when it is explicitly gated by configuration.
 - A no-op or environment-disabled telemetry mode is necessary to avoid making startup and local development fragile.
+- Both Prometheus metrics and OpenTelemetry tracing are worth supporting in the foundational sprint, provided they remain independently configurable.
+- Metric families should be configurable at a granular level with sensible defaults so telemetry cost and noise can be controlled operationally.
 - Existing structured logs and operational events remain mandatory even after metrics and tracing are introduced.
 
 ### Dependencies
