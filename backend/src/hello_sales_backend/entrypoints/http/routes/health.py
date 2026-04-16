@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Response
 
 from hello_sales_backend.entrypoints.http.dependencies import get_health_service
 from hello_sales_backend.entrypoints.http.schemas import ApiEnvelope, ok_response
-from hello_sales_backend.platform.observability.health import HealthReadinessView, HealthService
+from hello_sales_backend.platform.observability.health import HealthService
 
 router = APIRouter()
 

@@ -1,20 +1,20 @@
 from __future__ import annotations
 
 import sys
-from pathlib import Path
 from logging.config import fileConfig
+from pathlib import Path
 
-from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
+
+from alembic import context
+from hello_sales_backend.platform.db.migrations import metadata
 
 SRC_PATH = Path(__file__).resolve().parents[1] / "src"
 src_str = str(SRC_PATH)
 if src_str not in sys.path:
     sys.path.insert(0, src_str)
-
-from hello_sales_backend.platform.db.migrations import metadata
 
 config = context.config
 

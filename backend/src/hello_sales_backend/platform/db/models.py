@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
 import json
+from datetime import UTC, datetime
 
 from sqlalchemy import Boolean, DateTime, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
@@ -150,6 +150,9 @@ class AgentStreamEventRecord(Base):
     event_type: Mapped[str] = mapped_column(String(128), nullable=False)
     severity: Mapped[str] = mapped_column(String(32), nullable=False)
     code: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    request_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    trace_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    actor_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     payload_json: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utc_now)
 

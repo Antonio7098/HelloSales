@@ -2,10 +2,16 @@ from __future__ import annotations
 
 import asyncio
 
+from httpx import ASGITransport, AsyncClient
+
 from hello_sales_backend.app import create_app
 from hello_sales_backend.platform.composition.overrides import AppOverrides
 from hello_sales_backend.platform.config.settings import Settings
-from hello_sales_backend.platform.providers.llm.contracts import ChatCompletion, ChatMessage, ChatModelPort
+from hello_sales_backend.platform.providers.llm.contracts import (
+    ChatCompletion,
+    ChatMessage,
+    ChatModelPort,
+)
 
 
 class FakeChatModel(ChatModelPort):
@@ -18,12 +24,11 @@ class FakeChatModel(ChatModelPort):
         return True
 
 
-async def test_jobs_diagnostic_workflow_runs(client, test_settings):
+async def test_jobs_diagnostic_workflow_runs(client: AsyncClient, test_settings: Settings) -> None:
     app = create_app(
         test_settings,
         overrides=AppOverrides(llm_provider=FakeChatModel()),
     )
-    from httpx import ASGITransport, AsyncClient
 
     async with app.router.lifespan_context(app):
         transport = ASGITransport(app=app, raise_app_exceptions=True)

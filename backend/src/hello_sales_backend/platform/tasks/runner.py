@@ -7,10 +7,16 @@ from collections.abc import Coroutine
 from dataclasses import dataclass
 from typing import Any
 
-from hello_sales_backend.platform.observability.logging import get_logger
 from hello_sales_backend.platform.observability.events import OperationalEvent
+from hello_sales_backend.platform.observability.logging import get_logger
 from hello_sales_backend.platform.observability.runtime import ObservabilityRuntime
-from hello_sales_backend.platform.tasks.models import TaskEventSink, TaskMetadata, TaskSnapshot, TaskStatus, utc_now
+from hello_sales_backend.platform.tasks.models import (
+    TaskEventSink,
+    TaskMetadata,
+    TaskSnapshot,
+    TaskStatus,
+    utc_now,
+)
 from hello_sales_backend.shared.errors import AppError, normalize_details
 
 
@@ -40,6 +46,7 @@ class BackgroundTaskRunner:
         self._failures: list[TaskFailure] = []
         self._event_sink = event_sink
         self._observability = observability
+        self._support_tasks: set[asyncio.Task[Any]] = set()
 
     def start(self, metadata: TaskMetadata, coro: Coroutine[Any, Any, Any]) -> str:
         snapshot = TaskSnapshot(
@@ -63,6 +70,10 @@ class BackgroundTaskRunner:
             task.cancel()
         await asyncio.gather(*tasks, return_exceptions=True)
         self._tasks.clear()
+        support_tasks = list(self._support_tasks)
+        if support_tasks:
+            await asyncio.gather(*support_tasks, return_exceptions=True)
+            self._support_tasks.clear()
 
     def pop_failures(self) -> list[TaskFailure]:
         failures = list(self._failures)
@@ -176,9 +187,100 @@ class BackgroundTaskRunner:
     def _emit_snapshot(self, snapshot: TaskSnapshot) -> None:
         if self._event_sink is None:
             return
-        asyncio.create_task(self._event_sink.upsert(snapshot))
+        self._track_support_task(
+            asyncio.create_task(self._safe_upsert_snapshot(snapshot)),
+            operation="tasks.snapshot.upsert",
+            metadata=snapshot.metadata,
+        )
 
     def _emit_operational_event(self, event: OperationalEvent) -> None:
         if self._observability is None:
             return
-        asyncio.create_task(self._observability.emit(event))
+        metadata = TaskMetadata(
+            task_id=str(event.payload.get("task_id", "operational-event")),
+            purpose=event.operation or event.event_type,
+            request_id=event.correlation_id,
+            trace_id=event.trace_id,
+            actor_id=None,
+        )
+        self._track_support_task(
+            asyncio.create_task(self._safe_emit_operational_event(event)),
+            operation="tasks.operational_event.emit",
+            metadata=metadata,
+        )
+
+    def _track_support_task(self, task: asyncio.Task[Any], *, operation: str, metadata: TaskMetadata) -> None:
+        self._support_tasks.add(task)
+
+        def _done(completed: asyncio.Task[Any]) -> None:
+            self._support_tasks.discard(completed)
+            try:
+                completed.result()
+            except Exception as exc:
+                self._logger.error(
+                    "background_support.failed",
+                    operation=operation,
+                    task_id=metadata.task_id,
+                    purpose=metadata.purpose,
+                    request_id=metadata.request_id,
+                    trace_id=metadata.trace_id,
+                    actor_id=metadata.actor_id,
+                    error_type=exc.__class__.__name__,
+                    error_message=str(exc),
+                )
+
+        task.add_done_callback(_done)
+
+    async def _safe_upsert_snapshot(self, snapshot: TaskSnapshot) -> None:
+        if self._event_sink is None:
+            return
+        try:
+            await self._event_sink.upsert(snapshot)
+        except Exception as exc:
+            self._record_support_failure(
+                metadata=snapshot.metadata,
+                operation="tasks.snapshot.upsert",
+                code="background.snapshot_emit_failed",
+                exc=exc,
+            )
+            raise
+
+    async def _safe_emit_operational_event(self, event: OperationalEvent) -> None:
+        if self._observability is None:
+            return
+        try:
+            await self._observability.emit(event)
+        except Exception as exc:
+            metadata = TaskMetadata(
+                task_id=str(event.payload.get("task_id", "operational-event")),
+                purpose=event.operation or event.event_type,
+                request_id=event.correlation_id,
+                trace_id=event.trace_id,
+                actor_id=None,
+            )
+            self._record_support_failure(
+                metadata=metadata,
+                operation="tasks.operational_event.emit",
+                code="background.operational_event_emit_failed",
+                exc=exc,
+            )
+            raise
+
+    def _record_support_failure(self, *, metadata: TaskMetadata, operation: str, code: str, exc: Exception) -> None:
+        details = normalize_details(
+            {
+                "operation": operation,
+                "exception_type": exc.__class__.__name__,
+                "exception_message": str(exc),
+            }
+        )
+        self._failures.append(
+            TaskFailure(
+                metadata=metadata,
+                error_type=exc.__class__.__name__,
+                message=str(exc),
+                code=code,
+                category="background",
+                details=details,
+            )
+        )

@@ -2,12 +2,18 @@ from __future__ import annotations
 
 import asyncio
 import json
+from typing import Any, cast
 
 from httpx import ASGITransport, AsyncClient
 
 from hello_sales_backend.app import create_app
 from hello_sales_backend.platform.composition.overrides import AppOverrides
-from hello_sales_backend.platform.providers.llm.contracts import ChatCompletion, ChatMessage, ChatModelPort
+from hello_sales_backend.platform.config.settings import Settings
+from hello_sales_backend.platform.providers.llm.contracts import (
+    ChatCompletion,
+    ChatMessage,
+    ChatModelPort,
+)
 
 
 class FakeChatModel(ChatModelPort):
@@ -24,28 +30,38 @@ class FakeChatModel(ChatModelPort):
         return True
 
 
+def _json_dict(payload: object) -> dict[str, Any]:
+    return cast(dict[str, Any], payload)
+
+
+def _require_int(value: object) -> int:
+    if not isinstance(value, int):
+        raise AssertionError(f"expected int, got {type(value).__name__}")
+    return value
+
+
 async def _wait_for_run_status(
     client: AsyncClient,
     run_id: str,
     *,
     target_statuses: set[str],
     attempts: int = 30,
-) -> dict[str, object]:
+) -> dict[str, Any]:
     for _ in range(attempts):
         response = await client.get(f"/api/agent-runs/{run_id}")
-        payload = response.json()["data"]
+        payload = _json_dict(response.json()["data"])
         if payload["status"] in target_statuses:
             return payload
         await asyncio.sleep(0.02)
     raise AssertionError(f"run {run_id} did not reach one of {sorted(target_statuses)}")
 
 
-def _parse_sse_events(body: str) -> list[dict[str, object]]:
-    parsed: list[dict[str, object]] = []
+def _parse_sse_events(body: str) -> list[dict[str, Any]]:
+    parsed: list[dict[str, Any]] = []
     for chunk in body.strip().split("\n\n"):
         if not chunk.strip():
             continue
-        entry: dict[str, object] = {}
+        entry: dict[str, Any] = {}
         for line in chunk.splitlines():
             if line.startswith("id: "):
                 entry["id"] = int(line.removeprefix("id: "))
@@ -57,7 +73,7 @@ def _parse_sse_events(body: str) -> list[dict[str, object]]:
     return parsed
 
 
-async def test_agent_event_stream_replays_and_tails_run_events(test_settings):
+async def test_agent_event_stream_replays_and_tails_run_events(test_settings: Settings) -> None:
     app = create_app(
         test_settings,
         overrides=AppOverrides(llm_provider=FakeChatModel()),
@@ -83,16 +99,16 @@ async def test_agent_event_stream_replays_and_tails_run_events(test_settings):
             assert "agent.tool.completed" in event_types
             assert event_types[-1] == "agent.turn.completed"
 
-            cutoff = int(events[0]["id"])
+            cutoff = _require_int(events[0]["id"])
             async with client.stream("GET", f"/api/agent-runs/{run_id}/events/stream?after_sequence={cutoff}") as response:
                 replay_body = "".join([chunk async for chunk in response.aiter_text()])
 
             replay_events = _parse_sse_events(replay_body)
             assert replay_events
-            assert min(int(item["id"]) for item in replay_events) > cutoff
+            assert min(_require_int(item["id"]) for item in replay_events) > cutoff
 
 
-async def test_agent_event_log_records_rejection_and_cancellation(test_settings):
+async def test_agent_event_log_records_rejection_and_cancellation(test_settings: Settings) -> None:
     app = create_app(
         test_settings,
         overrides=AppOverrides(llm_provider=FakeChatModel()),

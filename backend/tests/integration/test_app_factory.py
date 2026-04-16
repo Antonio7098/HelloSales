@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from hello_sales_backend.platform.composition.app_container import build_app_container
+from hello_sales_backend.platform.config.settings import Settings
 
 
-def test_container_builds_runtime_graph(test_settings):
+def test_container_builds_runtime_graph(test_settings: Settings) -> None:
     container = build_app_container(test_settings)
 
     assert container.settings.environment == "test"

@@ -28,7 +28,7 @@ def configure_logging(level: str, environment: str) -> None:
     )
 
 
-def get_logger(name: str):
+def get_logger(name: str) -> structlog.stdlib.BoundLogger:
     """Return a configured logger."""
 
-    return structlog.get_logger(name)
+    return structlog.get_logger(name)  # type: ignore[no-any-return]

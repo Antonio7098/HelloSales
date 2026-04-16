@@ -1,12 +1,18 @@
 from __future__ import annotations
 
 import asyncio
+from typing import Any, cast
 
 from httpx import ASGITransport, AsyncClient
 
 from hello_sales_backend.app import create_app
 from hello_sales_backend.platform.composition.overrides import AppOverrides
-from hello_sales_backend.platform.providers.llm.contracts import ChatCompletion, ChatMessage, ChatModelPort
+from hello_sales_backend.platform.config.settings import Settings
+from hello_sales_backend.platform.providers.llm.contracts import (
+    ChatCompletion,
+    ChatMessage,
+    ChatModelPort,
+)
 
 
 class FakeChatModel(ChatModelPort):
@@ -23,24 +29,28 @@ class FakeChatModel(ChatModelPort):
         return True
 
 
+def _json_dict(payload: object) -> dict[str, Any]:
+    return cast(dict[str, Any], payload)
+
+
 async def _wait_for_run_completion(
     client: AsyncClient,
     run_id: str,
     *,
     attempts: int = 20,
     terminal_statuses: set[str] | None = None,
-) -> dict[str, object]:
+) -> dict[str, Any]:
     target_statuses = terminal_statuses or {"awaiting_approval", "completed", "failed", "cancelled"}
     for _ in range(attempts):
         response = await client.get(f"/api/agent-runs/{run_id}")
-        payload = response.json()["data"]
+        payload = _json_dict(response.json()["data"])
         if payload["status"] in target_statuses:
             return payload
         await asyncio.sleep(0.02)
     raise AssertionError(f"run {run_id} did not reach a terminal state")
 
 
-async def test_agent_run_executes_tools_and_completes(test_settings):
+async def test_agent_run_executes_tools_and_completes(test_settings: Settings) -> None:
     app = create_app(
         test_settings,
         overrides=AppOverrides(llm_provider=FakeChatModel()),
@@ -71,7 +81,7 @@ async def test_agent_run_executes_tools_and_completes(test_settings):
             assert "agent.turn.completed" in event_types
 
 
-async def test_agent_run_supports_approval_flow(test_settings):
+async def test_agent_run_supports_approval_flow(test_settings: Settings) -> None:
     app = create_app(
         test_settings,
         overrides=AppOverrides(llm_provider=FakeChatModel()),

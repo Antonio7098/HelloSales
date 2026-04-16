@@ -3,7 +3,12 @@ from __future__ import annotations
 import pytest
 
 from hello_sales_backend.platform.composition.overrides import AppOverrides
-from hello_sales_backend.platform.providers.llm.contracts import ChatCompletion, ChatMessage, ChatModelPort
+from hello_sales_backend.platform.config.settings import Settings
+from hello_sales_backend.platform.providers.llm.contracts import (
+    ChatCompletion,
+    ChatMessage,
+    ChatModelPort,
+)
 from hello_sales_backend.smoke.__main__ import build_registry
 from hello_sales_backend.smoke.contracts import SmokeContext
 from hello_sales_backend.smoke.runner import SmokeRunner
@@ -24,7 +29,7 @@ class FakeChatModel(ChatModelPort):
 
 
 @pytest.mark.asyncio
-async def test_generic_agent_provider_smoke_executes_end_to_end(test_settings):
+async def test_generic_agent_provider_smoke_executes_end_to_end(test_settings: Settings) -> None:
     settings = test_settings.model_copy(
         update={
             "generic_agent_provider": "groq",

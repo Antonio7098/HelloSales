@@ -5,8 +5,6 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from types import TracebackType
-from typing import Any
 
 from hello_sales_backend.platform.observability.redaction import redact_mapping
 

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import httpx
 
-async def test_liveness_endpoint(client):
+
+async def test_liveness_endpoint(client: httpx.AsyncClient) -> None:
     response = await client.get("/api/health/liveness")
 
     assert response.status_code == 200
@@ -10,7 +12,7 @@ async def test_liveness_endpoint(client):
     assert payload["data"]["status"] == "live"
 
 
-async def test_readiness_endpoint(client):
+async def test_readiness_endpoint(client: httpx.AsyncClient) -> None:
     response = await client.get("/api/health/readiness")
 
     assert response.status_code == 200

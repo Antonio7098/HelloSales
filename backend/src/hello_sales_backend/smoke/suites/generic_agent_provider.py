@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 import httpx
 from pydantic import BaseModel
@@ -41,7 +42,7 @@ class ProviderSmokeHarness:
     context: SmokeContext
 
     @property
-    def settings(self):
+    def settings(self) -> Any:
         return self.context.settings
 
     def validate_provider_configuration(self) -> None:

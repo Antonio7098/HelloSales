@@ -7,8 +7,9 @@ Create Date: 2026-04-15
 
 from __future__ import annotations
 
-from alembic import op
 import sqlalchemy as sa
+
+from alembic import op
 
 revision = "0002_create_agent_run_tables"
 down_revision = "0001_create_task_run_records"

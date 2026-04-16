@@ -1,4 +1,4 @@
-.PHONY: dev-db-up dev-db-down dev-db-logs verify-db migrate revision test test-postgres smoke smoke-provider-agent smoke-provider-baseline smoke-provider-observer smoke-provider-append smoke-provider-approval smoke-provider-events scaffold-module
+.PHONY: dev-db-up dev-db-down dev-db-logs verify-db migrate revision test test-postgres mypy smoke smoke-provider-agent smoke-provider-baseline smoke-provider-observer smoke-provider-append smoke-provider-approval smoke-provider-events scaffold-module
 
 dev-db-up:
 	docker compose -f docker-compose.dev.yml up -d postgres
@@ -24,6 +24,9 @@ test:
 
 test-postgres:
 	HELLO_SALES_RUN_POSTGRES_TESTS=1 python3 -m pytest tests/postgres -q
+
+mypy:
+	python3 -m mypy src
 
 smoke-provider-agent:
 	python3 scripts/smoke.py generic-agent-provider

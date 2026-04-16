@@ -15,7 +15,7 @@ pytestmark = pytest.mark.postgres
     os.getenv("HELLO_SALES_RUN_POSTGRES_TESTS") != "1",
     reason="Set HELLO_SALES_RUN_POSTGRES_TESTS=1 to run PostgreSQL integration tests.",
 )
-async def test_postgres_readiness_against_real_database():
+async def test_postgres_readiness_against_real_database() -> None:
     database_url = os.getenv(
         "HELLO_SALES_POSTGRES_TEST_DATABASE_URL",
         "postgresql+asyncpg://hello_sales:hello_sales@localhost:5432/hello_sales",

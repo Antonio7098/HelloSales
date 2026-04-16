@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -28,7 +29,7 @@ class SmokeContext:
     ) -> SmokeContext:
         return cls(settings=settings or get_settings(), overrides=overrides)
 
-    def build_app(self):
+    def build_app(self) -> Any:
         """Build an application instance for the smoke run."""
 
         return create_app(self.settings, overrides=self.overrides)

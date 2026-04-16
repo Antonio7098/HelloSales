@@ -4,7 +4,7 @@ from hello_sales_backend.platform.composition.providers import build_provider_re
 from hello_sales_backend.platform.config.settings import Settings
 
 
-def test_provider_registry_builds_groq_adapter_from_generic_agent_env_contract():
+def test_provider_registry_builds_groq_adapter_from_generic_agent_env_contract() -> None:
     settings = Settings(
         database_url="sqlite+aiosqlite:///test.db",
         generic_agent_provider="groq",

@@ -6,8 +6,8 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from hello_sales_backend.entrypoints.http.schemas import error_response
-from hello_sales_backend.platform.observability.logging import get_logger
 from hello_sales_backend.platform.observability.events import OperationalEvent
+from hello_sales_backend.platform.observability.logging import get_logger
 from hello_sales_backend.shared.errors import AppError, internal_error
 
 

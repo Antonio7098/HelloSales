@@ -7,7 +7,7 @@ from hello_sales_backend.platform.providers.llm import ChatMessage, OpenAICompat
 from hello_sales_backend.shared.errors import AppError
 
 
-async def test_openai_compatible_provider_parses_chat_response():
+async def test_openai_compatible_provider_parses_chat_response() -> None:
     async def handler(request: httpx.Request) -> httpx.Response:
         assert request.url.path.endswith("/chat/completions")
         payload = {
@@ -42,7 +42,7 @@ async def test_openai_compatible_provider_parses_chat_response():
 
 
 @pytest.mark.asyncio
-async def test_openai_compatible_provider_maps_timeout_errors():
+async def test_openai_compatible_provider_maps_timeout_errors() -> None:
     async def handler(request: httpx.Request) -> httpx.Response:
         raise httpx.ReadTimeout("timed out", request=request)
 
@@ -65,7 +65,7 @@ async def test_openai_compatible_provider_maps_timeout_errors():
 
 
 @pytest.mark.asyncio
-async def test_openai_compatible_provider_maps_authentication_failures():
+async def test_openai_compatible_provider_maps_authentication_failures() -> None:
     async def handler(_request: httpx.Request) -> httpx.Response:
         return httpx.Response(401, json={"error": {"message": "unauthorized"}})
 
@@ -88,7 +88,7 @@ async def test_openai_compatible_provider_maps_authentication_failures():
 
 
 @pytest.mark.asyncio
-async def test_openai_compatible_provider_maps_rate_limit_failures():
+async def test_openai_compatible_provider_maps_rate_limit_failures() -> None:
     async def handler(_request: httpx.Request) -> httpx.Response:
         return httpx.Response(429, json={"error": {"message": "rate limit"}})
 
@@ -111,7 +111,7 @@ async def test_openai_compatible_provider_maps_rate_limit_failures():
 
 
 @pytest.mark.asyncio
-async def test_openai_compatible_provider_maps_remote_5xx_failures():
+async def test_openai_compatible_provider_maps_remote_5xx_failures() -> None:
     async def handler(_request: httpx.Request) -> httpx.Response:
         return httpx.Response(503, json={"error": {"message": "unavailable"}})
 

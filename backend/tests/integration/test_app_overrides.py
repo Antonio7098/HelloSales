@@ -1,11 +1,17 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from httpx import ASGITransport, AsyncClient
 
 from hello_sales_backend.app import create_app
 from hello_sales_backend.platform.composition.overrides import AppOverrides
 from hello_sales_backend.platform.config.settings import Settings
-from hello_sales_backend.platform.providers.llm.contracts import ChatCompletion, ChatMessage, ChatModelPort
+from hello_sales_backend.platform.providers.llm.contracts import (
+    ChatCompletion,
+    ChatMessage,
+    ChatModelPort,
+)
 
 
 class FixedClock:
@@ -23,7 +29,7 @@ class FakeChatModel(ChatModelPort):
         return True
 
 
-async def test_app_overrides_are_visible_through_diagnostics(tmp_path):
+async def test_app_overrides_are_visible_through_diagnostics(tmp_path: Path) -> None:
     settings = Settings(
         environment="test",
         database_url=f"sqlite+aiosqlite:///{tmp_path / 'overrides.db'}",

@@ -4,27 +4,39 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from hello_sales_backend.application.agents.bootstrap import build_agent_registry
-from hello_sales_backend.application.agents.registry import AgentRegistry
-from hello_sales_backend.modules.agent_runs.bootstrap import build_agent_runs_module
-from hello_sales_backend.modules.jobs.bootstrap import build_jobs_module
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
+from hello_sales_backend.application.agents.bootstrap import build_agent_registry
+from hello_sales_backend.modules.agent_runs.bootstrap import build_agent_runs_module
+from hello_sales_backend.modules.jobs.bootstrap import build_jobs_module
 from hello_sales_backend.modules.system.bootstrap import build_system_module
 from hello_sales_backend.platform.agents.config import AgentRuntimeConfig
+from hello_sales_backend.platform.agents.contracts import (
+    AgentProfileCatalogPort,
+)
 from hello_sales_backend.platform.agents.memory import InMemoryAgentStore
 from hello_sales_backend.platform.agents.persistence import AgentStorePort
 from hello_sales_backend.platform.agents.runtime import GenericAgentRuntime
 from hello_sales_backend.platform.composition.module_registry import ModuleRegistry
 from hello_sales_backend.platform.composition.overrides import AppOverrides
-from hello_sales_backend.platform.composition.providers import ProviderRegistry, build_provider_registry
+from hello_sales_backend.platform.composition.providers import (
+    ProviderRegistry,
+    build_provider_registry,
+)
 from hello_sales_backend.platform.config.settings import Settings
 from hello_sales_backend.platform.db.engine import build_engine
-from hello_sales_backend.platform.db.repositories import SqlAlchemyAgentStore, SqlAlchemyTaskRunStore
+from hello_sales_backend.platform.db.repositories import (
+    SqlAlchemyAgentStore,
+    SqlAlchemyTaskRunStore,
+)
 from hello_sales_backend.platform.db.session import build_session_factory
 from hello_sales_backend.platform.db.uow import UnitOfWorkFactory, build_uow_factory
 from hello_sales_backend.platform.observability.health import HealthService
-from hello_sales_backend.platform.observability.runtime import AlertPolicy, InMemoryOperationalStore, ObservabilityRuntime
+from hello_sales_backend.platform.observability.runtime import (
+    AlertPolicy,
+    InMemoryOperationalStore,
+    ObservabilityRuntime,
+)
 from hello_sales_backend.platform.tasks.runner import BackgroundTaskRunner
 from hello_sales_backend.platform.workflows.executor import WorkflowExecutor
 from hello_sales_backend.platform.workflows.registry import WorkflowRegistry
@@ -35,13 +47,12 @@ from hello_sales_backend.platform.workflows.runtime import WorkflowRuntime, buil
 class AgentRegistryDiagnosticsAdapter:
     """Late-bound adapter used by system diagnostics to inspect registered agents."""
 
-    registry: AgentRegistry | None = None
+    registry: AgentProfileCatalogPort | None = None
 
     def list_profiles(self) -> list[tuple[str, str]]:
         if self.registry is None:
             return []
-        definitions = self.registry.definitions()
-        return [(item.agent_id, item.display_name) for item in definitions]
+        return self.registry.list_profiles()
 
 
 @dataclass(slots=True)

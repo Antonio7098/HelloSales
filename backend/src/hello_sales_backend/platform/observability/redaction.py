@@ -4,8 +4,20 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
-
-SENSITIVE_KEYS = {"authorization", "api_key", "token", "password", "secret"}
+SENSITIVE_KEYS = {
+    "authorization",
+    "api_key",
+    "token",
+    "password",
+    "secret",
+    "access_token",
+    "refresh_token",
+    "cookie",
+    "private_key",
+    "certificate",
+    "card_number",
+    "ssn",
+}
 
 
 def redact_mapping(values: Mapping[str, object | None]) -> dict[str, object | None]:

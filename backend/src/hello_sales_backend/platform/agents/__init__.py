@@ -1,6 +1,11 @@
 """Reusable agent runtime helpers."""
 
 from hello_sales_backend.platform.agents.config import AgentRuntimeConfig
+from hello_sales_backend.platform.agents.contracts import (
+    AgentDefinitionPort,
+    AgentDefinitionResolverPort,
+    AgentProfileCatalogPort,
+)
 from hello_sales_backend.platform.agents.memory import InMemoryAgentStore
 from hello_sales_backend.platform.agents.models import (
     AgentDiagnosticsSummary,
@@ -23,6 +28,9 @@ from hello_sales_backend.platform.agents.tools import (
 
 __all__ = [
     "AgentDiagnosticsSummary",
+    "AgentDefinitionPort",
+    "AgentDefinitionResolverPort",
+    "AgentProfileCatalogPort",
     "AgentExecutionRuntime",
     "AgentRun",
     "AgentRunStatus",

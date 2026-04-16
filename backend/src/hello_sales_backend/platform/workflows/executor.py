@@ -9,6 +9,7 @@ from typing import Any
 from hello_sales_backend.platform.observability.logging import get_logger
 from hello_sales_backend.platform.providers.llm.contracts import ChatMessage, ChatModelPort
 from hello_sales_backend.platform.tasks.models import TaskMetadata
+from hello_sales_backend.platform.workflows.pipeline import WorkflowStageKind, WorkflowStageSpec
 from hello_sales_backend.platform.workflows.runtime import WorkflowRuntime
 
 
@@ -36,19 +37,17 @@ class WorkflowExecutor:
 
         if not self.runtime.installed:
             raise RuntimeError("Workflow runtime is not installed")
-        api = self.runtime.runtime_objects["api"]
-        Pipeline = api.Pipeline
-        StageKind = api.StageKind
-        stage = api.stage
+        if self.runtime.pipeline_factory is None:
+            raise RuntimeError("Workflow pipeline factory is not available")
 
-        async def input_guard(_ctx):
+        async def input_guard(_ctx: Any) -> dict[str, object]:
             return {"message_count": len(messages)}
 
-        async def provider_check(_ctx):
+        async def provider_check(_ctx: Any) -> dict[str, object]:
             completion = await llm_provider.generate(messages)
             return completion.model_dump(mode="json")
 
-        async def summarize(ctx):
+        async def summarize(ctx: Any) -> dict[str, object]:
             stage_output = ctx.inputs.get_output("provider_check")
             if stage_output is None:
                 raise RuntimeError("Diagnostic workflow provider stage output is missing")
@@ -60,11 +59,23 @@ class WorkflowExecutor:
                 "output_text": result["output_text"],
             }
 
-        pipeline = Pipeline.from_stages(
-            stage("input_guard", input_guard, StageKind.GUARD),
-            stage("provider_check", provider_check, StageKind.WORK, dependencies=("input_guard",)),
-            stage("summarize", summarize, StageKind.TRANSFORM, dependencies=("provider_check",)),
+        pipeline = self.runtime.pipeline_factory.create_pipeline(
             name="diagnostic_llm_workflow",
+            stages=[
+                WorkflowStageSpec(name="input_guard", handler=input_guard, kind=WorkflowStageKind.GUARD),
+                WorkflowStageSpec(
+                    name="provider_check",
+                    handler=provider_check,
+                    kind=WorkflowStageKind.WORK,
+                    dependencies=("input_guard",),
+                ),
+                WorkflowStageSpec(
+                    name="summarize",
+                    handler=summarize,
+                    kind=WorkflowStageKind.TRANSFORM,
+                    dependencies=("provider_check",),
+                ),
+            ],
         )
         started_at = perf_counter()
         self._logger.info(

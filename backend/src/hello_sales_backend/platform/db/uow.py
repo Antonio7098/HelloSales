@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, Callable
+from collections.abc import Callable
+from types import TracebackType
 from typing import Protocol, Self
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -15,7 +16,7 @@ class UnitOfWork(Protocol):
 
     async def __aenter__(self) -> Self: ...
 
-    async def __aexit__(self, exc_type, exc, tb) -> None: ...
+    async def __aexit__(self, exc_type: type[BaseException] | None, exc: BaseException | None, tb: TracebackType | None) -> None: ...
 
     async def commit(self) -> None: ...
 
@@ -33,7 +34,7 @@ class AsyncSqlAlchemyUnitOfWork:
         self.session = self._session_factory()
         return self
 
-    async def __aexit__(self, exc_type, exc, tb) -> None:
+    async def __aexit__(self, exc_type: type[BaseException] | None, exc: BaseException | None, tb: TracebackType | None) -> None:
         if self.session is None:
             return
         try:

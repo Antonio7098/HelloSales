@@ -6,6 +6,7 @@ import asyncio
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
+from hello_sales_backend.application.agents.registry import AgentRegistry
 from hello_sales_backend.platform.agents.config import AgentRuntimeConfig
 from hello_sales_backend.platform.agents.models import (
     AgentRun,
@@ -18,12 +19,12 @@ from hello_sales_backend.platform.agents.models import (
     utc_now,
 )
 from hello_sales_backend.platform.agents.persistence import AgentStorePort
-from hello_sales_backend.application.agents.registry import AgentRegistry
 from hello_sales_backend.platform.agents.tools import AgentToolExecutionContext
 from hello_sales_backend.platform.observability.events import OperationalEvent
 from hello_sales_backend.platform.observability.logging import get_logger
 from hello_sales_backend.platform.observability.runtime import ObservabilityRuntime
 from hello_sales_backend.platform.providers.llm.contracts import ChatModelPort
+from hello_sales_backend.platform.workflows.pipeline import WorkflowStageKind, WorkflowStageSpec
 from hello_sales_backend.platform.workflows.runtime import WorkflowRuntime
 from hello_sales_backend.shared.errors import AppError, app_error, internal_error
 from hello_sales_backend.shared.ids import new_id
@@ -90,11 +91,16 @@ class GenericAgentRuntime:
                 operation="agent.pipeline.run",
                 component="agent",
             )
-
-        api = self.workflow_runtime.runtime_objects["api"]
-        Pipeline = api.Pipeline
-        StageKind = api.StageKind
-        stage = api.stage
+        if self.workflow_runtime.pipeline_factory is None:
+            raise app_error(
+                "Workflow pipeline factory is not available for generic-agent execution",
+                code="agent.workflow.pipeline_factory_missing",
+                category="workflow",
+                status_code=503,
+                details={"engine": self.workflow_runtime.engine_name},
+                operation="agent.pipeline.run",
+                component="agent",
+            )
 
         async def prepare_turn(_ctx: Any) -> dict[str, object]:
             existing_calls = await self.store.list_tool_calls(run.run_id, turn.turn_id)
@@ -184,10 +190,11 @@ class GenericAgentRuntime:
             executed = ctx.inputs.get_output("execute_tools")
             if executed is None:
                 raise RuntimeError("Generic-agent execute_tools output is missing")
-            result = executed.data
+            result: dict[str, object] = executed.data
             if result.get("awaiting_approval") is True:
                 return result
-            tool_results = [str(item) for item in result.get("tool_results", [])]
+            tool_results_raw = result.get("tool_results", [])
+            tool_results = [str(item) for item in tool_results_raw] if isinstance(tool_results_raw, list) else []
             if self.llm_provider.is_configured():
                 messages = definition.build_messages(turn.input_text, tool_results)
                 completion = await self.llm_provider.generate(messages)
@@ -204,11 +211,23 @@ class GenericAgentRuntime:
                 "model": "deterministic-summary",
             }
 
-        pipeline = Pipeline.from_stages(
-            stage("prepare_turn", prepare_turn, StageKind.GUARD),
-            stage("execute_tools", execute_tools, StageKind.WORK, dependencies=("prepare_turn",)),
-            stage("generate_response", generate_response, StageKind.TRANSFORM, dependencies=("execute_tools",)),
+        pipeline = self.workflow_runtime.pipeline_factory.create_pipeline(
             name="generic_agent_turn",
+            stages=[
+                WorkflowStageSpec(name="prepare_turn", handler=prepare_turn, kind=WorkflowStageKind.GUARD),
+                WorkflowStageSpec(
+                    name="execute_tools",
+                    handler=execute_tools,
+                    kind=WorkflowStageKind.WORK,
+                    dependencies=("prepare_turn",),
+                ),
+                WorkflowStageSpec(
+                    name="generate_response",
+                    handler=generate_response,
+                    kind=WorkflowStageKind.TRANSFORM,
+                    dependencies=("execute_tools",),
+                ),
+            ],
         )
         self._logger.info("agent.turn.pipeline.started", run_id=run.run_id, turn_id=turn.turn_id)
         results = await pipeline.run()
@@ -266,7 +285,7 @@ class GenericAgentRuntime:
                     "error": structured.to_dict(),
                 },
             )
-            raise structured
+            raise structured from exc
         tool_call.status = AgentToolCallStatus.COMPLETED
         tool_call.completed_at = utc_now()
         tool_call.result_payload = result
@@ -425,6 +444,7 @@ class GenericAgentRuntime:
         payload: dict[str, object],
         code: str | None = None,
     ) -> None:
+        run = await self.store.get_run(run_id)
         await self.store.append_event(
             AgentStreamEvent(
                 event_id=new_id(),
@@ -433,6 +453,9 @@ class GenericAgentRuntime:
                 sequence_no=await self.store.next_event_sequence(run_id),
                 event_type=event_type,
                 severity=severity,
+                request_id=run.request_id if run is not None else None,
+                trace_id=run.trace_id if run is not None else None,
+                actor_id=run.actor_id if run is not None else None,
                 payload=payload,
                 code=code,
             )

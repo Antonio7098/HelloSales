@@ -2,8 +2,14 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from hello_sales_backend.modules.jobs.use_cases.commands import StartDiagnosticJobCommand
-from hello_sales_backend.modules.jobs.use_cases.views import JobTaskListView, JobTaskView, StartDiagnosticJobView
+from hello_sales_backend.modules.jobs.use_cases.views import (
+    JobTaskListView,
+    JobTaskView,
+    StartDiagnosticJobView,
+)
 from hello_sales_backend.modules.jobs.workflows.diagnostic_workflow import run_diagnostic_workflow
 from hello_sales_backend.platform.composition.providers import ProviderRegistry
 from hello_sales_backend.platform.tasks.models import TaskMetadata
@@ -62,7 +68,7 @@ class JobsService:
         return StartDiagnosticJobView(task_id=metadata.task_id, purpose=metadata.purpose, status="running")
 
     @staticmethod
-    def _snapshot_to_view(snapshot) -> JobTaskView:
+    def _snapshot_to_view(snapshot: Any) -> JobTaskView:
         return JobTaskView(
             task_id=snapshot.metadata.task_id,
             purpose=snapshot.metadata.purpose,

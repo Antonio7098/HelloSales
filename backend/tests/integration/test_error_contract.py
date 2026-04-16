@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 from fastapi import APIRouter
 from httpx import ASGITransport, AsyncClient
@@ -10,7 +12,7 @@ from hello_sales_backend.shared.errors import AppError, app_error
 
 
 @pytest.mark.asyncio
-async def test_structured_app_errors_include_operational_context(tmp_path):
+async def test_structured_app_errors_include_operational_context(tmp_path: Path) -> None:
     settings = Settings(
         environment="test",
         database_url=f"sqlite+aiosqlite:///{tmp_path / 'errors.db'}",
@@ -53,7 +55,7 @@ async def test_structured_app_errors_include_operational_context(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_unhandled_exceptions_are_returned_as_internal_errors(tmp_path):
+async def test_unhandled_exceptions_are_returned_as_internal_errors(tmp_path: Path) -> None:
     settings = Settings(
         environment="test",
         database_url=f"sqlite+aiosqlite:///{tmp_path / 'unexpected.db'}",
@@ -84,7 +86,7 @@ async def test_unhandled_exceptions_are_returned_as_internal_errors(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_partial_llm_configuration_fails_startup(tmp_path):
+async def test_partial_llm_configuration_fails_startup(tmp_path: Path) -> None:
     app = create_app(
         Settings(
             environment="test",
@@ -103,7 +105,7 @@ async def test_partial_llm_configuration_fails_startup(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_generic_agent_provider_without_provider_key_fails_startup(tmp_path):
+async def test_generic_agent_provider_without_provider_key_fails_startup(tmp_path: Path) -> None:
     app = create_app(
         Settings(
             environment="test",
@@ -122,7 +124,7 @@ async def test_generic_agent_provider_without_provider_key_fails_startup(tmp_pat
 
 
 @pytest.mark.asyncio
-async def test_unsupported_generic_agent_provider_fails_startup(tmp_path):
+async def test_unsupported_generic_agent_provider_fails_startup(tmp_path: Path) -> None:
     app = create_app(
         Settings(
             environment="test",

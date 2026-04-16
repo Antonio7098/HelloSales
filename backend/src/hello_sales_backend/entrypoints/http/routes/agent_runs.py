@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import AsyncIterator
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, Request
@@ -83,7 +84,7 @@ async def stream_agent_run_events(
             component="agent",
         )
 
-    async def event_source():
+    async def event_source() -> AsyncIterator[bytes]:
         async for event in service.observe_events(run_id, after_sequence=after_sequence):
             payload = json.dumps(event.model_dump(mode="json"))
             yield f"id: {event.sequence_no}\n".encode()

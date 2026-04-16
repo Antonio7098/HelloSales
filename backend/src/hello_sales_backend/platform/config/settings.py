@@ -36,17 +36,13 @@ class Settings(BaseSettings):
     cors_allowed_origins: tuple[str, ...] = ("http://localhost:3000", "http://localhost:5173")
     stageflow_required: bool = False
     stageflow_event_queue_size: int = Field(default=500, ge=1)
-    generic_agent_provider: str = Field(default="", validation_alias="GENERIC_AGENT_PROVIDER")
-    generic_agent_model: str = Field(default="", validation_alias="GENERIC_AGENT_MODEL")
-    generic_agent_base_url: str = Field(default="", validation_alias="GENERIC_AGENT_BASE_URL")
-    generic_agent_timeout_seconds: float = Field(
-        default=30.0,
-        gt=0,
-        validation_alias="GENERIC_AGENT_TIMEOUT_SECONDS",
-    )
-    groq_api_key: str = Field(default="", validation_alias="GROQ_API_KEY")
-    openrouter_api_key: str = Field(default="", validation_alias="OPENROUTER_API_KEY")
-    openai_api_key: str = Field(default="", validation_alias="OPENAI_API_KEY")
+    generic_agent_provider: str = ""
+    generic_agent_model: str = ""
+    generic_agent_base_url: str = ""
+    generic_agent_timeout_seconds: float = Field(default=30.0, gt=0)
+    groq_api_key: str = ""
+    openrouter_api_key: str = ""
+    openai_api_key: str = ""
 
     @field_validator(
         "app_name",

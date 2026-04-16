@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 import httpx
 
 from hello_sales_backend.platform.observability.logging import get_logger

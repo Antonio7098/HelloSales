@@ -7,7 +7,7 @@ from hello_sales_backend.cli import scaffold_module as scaffold_module_cli
 BACKEND_ROOT = Path(__file__).resolve().parents[2]
 
 
-def test_scaffold_module_writes_expected_files(tmp_path):
+def test_scaffold_module_writes_expected_files(tmp_path: Path) -> None:
     template_root = BACKEND_ROOT / "templates" / "module"
     destination_root = tmp_path / "modules"
 

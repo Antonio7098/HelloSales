@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from pydantic import BaseModel
 import pytest
+from pydantic import BaseModel
 
+from hello_sales_backend.platform.config.settings import Settings
 from hello_sales_backend.shared.errors import AppError
 from hello_sales_backend.smoke.contracts import SmokeCase, SmokeContext
 from hello_sales_backend.smoke.registry import SmokeRegistry
@@ -23,7 +24,7 @@ class ExampleSmoke(SmokeCase):
 
 
 @pytest.mark.asyncio
-async def test_smoke_runner_executes_registered_smoke(test_settings):
+async def test_smoke_runner_executes_registered_smoke(test_settings: Settings) -> None:
     runner = SmokeRunner(SmokeRegistry([ExampleSmoke()]), SmokeContext.create(settings=test_settings))
 
     result = await runner.run()
@@ -33,7 +34,7 @@ async def test_smoke_runner_executes_registered_smoke(test_settings):
     assert result.payload["value"] == "test"
 
 
-def test_smoke_registry_rejects_unknown_name():
+def test_smoke_registry_rejects_unknown_name() -> None:
     registry = SmokeRegistry([ExampleSmoke()])
 
     with pytest.raises(AppError) as exc_info:

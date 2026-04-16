@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 
 
 def utc_now() -> datetime:
@@ -13,7 +13,7 @@ def utc_now() -> datetime:
     return datetime.now(UTC)
 
 
-class AgentRunStatus(str, Enum):
+class AgentRunStatus(StrEnum):
     """Persisted agent-run lifecycle states."""
 
     PENDING = "pending"
@@ -24,7 +24,7 @@ class AgentRunStatus(str, Enum):
     CANCELLED = "cancelled"
 
 
-class AgentTurnStatus(str, Enum):
+class AgentTurnStatus(StrEnum):
     """Persisted turn lifecycle states."""
 
     PENDING = "pending"
@@ -35,7 +35,7 @@ class AgentTurnStatus(str, Enum):
     CANCELLED = "cancelled"
 
 
-class AgentToolCallStatus(str, Enum):
+class AgentToolCallStatus(StrEnum):
     """Persisted tool-call lifecycle states."""
 
     QUEUED = "queued"
@@ -134,6 +134,9 @@ class AgentStreamEvent:
     event_type: str
     severity: str
     payload: dict[str, object]
+    request_id: str | None = None
+    trace_id: str | None = None
+    actor_id: str | None = None
     created_at: datetime = field(default_factory=utc_now)
     code: str | None = None
 

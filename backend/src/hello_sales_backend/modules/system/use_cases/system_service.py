@@ -16,10 +16,10 @@ from hello_sales_backend.modules.system.use_cases.ports import (
     ObservabilityPort,
 )
 from hello_sales_backend.modules.system.use_cases.views import (
-    AlertView,
     AgentDiagnosticsView,
     AgentProfileView,
     AgentRunSnapshotView,
+    AlertView,
     OperationalEventView,
     ProviderDiagnosticsView,
     SystemDiagnosticsView,

@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-
 PLACEHOLDERS = {
     "__MODULE__": "module_name",
     "__CLASS__": "class_name",

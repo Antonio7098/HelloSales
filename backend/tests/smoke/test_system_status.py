@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import httpx
 
-async def test_system_status_endpoint(client):
+
+async def test_system_status_endpoint(client: httpx.AsyncClient) -> None:
     response = await client.get("/api/system/status")
 
     assert response.status_code == 200

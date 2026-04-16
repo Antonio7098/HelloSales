@@ -35,7 +35,7 @@ async def wait_for_terminal_run_state(
     for _ in range(attempts):
         response = await client.get(path)
         response.raise_for_status()
-        payload = response.json()["data"]
+        payload: dict[str, object] = response.json()["data"]
         if payload["status"] in target_statuses:
             return payload
         await asyncio.sleep(delay_seconds)

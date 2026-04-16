@@ -3,7 +3,6 @@ from __future__ import annotations
 import os
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from hello_sales_backend.platform.agents.models import (
     AgentRun,
@@ -14,11 +13,11 @@ from hello_sales_backend.platform.agents.models import (
     AgentTurn,
     AgentTurnStatus,
 )
+from hello_sales_backend.platform.config.settings import Settings
 from hello_sales_backend.platform.db.base import metadata
 from hello_sales_backend.platform.db.engine import build_engine
 from hello_sales_backend.platform.db.repositories import SqlAlchemyAgentStore
 from hello_sales_backend.platform.db.session import build_session_factory
-from hello_sales_backend.platform.config.settings import Settings
 
 pytestmark = pytest.mark.postgres
 
@@ -28,7 +27,7 @@ pytestmark = pytest.mark.postgres
     reason="Set HELLO_SALES_RUN_POSTGRES_TESTS=1 to run PostgreSQL integration tests.",
 )
 @pytest.mark.asyncio
-async def test_sqlalchemy_agent_store_round_trips_operational_state():
+async def test_sqlalchemy_agent_store_round_trips_operational_state() -> None:
     database_url = os.getenv(
         "HELLO_SALES_POSTGRES_TEST_DATABASE_URL",
         "postgresql+asyncpg://hello_sales:hello_sales@localhost:5432/hello_sales",
