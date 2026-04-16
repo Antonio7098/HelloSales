@@ -71,6 +71,8 @@ def create_app(
             include_in_schema=False,
         )
         async def metrics() -> Response:
+            # This stays at the app root because it is an operational surface,
+            # not a product endpoint under the `/api` router tree.
             payload, media_type = resolved_container.observability.render_metrics()
             return Response(content=payload, media_type=media_type)
 

@@ -18,6 +18,8 @@ class Settings(BaseSettings):
         "openai": "https://api.openai.com/v1",
         "openai-compatible": "",
     }
+    SUPPORTED_OBSERVABILITY_METRICS_EXPORTERS: ClassVar[set[str]] = {"prometheus"}
+    SUPPORTED_OBSERVABILITY_TRACING_EXPORTERS: ClassVar[set[str]] = {"console", "none"}
 
     model_config = SettingsConfigDict(
         env_prefix="HELLO_SALES_",
@@ -92,6 +94,26 @@ class Settings(BaseSettings):
 
         if not value.startswith("/"):
             raise ValueError("observability_metrics_endpoint_path must start with '/'")
+        return value
+
+    @field_validator("observability_metrics_exporter")
+    @classmethod
+    def validate_metrics_exporter(cls, value: str) -> str:
+        """Restrict metrics exporters to the supported scaffold-stage set."""
+
+        if value not in cls.SUPPORTED_OBSERVABILITY_METRICS_EXPORTERS:
+            supported = ", ".join(sorted(cls.SUPPORTED_OBSERVABILITY_METRICS_EXPORTERS))
+            raise ValueError(f"observability_metrics_exporter must be one of: {supported}")
+        return value
+
+    @field_validator("observability_tracing_exporter")
+    @classmethod
+    def validate_tracing_exporter(cls, value: str) -> str:
+        """Restrict tracing exporters to the supported scaffold-stage set."""
+
+        if value not in cls.SUPPORTED_OBSERVABILITY_TRACING_EXPORTERS:
+            supported = ", ".join(sorted(cls.SUPPORTED_OBSERVABILITY_TRACING_EXPORTERS))
+            raise ValueError(f"observability_tracing_exporter must be one of: {supported}")
         return value
 
     @property

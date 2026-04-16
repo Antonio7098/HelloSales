@@ -14,8 +14,15 @@ from prometheus_client import (
     generate_latest,
 )
 
+from hello_sales_backend.platform.tasks.models import TaskStatus
+
 _HEALTHY_STATUSES = {"configured", "live", "missing", "ok", "ready"}
-_FAILURE_TASK_STATUSES = {"cancelled", "failed", "partial_failure", "timed_out"}
+_FAILURE_TASK_STATUSES = {
+    TaskStatus.CANCELLED.value,
+    TaskStatus.FAILED.value,
+    TaskStatus.PARTIAL_FAILURE.value,
+    TaskStatus.TIMED_OUT.value,
+}
 _KNOWN_HEALTH_OVERALL_STATUSES: dict[str, tuple[str, ...]] = {
     "liveness": ("live",),
     "readiness": ("degraded", "not_ready", "ready"),

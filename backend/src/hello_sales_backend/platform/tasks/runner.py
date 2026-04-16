@@ -57,7 +57,7 @@ class BackgroundTaskRunner:
             started_at=utc_now(),
         )
         self._snapshots[metadata.task_id] = snapshot
-        metrics = getattr(self._observability, "metrics", None)
+        metrics = self._metrics_runtime()
         if metrics is not None:
             metrics.on_background_task_started(purpose=metadata.purpose)
         self._emit_snapshot(snapshot)
@@ -304,6 +304,11 @@ class BackgroundTaskRunner:
             return
         coro.close()
 
+    def _metrics_runtime(self) -> Any | None:
+        if self._observability is None:
+            return None
+        return getattr(self._observability, "metrics", None)
+
     async def _run_task(self, *, metadata: TaskMetadata, coro: Coroutine[Any, Any, Any]) -> Any:
         if self._observability is None:
             return await coro
@@ -347,7 +352,7 @@ class BackgroundTaskRunner:
             return result
 
     def _record_task_metrics(self, snapshot: TaskSnapshot) -> None:
-        metrics = getattr(self._observability, "metrics", None)
+        metrics = self._metrics_runtime()
         if metrics is None:
             return
         duration_seconds: float | None = None

@@ -37,6 +37,30 @@ def test_observability_settings_validate_metrics_endpoint_path() -> None:
         raise AssertionError("expected ValidationError for an invalid metrics path")
 
 
+def test_observability_settings_validate_metrics_exporter() -> None:
+    try:
+        Settings(
+            database_url="sqlite+aiosqlite:///test.db",
+            observability_metrics_exporter="statsd",
+        )
+    except ValidationError as exc:
+        assert "observability_metrics_exporter" in str(exc)
+    else:
+        raise AssertionError("expected ValidationError for an invalid metrics exporter")
+
+
+def test_observability_settings_validate_tracing_exporter() -> None:
+    try:
+        Settings(
+            database_url="sqlite+aiosqlite:///test.db",
+            observability_tracing_exporter="otlp",
+        )
+    except ValidationError as exc:
+        assert "observability_tracing_exporter" in str(exc)
+    else:
+        raise AssertionError("expected ValidationError for an invalid tracing exporter")
+
+
 def test_noop_metrics_runtime_is_safe_when_disabled() -> None:
     runtime = NoOpMetricsRuntime(
         MetricsRuntimeSnapshot(
