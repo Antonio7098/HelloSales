@@ -2,6 +2,13 @@
 
 This backend scaffold is Postgres-first in development and production.
 
+The canonical technical documentation set for the backend lives in `backend/docs/`:
+- `backend/docs/README.md`
+- `backend/docs/runtime-overview.md`
+- `backend/docs/codebase-map.md`
+- `backend/docs/api-and-runtime-surfaces.md`
+- `backend/docs/testing-and-operations.md`
+
 ## Development Database
 
 Default application database URL:
