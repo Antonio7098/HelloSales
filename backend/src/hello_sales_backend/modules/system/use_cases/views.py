@@ -111,6 +111,37 @@ class AlertView(BaseModel):
     details: dict[str, object]
 
 
+class MetricsDiagnosticsView(BaseModel):
+    """Metrics runtime summary."""
+
+    enabled: bool
+    exporter: str
+    endpoint_enabled: bool
+    endpoint_path: str
+    http_enabled: bool
+    health_enabled: bool
+    background_tasks_enabled: bool
+
+
+class TracingDiagnosticsView(BaseModel):
+    """Tracing runtime summary."""
+
+    enabled: bool
+    exporter: str
+    service_name: str
+    service_version: str
+    environment: str
+    http_enabled: bool
+    background_tasks_enabled: bool
+
+
+class ObservabilityDiagnosticsView(BaseModel):
+    """Observability runtime summary."""
+
+    metrics: MetricsDiagnosticsView
+    tracing: TracingDiagnosticsView
+
+
 class SystemDiagnosticsView(BaseModel):
     """Detailed operational diagnostics."""
 
@@ -124,5 +155,6 @@ class SystemDiagnosticsView(BaseModel):
     agent_profiles: list[AgentProfileView]
     tasks: TaskDiagnosticsView
     agents: AgentDiagnosticsView
+    observability: ObservabilityDiagnosticsView
     events: list[OperationalEventView]
     alerts: list[AlertView]

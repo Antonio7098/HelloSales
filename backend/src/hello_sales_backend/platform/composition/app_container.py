@@ -36,6 +36,8 @@ from hello_sales_backend.platform.observability.runtime import (
     AlertPolicy,
     InMemoryOperationalStore,
     ObservabilityRuntime,
+    build_metrics_runtime,
+    build_tracing_runtime,
 )
 from hello_sales_backend.platform.tasks.runner import BackgroundTaskRunner
 from hello_sales_backend.platform.workflows.executor import WorkflowExecutor
@@ -109,6 +111,8 @@ def build_app_container(settings: Settings, overrides: AppOverrides | None = Non
     observability = resolved_overrides.observability_runtime or ObservabilityRuntime(
         store=InMemoryOperationalStore(),
         alert_policy=AlertPolicy(),
+        metrics=build_metrics_runtime(settings),
+        tracing=build_tracing_runtime(settings),
     )
     tasks = resolved_overrides.task_runner or BackgroundTaskRunner(
         event_sink=task_event_sink,
@@ -121,6 +125,7 @@ def build_app_container(settings: Settings, overrides: AppOverrides | None = Non
         settings=settings,
         session_factory=session_factory,
         workflows=workflow_runtime,
+        observability=observability,
     )
     jobs_module = build_jobs_module(
         providers=providers,

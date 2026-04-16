@@ -13,8 +13,10 @@ dependencies = [
     "httpx>=0.28.0",
     "pydantic>=2.10.0",
     "pydantic-settings>=2.6.0",
+    "prometheus-client>=0.21.0",
     "stageflow-core>=1.2.0",
     "structlog>=24.4.0",
+    "opentelemetry-sdk>=1.27.0",
 ]
 
 [project.scripts]

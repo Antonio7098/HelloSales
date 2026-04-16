@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from hello_sales_backend.platform.config.settings import Settings
 from hello_sales_backend.platform.db.session import ping_database
+from hello_sales_backend.platform.observability.runtime import ObservabilityRuntime
 from hello_sales_backend.platform.workflows.runtime import WorkflowRuntime
 from hello_sales_backend.shared.errors import app_error
 
@@ -37,13 +38,15 @@ class HealthService:
         settings: Settings,
         session_factory: async_sessionmaker[AsyncSession],
         workflows: WorkflowRuntime,
+        observability: ObservabilityRuntime,
     ) -> None:
         self._settings = settings
         self._session_factory = session_factory
         self._workflows = workflows
+        self._observability = observability
 
     async def liveness(self) -> HealthReadinessView:
-        return HealthReadinessView(
+        payload = HealthReadinessView(
             status="live",
             database="unknown",
             workflows="ok",
@@ -51,8 +54,12 @@ class HealthService:
                 "process": HealthCheckView(status="live", required=True),
             },
         )
+        self._record_metrics(kind="liveness", payload=payload)
+        return payload
 
     async def readiness(self) -> HealthReadinessView:
+        database_scheme = self._settings.database_url.split(":", 1)[0]
+        database_required = not self._settings.database_url.startswith("sqlite+aiosqlite")
         database_status = "configured"
         workflow_status = "ok"
         overall_status = "ready"
@@ -60,8 +67,8 @@ class HealthService:
         checks: dict[str, HealthCheckView] = {
             "database": HealthCheckView(
                 status="configured",
-                required=not self._settings.database_url.startswith("sqlite+aiosqlite"),
-                details={"scheme": self._settings.database_url.split(":", 1)[0]},
+                required=database_required,
+                details={"scheme": database_scheme},
             ),
             "workflows": HealthCheckView(
                 status="ok",
@@ -70,10 +77,24 @@ class HealthService:
             ),
         }
 
-        if not self._settings.database_url.startswith("sqlite+aiosqlite"):
+        if database_required:
             try:
                 await ping_database(self._session_factory)
             except Exception as exc:
+                checks["database"] = HealthCheckView(
+                    status="not_ready",
+                    required=True,
+                    details={"scheme": database_scheme},
+                )
+                self._record_metrics(
+                    kind="readiness",
+                    payload=HealthReadinessView(
+                        status="not_ready",
+                        database="not_ready",
+                        workflows=workflow_status,
+                        checks=checks,
+                    ),
+                )
                 raise app_error(
                     "Database readiness check failed",
                     code="dependency.postgres.unavailable",
@@ -81,7 +102,7 @@ class HealthService:
                     status_code=503,
                     severity="critical",
                     retryable=True,
-                    details={"database_scheme": self._settings.database_url.split(":", 1)[0]},
+                    details={"database_scheme": database_scheme},
                     operation="health.readiness",
                     component="db",
                     exc=exc,
@@ -90,10 +111,24 @@ class HealthService:
             checks["database"] = HealthCheckView(
                 status=database_status,
                 required=True,
-                details={"scheme": self._settings.database_url.split(":", 1)[0]},
+                details={"scheme": database_scheme},
             )
 
         if not self._workflows.installed and self._workflows.required:
+            checks["workflows"] = HealthCheckView(
+                status="not_ready",
+                required=True,
+                details={"engine": self._workflows.engine_name},
+            )
+            self._record_metrics(
+                kind="readiness",
+                payload=HealthReadinessView(
+                    status="not_ready",
+                    database=database_status,
+                    workflows="not_ready",
+                    checks=checks,
+                ),
+            )
             raise app_error(
                 "Required workflow runtime is unavailable",
                 code="dependency.workflow_runtime.unavailable",
@@ -113,9 +148,18 @@ class HealthService:
                 details={"engine": self._workflows.engine_name},
             )
 
-        return HealthReadinessView(
+        payload = HealthReadinessView(
             status=overall_status,
             database=database_status,
             workflows=workflow_status,
             checks=checks,
+        )
+        self._record_metrics(kind="readiness", payload=payload)
+        return payload
+
+    def _record_metrics(self, *, kind: str, payload: HealthReadinessView) -> None:
+        self._observability.observe_health(
+            kind=kind,
+            overall_status=payload.status,
+            checks={name: (check.status, check.required) for name, check in payload.checks.items()},
         )

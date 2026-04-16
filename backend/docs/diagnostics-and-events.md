@@ -16,6 +16,7 @@ The backend currently exposes diagnostics through three related mechanisms:
 - health endpoints
 - system diagnostics endpoints
 - operational event and alert runtime state
+- metrics and telemetry runtime state
 
 ## Health Model
 
@@ -43,6 +44,8 @@ Possible readiness outcomes include:
 - `ready`
 - `degraded`
 - dependency-driven failure via structured app error
+
+Readiness and liveness now also update machine-usable metrics so the same dependency truth is available through `/metrics`.
 
 ### Database Readiness Semantics
 Behavior:
@@ -119,10 +122,42 @@ The main aggregated diagnostics surface lives in:
 - provider diagnostics
 - task diagnostics
 - agent diagnostics
+- observability runtime configuration and enablement state
 - recent operational events
 - active alerts
 
 This makes the `system` module the main operator-facing diagnostics facade.
+
+## Metrics Surface
+
+The canonical operational metrics surface is:
+- `/metrics` when `HELLO_SALES_OBSERVABILITY_METRICS_ENDPOINT_ENABLED=true`
+
+Important characteristics:
+- it is an operational surface, not a product API capability
+- it is mounted directly on the app rather than under `/api`
+- it exposes Prometheus text format
+- it is intentionally narrow and machine-oriented
+
+Current metric families cover:
+- HTTP requests
+- health and readiness truth
+- background task lifecycle
+
+High-cardinality values such as request ids, trace ids, task ids, and raw error messages are intentionally excluded from metric labels.
+
+## Telemetry Runtime State
+
+System diagnostics now expose a concise observability summary.
+
+That summary includes:
+- whether metrics are enabled
+- whether the metrics endpoint is enabled and where it is mounted
+- whether tracing is enabled
+- which tracing exporter is configured
+- which metric families and tracing boundaries are active
+
+This keeps diagnostics operator-useful without turning the diagnostics endpoint into a monitoring dashboard.
 
 ## Task Diagnostics
 
@@ -172,7 +207,8 @@ Important current limitations:
 - operational events and alerts are in-memory, not durable
 - diagnostics are scaffold-stage and optimized for visibility, not yet long-term analytics
 - alerting policy is intentionally minimal
-- some signals exist both as logs and operational events rather than through a single unified telemetry pipeline
+- some signals now exist across logs, operational events, metrics, and traces by design rather than through a single sink
+- deeper provider, workflow, and agent telemetry remains intentionally shallow after the foundation sprint
 
 ## Where To Read In Code
 

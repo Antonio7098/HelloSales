@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 
 from hello_sales_backend.entrypoints.http.error_handlers import register_error_handlers
 from hello_sales_backend.entrypoints.http.router import api_router
@@ -51,7 +52,7 @@ def create_app(
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    app.add_middleware(RequestContextMiddleware)
+    app.add_middleware(RequestContextMiddleware, observability=resolved_container.observability)
     register_error_handlers(app)
     app.include_router(api_router, prefix=resolved_settings.api_prefix)
 
@@ -62,6 +63,18 @@ def create_app(
             "version": resolved_settings.app_version,
             "environment": resolved_settings.environment,
         }
+
+    if resolved_settings.observability_metrics_endpoint_enabled:
+
+        @app.get(
+            resolved_settings.observability_metrics_endpoint_path,
+            include_in_schema=False,
+        )
+        async def metrics() -> Response:
+            # This stays at the app root because it is an operational surface,
+            # not a product endpoint under the `/api` router tree.
+            payload, media_type = resolved_container.observability.render_metrics()
+            return Response(content=payload, media_type=media_type)
 
     return app
 

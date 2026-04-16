@@ -45,6 +45,7 @@ create_app()
 - builds the app container
 - registers middleware and error handlers
 - mounts the top-level API router
+- optionally mounts the operational metrics endpoint
 - runs startup and shutdown through the FastAPI lifespan
 
 ### Composition Root
@@ -90,8 +91,28 @@ The observability runtime owns:
 - operational event emission
 - in-memory event retention for scaffold-stage visibility
 - code/severity-driven alert derivation
+- Prometheus metrics collection and exposition
+- OpenTelemetry tracing hooks for HTTP and background task boundaries
 
 - `platform/observability/runtime.py`
+
+Supporting files now include:
+- `platform/observability/metrics.py`
+- `platform/observability/telemetry.py`
+- `platform/observability/middleware.py`
+- `platform/observability/health.py`
+
+The first instrumentation layer covers:
+- HTTP request counts, latency, outcomes, and active requests
+- liveness/readiness status
+- background task start, terminal state, failure-like counts, and duration
+
+The metrics surface is mounted directly on the FastAPI app at a configurable path, defaulting to `/metrics` when enabled. It remains outside the `/api` router because it is an operator surface rather than a product API capability.
+
+Tracing is additive rather than replacement behavior:
+- existing `request_id` and `trace_id` metadata remain intact for logs, events, and errors
+- telemetry adds spans for HTTP and background task execution where enabled
+- structured logs and operational events remain the authoritative failure record
 
 ### Background Task Runner
 The task runner owns:

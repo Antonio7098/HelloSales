@@ -81,7 +81,7 @@ class AppError(Exception):
     timestamp: str = field(default_factory=_utc_now_iso)
 
     def __post_init__(self) -> None:
-        super().__init__(self.message)
+        object.__setattr__(self, "args", (self.message,))
         self.details = normalize_details(self.details)
 
     def with_context(
@@ -155,7 +155,9 @@ def app_error(
         operation=operation,
         component=component,
         cause=build_cause(exc),
-        causes=build_causal_chain(exc.__cause__) if exc is not None and exc.__cause__ is not None else [],
+        causes=build_causal_chain(exc.__cause__)
+        if exc is not None and exc.__cause__ is not None
+        else [],
     )
 
 
