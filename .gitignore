@@ -1,0 +1,233 @@
+# =========================================
+# Python (FastAPI)
+# =========================================
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+.pybuilder/
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pdm
+.pdm.toml
+.pdm-python
+.pdm-build/
+
+# PEP 582
+__pypackages__/
+
+# Celery stuff
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.env
+.env.local
+.env.*.local
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# Cython debug symbols
+cython_debug/
+
+# PyCharm
+.idea/
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# =========================================
+# Node.js / JavaScript (Frontend)
+# =========================================
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+.pnp
+.pnp.js
+
+# Testing
+coverage/
+
+# Production builds
+build/
+dist/
+.next/
+out/
+
+# Misc
+.DS_Store
+*.pem
+
+# Debug logs
+logs
+*.log
+
+# Local env files
+.env*.local
+
+# Vercel
+.vercel
+
+# =========================================
+# Database
+# =========================================
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-wal
+*.db-shm
+
+# =========================================
+# OS / Editor files
+# =========================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# =========================================
+# Project specific
+# =========================================
+# Debug/test databases
+debug*.db
+test.db
+
+# Alembic - keep ini, ignore generated cache
+alembic/__pycache__/
+
+# Cache directories
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+.dmypy_cache/
+
+# Temporary files
+*.tmp
+temp/
+tmp/
+
+# Docker volumes
+docker-volumes/
+
+# Secrets (never commit!)
+secrets/
+*.key
+*.crt
+*.pem
+!src/hello_sales_backend/platform/repository/templates/*.crt
+!src/hello_sales_backend/platform/repository/templates/*.key

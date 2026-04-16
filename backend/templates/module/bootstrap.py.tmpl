@@ -1,0 +1,20 @@
+"""__CLASS__ module assembly."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from __PACKAGE__.modules.__MODULE__.use_cases.__MODULE___service import __CLASS__Service
+
+
+@dataclass(slots=True)
+class __CLASS__Module:
+    """Resolved __MODULE__ module bundle."""
+
+    service: __CLASS__Service
+
+
+def build___MODULE___module() -> __CLASS__Module:
+    """Build the __MODULE__ module."""
+
+    return __CLASS__Module(service=__CLASS__Service())

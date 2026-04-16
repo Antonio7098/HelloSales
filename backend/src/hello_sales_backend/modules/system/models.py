@@ -1,0 +1,2 @@
+"""System persistence models placeholder."""
+

@@ -1,0 +1,1 @@
+"""Jobs value objects."""

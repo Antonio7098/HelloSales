@@ -1,0 +1,10 @@
+"""Shared SQLAlchemy metadata."""
+
+from sqlalchemy.orm import DeclarativeBase
+
+
+class Base(DeclarativeBase):
+    """Base declarative model class."""
+
+
+metadata = Base.metadata

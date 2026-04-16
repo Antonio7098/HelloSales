@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: hello-sales-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: hello_sales
+      POSTGRES_USER: hello_sales
+      POSTGRES_PASSWORD: hello_sales
+    ports:
+      - "5432:5432"
+    volumes:
+      - hello_sales_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hello_sales -d hello_sales"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  hello_sales_postgres_data:
