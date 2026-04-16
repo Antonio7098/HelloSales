@@ -6,6 +6,8 @@ import asyncio
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
+from stageflow.pipeline.dag import UnifiedStageExecutionError
+
 from hello_sales_backend.application.agents.registry import AgentRegistry
 from hello_sales_backend.platform.agents.config import AgentRuntimeConfig
 from hello_sales_backend.platform.agents.models import (
@@ -230,7 +232,12 @@ class GenericAgentRuntime:
             ],
         )
         self._logger.info("agent.turn.pipeline.started", run_id=run.run_id, turn_id=turn.turn_id)
-        results = await pipeline.run()
+        try:
+            results = await pipeline.run()
+        except UnifiedStageExecutionError as exc:
+            if isinstance(exc.original, AppError):
+                raise exc.original from exc
+            raise
         output = results["generate_response"].data
         self._logger.info("agent.turn.pipeline.completed", run_id=run.run_id, turn_id=turn.turn_id)
         return dict(output)

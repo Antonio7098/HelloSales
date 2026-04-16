@@ -6,7 +6,10 @@ from typing import Protocol
 
 from hello_sales_backend.platform.agents.models import AgentDiagnosticsSummary
 from hello_sales_backend.platform.observability.events import OperationalEvent
-from hello_sales_backend.platform.observability.runtime import AlertRecord
+from hello_sales_backend.platform.observability.runtime import (
+    AlertRecord,
+    ObservabilityDiagnosticsSnapshot,
+)
 
 
 class ClockPort(Protocol):
@@ -21,6 +24,8 @@ class ObservabilityPort(Protocol):
     def recent_events(self, limit: int = 20) -> list[OperationalEvent]: ...
 
     def active_alerts(self, limit: int = 20) -> list[AlertRecord]: ...
+
+    def diagnostics(self) -> ObservabilityDiagnosticsSnapshot: ...
 
 
 class AgentDiagnosticsPort(Protocol):

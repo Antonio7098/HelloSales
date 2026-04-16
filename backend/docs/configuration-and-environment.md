@@ -7,6 +7,7 @@ It describes:
 - how settings are loaded
 - which settings matter most operationally
 - how provider configuration is resolved
+- how observability is configured
 - which startup checks enforce configuration correctness
 
 ## Settings Model
@@ -21,6 +22,7 @@ Important characteristics:
 - `.env` is loaded by default
 - extra environment variables are ignored
 - string-like settings are aggressively stripped to avoid hidden whitespace bugs
+- provider and observability variables use the same prefix
 
 The cached accessor is:
 - `get_settings()`
@@ -40,18 +42,45 @@ High-signal settings include:
 
 These shape the app identity, routing prefix, logging, database connection, and workflow expectations.
 
+## Observability Configuration Model
+
+The backend now exposes environment-driven observability controls for metrics and tracing.
+
+Relevant variables include:
+- `HELLO_SALES_OBSERVABILITY_SERVICE_NAME`
+- `HELLO_SALES_OBSERVABILITY_SERVICE_VERSION`
+- `HELLO_SALES_OBSERVABILITY_METRICS_ENABLED`
+- `HELLO_SALES_OBSERVABILITY_METRICS_EXPORTER`
+- `HELLO_SALES_OBSERVABILITY_METRICS_ENDPOINT_ENABLED`
+- `HELLO_SALES_OBSERVABILITY_METRICS_ENDPOINT_PATH`
+- `HELLO_SALES_OBSERVABILITY_METRICS_HTTP_ENABLED`
+- `HELLO_SALES_OBSERVABILITY_METRICS_HEALTH_ENABLED`
+- `HELLO_SALES_OBSERVABILITY_METRICS_BACKGROUND_TASKS_ENABLED`
+- `HELLO_SALES_OBSERVABILITY_TRACING_ENABLED`
+- `HELLO_SALES_OBSERVABILITY_TRACING_EXPORTER`
+- `HELLO_SALES_OBSERVABILITY_TRACING_HTTP_ENABLED`
+- `HELLO_SALES_OBSERVABILITY_TRACING_BACKGROUND_TASKS_ENABLED`
+
+Behavior:
+- metrics and tracing can be enabled independently
+- the operational metrics endpoint is disabled by default
+- the metrics endpoint is mounted directly on the app rather than under `HELLO_SALES_API_PREFIX`
+- tracing currently supports `console` export or disabled/no-op operation
+- service metadata falls back to app metadata when observability-specific values are not set
+- metric families can be disabled individually without removing the overall observability runtime
+
 ## Provider Configuration Model
 
 The backend currently supports a generic-agent provider path.
 
 Relevant variables include:
-- `GENERIC_AGENT_PROVIDER`
-- `GENERIC_AGENT_MODEL`
-- `GENERIC_AGENT_BASE_URL`
-- `GENERIC_AGENT_TIMEOUT_SECONDS`
-- `GROQ_API_KEY`
-- `OPENROUTER_API_KEY`
-- `OPENAI_API_KEY`
+- `HELLO_SALES_GENERIC_AGENT_PROVIDER`
+- `HELLO_SALES_GENERIC_AGENT_MODEL`
+- `HELLO_SALES_GENERIC_AGENT_BASE_URL`
+- `HELLO_SALES_GENERIC_AGENT_TIMEOUT_SECONDS`
+- `HELLO_SALES_GROQ_API_KEY`
+- `HELLO_SALES_OPENROUTER_API_KEY`
+- `HELLO_SALES_OPENAI_API_KEY`
 
 ### Provider Resolution
 The settings model computes resolved values through properties:
@@ -127,6 +156,8 @@ Common local development shape:
 - Postgres database URL
 - `HELLO_SALES_ENVIRONMENT=development`
 - optional `.env` file
+- observability metrics and tracing disabled until explicitly needed
+- `HELLO_SALES_OBSERVABILITY_METRICS_ENDPOINT_ENABLED=true` only when an operator or developer wants the operational metrics surface
 - provider settings present when running real-provider smoke suites
 - provider settings omitted when running deterministic local scaffold paths
 

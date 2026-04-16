@@ -42,6 +42,7 @@ class BackgroundTaskRunner:
     ) -> None:
         self._logger = get_logger("hello_sales_backend.tasks")
         self._tasks: dict[asyncio.Task[Any], str] = {}
+        self._task_coroutines: dict[asyncio.Task[Any], Coroutine[Any, Any, Any]] = {}
         self._snapshots: dict[str, TaskSnapshot] = {}
         self._failures: list[TaskFailure] = []
         self._event_sink = event_sink
@@ -56,9 +57,13 @@ class BackgroundTaskRunner:
             started_at=utc_now(),
         )
         self._snapshots[metadata.task_id] = snapshot
+        metrics = getattr(self._observability, "metrics", None)
+        if metrics is not None:
+            metrics.on_background_task_started(purpose=metadata.purpose)
         self._emit_snapshot(snapshot)
-        task = asyncio.create_task(coro)
+        task = asyncio.create_task(self._run_task(metadata=metadata, coro=coro))
         self._tasks[task] = metadata.task_id
+        self._task_coroutines[task] = coro
         task.add_done_callback(self._handle_task_done)
         return metadata.task_id
 
@@ -107,13 +112,16 @@ class BackgroundTaskRunner:
 
     def _handle_task_done(self, task: asyncio.Task[Any]) -> None:
         task_id = self._tasks.pop(task, None)
+        inner_coro = self._task_coroutines.pop(task, None)
         try:
             exception = task.exception()
         except asyncio.CancelledError:
+            self._close_unstarted_coro(inner_coro)
             if task_id is not None:
                 snapshot = self._snapshots[task_id]
                 snapshot.status = TaskStatus.CANCELLED
                 snapshot.finished_at = utc_now()
+                self._record_task_metrics(snapshot)
                 self._emit_snapshot(snapshot)
             return
         if task_id is None:
@@ -122,6 +130,7 @@ class BackgroundTaskRunner:
         snapshot.finished_at = utc_now()
         if exception is None:
             snapshot.status = TaskStatus.COMPLETED
+            self._record_task_metrics(snapshot)
             self._emit_snapshot(snapshot)
             return
         snapshot.status = TaskStatus.FAILED
@@ -162,6 +171,7 @@ class BackgroundTaskRunner:
             error_category=failure.category,
             error_details=failure.details,
         )
+        self._record_task_metrics(snapshot)
         self._emit_snapshot(snapshot)
         self._emit_operational_event(
             OperationalEvent(
@@ -283,4 +293,68 @@ class BackgroundTaskRunner:
                 category="background",
                 details=details,
             )
+        )
+
+    def _close_unstarted_coro(self, coro: Coroutine[Any, Any, Any] | None) -> None:
+        if coro is None:
+            return
+        if getattr(coro, "cr_frame", None) is None:
+            return
+        if getattr(coro, "cr_await", None) is not None:
+            return
+        coro.close()
+
+    async def _run_task(self, *, metadata: TaskMetadata, coro: Coroutine[Any, Any, Any]) -> Any:
+        if self._observability is None:
+            return await coro
+        start_background_task_span = getattr(self._observability, "start_background_task_span", None)
+        finish_background_task_span = getattr(self._observability, "finish_background_task_span", None)
+        if not callable(start_background_task_span) or not callable(finish_background_task_span):
+            return await coro
+        with start_background_task_span(
+            task_id=metadata.task_id,
+            purpose=metadata.purpose,
+            request_id=metadata.request_id,
+            trace_id=metadata.trace_id,
+        ) as span:
+            try:
+                result = await coro
+            except asyncio.CancelledError:
+                finish_background_task_span(
+                    span,
+                    task_id=metadata.task_id,
+                    purpose=metadata.purpose,
+                    status=TaskStatus.CANCELLED.value,
+                    error_type="CancelledError",
+                )
+                raise
+            except Exception as exc:
+                finish_background_task_span(
+                    span,
+                    task_id=metadata.task_id,
+                    purpose=metadata.purpose,
+                    status=TaskStatus.FAILED.value,
+                    error_type=exc.__class__.__name__,
+                )
+                raise
+            finish_background_task_span(
+                span,
+                task_id=metadata.task_id,
+                purpose=metadata.purpose,
+                status=TaskStatus.COMPLETED.value,
+                error_type=None,
+            )
+            return result
+
+    def _record_task_metrics(self, snapshot: TaskSnapshot) -> None:
+        metrics = getattr(self._observability, "metrics", None)
+        if metrics is None:
+            return
+        duration_seconds: float | None = None
+        if snapshot.started_at is not None and snapshot.finished_at is not None:
+            duration_seconds = (snapshot.finished_at - snapshot.started_at).total_seconds()
+        metrics.on_background_task_finished(
+            purpose=snapshot.metadata.purpose,
+            status=snapshot.status.value,
+            duration_seconds=duration_seconds,
         )

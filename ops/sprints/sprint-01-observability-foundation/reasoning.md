@@ -60,7 +60,7 @@
 
 - **Exporter path:** Treat both Prometheus metrics and OpenTelemetry tracing as first-class in this sprint, with the implementation designed so either can be disabled independently by configuration.
 - **`/metrics` exposure:** Gate `/metrics` behind explicit settings outside development-oriented defaults so the operational surface remains intentionally narrow and operator-controlled.
-- **Instrumentation scope:** Implement the base telemetry runtime plus first-sprint instrumentation for HTTP, readiness, and background tasks, and include initial low-risk provider, workflow, and agent hooks where the current seams already make them straightforward; leave deeper subsystem-specific metric sets for a follow-up sprint.
+- **Instrumentation scope:** Implement the base telemetry runtime plus first-sprint instrumentation for HTTP, readiness, and background tasks; defer deeper provider, workflow, and agent hooks to a follow-up sprint so the first foundation stays reviewable and bounded.
 
 ## Feature Analysis
 
@@ -98,7 +98,6 @@
 - **Option C:** Delay all telemetry wiring until a full external observability stack is chosen.
 
 **Chosen Approach**
-- Build a small platform-owned observability runtime seam with environment-driven enablement, safe defaults, and composition-root assembly.
 - Build a small platform-owned observability runtime seam with environment-driven enablement, safe defaults, composition-root assembly, first-class Prometheus metrics support, first-class OpenTelemetry tracing support, and granular metric family enablement controls.
 
 **Decision Justification**
@@ -158,7 +157,7 @@
 - **Option C:** Instrument every subsystem including providers, workflows, and agents immediately.
 
 **Chosen Approach**
-- Implement `/metrics` and instrument HTTP, readiness, and background tasks first; add initial low-risk provider, workflow, and agent hooks where the current seams already make them straightforward; leave deeper subsystem-specific metric sets for a follow-up sprint.
+- Implement `/metrics` and instrument HTTP, readiness, and background tasks first; leave deeper provider, workflow, and agent metric sets for a follow-up sprint.
 
 **Decision Justification**
 - Option B gives the best first-sprint coverage because these are already the highest-signal scaffold boundaries with clear existing truth models.
@@ -211,19 +210,19 @@
 
 ### Evidence Review Checklist
 
-- [ ] Review can trace every feature decision back to explicit requirement IDs
-- [ ] Review can verify the planned tests and runtime evidence exist
-- [ ] Review can identify any planned or unplanned deviations by requirement ID
+- [x] Review can trace every feature decision back to explicit requirement IDs
+- [x] Review can verify the planned tests and runtime evidence exist
+- [x] Review can identify any planned or unplanned deviations by requirement ID
 
 ## Phase Exit Criteria
 
-- [ ] Tracker scope is fully covered
-- [ ] Applicable requirements are mapped
-- [ ] Ambiguous and non-applicable requirements are recorded where relevant
-- [ ] Important decisions are explicitly justified
-- [ ] Non-trivial alternatives are discussed
-- [ ] Deviations, assumptions, risks, and unknowns are documented
-- [ ] Expected evidence is defined
+- [x] Tracker scope is fully covered
+- [x] Applicable requirements are mapped
+- [x] Ambiguous and non-applicable requirements are recorded where relevant
+- [x] Important decisions are explicitly justified
+- [x] Non-trivial alternatives are discussed
+- [x] Deviations, assumptions, risks, and unknowns are documented
+- [x] Expected evidence is defined
 
 ## Documentation Updates
 

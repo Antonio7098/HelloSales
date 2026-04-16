@@ -77,6 +77,14 @@ Good logging in this backend should:
 - carry enough context to diagnose the failure
 - distinguish failure, degradation, and success truthfully
 
+Metrics and tracing now complement this logging model, but they do not replace it.
+
+Current division of responsibility:
+- logs remain the primary structured narrative for request, startup, and failure flow
+- operational events remain the canonical in-memory alert/diagnostics signal
+- metrics provide machine-usable counters, gauges, and latency for HTTP, health, and background task boundaries
+- traces preserve request/task correlation for telemetry tooling where enabled
+
 Bad logging in this backend would be:
 - message-only logging
 - logging an exception without context
@@ -96,6 +104,11 @@ This runtime keeps:
 
 The important philosophy is that logs and operational events are complementary.
 The system should not rely on only one of them for important failure visibility.
+
+The same principle now applies to metrics and tracing:
+- metrics should summarize operational truth, not invent a second truth source
+- tracing should preserve correlation, not replace logs
+- high-severity failures must still surface through structured errors and operational events even when telemetry is enabled
 
 ## Startup Failure Philosophy
 

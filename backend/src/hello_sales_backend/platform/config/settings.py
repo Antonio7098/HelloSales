@@ -36,6 +36,19 @@ class Settings(BaseSettings):
     cors_allowed_origins: tuple[str, ...] = ("http://localhost:3000", "http://localhost:5173")
     stageflow_required: bool = False
     stageflow_event_queue_size: int = Field(default=500, ge=1)
+    observability_service_name: str = ""
+    observability_service_version: str = ""
+    observability_metrics_enabled: bool = False
+    observability_metrics_exporter: str = "prometheus"
+    observability_metrics_endpoint_enabled: bool = False
+    observability_metrics_endpoint_path: str = "/metrics"
+    observability_metrics_http_enabled: bool = True
+    observability_metrics_health_enabled: bool = True
+    observability_metrics_background_tasks_enabled: bool = True
+    observability_tracing_enabled: bool = False
+    observability_tracing_exporter: str = "console"
+    observability_tracing_http_enabled: bool = True
+    observability_tracing_background_tasks_enabled: bool = True
     generic_agent_provider: str = ""
     generic_agent_model: str = ""
     generic_agent_base_url: str = ""
@@ -51,6 +64,11 @@ class Settings(BaseSettings):
         "api_prefix",
         "log_level",
         "database_url",
+        "observability_service_name",
+        "observability_service_version",
+        "observability_metrics_exporter",
+        "observability_metrics_endpoint_path",
+        "observability_tracing_exporter",
         "generic_agent_provider",
         "generic_agent_model",
         "generic_agent_base_url",
@@ -65,6 +83,15 @@ class Settings(BaseSettings):
 
         if isinstance(value, str):
             return value.strip()
+        return value
+
+    @field_validator("observability_metrics_endpoint_path")
+    @classmethod
+    def validate_metrics_endpoint_path(cls, value: str) -> str:
+        """Ensure the operational metrics path is rooted at the app."""
+
+        if not value.startswith("/"):
+            raise ValueError("observability_metrics_endpoint_path must start with '/'")
         return value
 
     @property
@@ -101,6 +128,18 @@ class Settings(BaseSettings):
         if provider == "openai":
             return self.openai_api_key
         return ""
+
+    @property
+    def resolved_observability_service_name(self) -> str:
+        """Return the effective service name used for telemetry resources."""
+
+        return self.observability_service_name or self.app_name
+
+    @property
+    def resolved_observability_service_version(self) -> str:
+        """Return the effective service version used for telemetry resources."""
+
+        return self.observability_service_version or self.app_version
 
 
 @lru_cache(maxsize=1)

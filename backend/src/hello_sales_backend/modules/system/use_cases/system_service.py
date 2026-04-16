@@ -20,12 +20,15 @@ from hello_sales_backend.modules.system.use_cases.views import (
     AgentProfileView,
     AgentRunSnapshotView,
     AlertView,
+    MetricsDiagnosticsView,
+    ObservabilityDiagnosticsView,
     OperationalEventView,
     ProviderDiagnosticsView,
     SystemDiagnosticsView,
     SystemStatusView,
     TaskDiagnosticsView,
     TaskSnapshotView,
+    TracingDiagnosticsView,
 )
 from hello_sales_backend.platform.composition.providers import ProviderRegistry
 from hello_sales_backend.platform.config.settings import Settings
@@ -96,6 +99,7 @@ class SystemService:
             for snapshot in self._tasks.list_snapshots(limit=10)
         ]
         agent_summary = await self._agent_diagnostics.summarize(limit=10)
+        observability_diagnostics = self._observability.diagnostics()
         return SystemDiagnosticsView(
             app_name=self._settings.app_name,
             environment=self._settings.environment,
@@ -137,6 +141,10 @@ class SystemService:
                     )
                     for item in agent_summary.recent_runs
                 ],
+            ),
+            observability=ObservabilityDiagnosticsView(
+                metrics=MetricsDiagnosticsView.model_validate(asdict(observability_diagnostics.metrics)),
+                tracing=TracingDiagnosticsView.model_validate(asdict(observability_diagnostics.tracing)),
             ),
             events=[
                 OperationalEventView.model_validate(event.model_dump())
