@@ -63,3 +63,6 @@ jobs:
 
       - name: Postgres tests
         run: make test-postgres
+
+      - name: CI checks passed
+        run: echo "All CI checks passed successfully"

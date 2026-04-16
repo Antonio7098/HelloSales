@@ -76,7 +76,8 @@ Before declaring the sprint execution complete, verify:
 - [ ] code matches the agreed sprint reasoning or recorded deviations
 - [ ] unit, integration, smoke, and failure-path testing has been run or explicitly deferred with reason
 - [ ] documentation changes are complete
-- [ ] if backend code changed, `backend/docs/` has been updated to reflect the new reality
+- [ ] if backend code changed, `backend/docs` has been updated to reflect the new reality
+- [ ] CI checks (Ruff, Mypy, tests, Postgres tests) are passing for backend changes
 - [ ] execution evidence is ready for review
 - [ ] blockers, risks, and deviations are recorded in the sprint artifacts
 

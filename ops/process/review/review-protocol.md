@@ -105,6 +105,7 @@ The report should leave a future reader able to answer:
 Conclude with:
 - a concise TL;DR
 - testing and verification status
+- CI checks status (Ruff, Mypy, tests, Postgres tests for backend changes)
 - security notes
 - technical debt and carried-forward risks
 - recommendations for the next sprint
