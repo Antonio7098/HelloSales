@@ -11,6 +11,7 @@ from hello_sales_backend.platform.providers.llm.contracts import (
     ChatCompletion,
     ChatMessage,
     ChatModelPort,
+    JSONGenerationResult,
 )
 
 
@@ -19,6 +20,25 @@ class FakeChatModel(ChatModelPort):
 
     async def generate(self, messages: list[ChatMessage]) -> ChatCompletion:
         return ChatCompletion(provider=self.provider_name, model="fake-model", output_text="OK")
+
+    async def generate_text(
+        self,
+        messages: list[ChatMessage],
+        *,
+        context=None,
+    ) -> ChatCompletion:
+        return ChatCompletion(provider=self.provider_name, model="fake-model", output_text="OK")
+
+    async def generate_json(
+        self,
+        messages: list[ChatMessage],
+        *,
+        schema_hint=None,
+        context=None,
+    ) -> JSONGenerationResult:
+        return JSONGenerationResult(
+            provider=self.provider_name, model="fake-model", raw_text="{}", output_json={}
+        )
 
     def is_configured(self) -> bool:
         return True

@@ -37,3 +37,28 @@ class TaskRuntimeStatus(BaseModel):
     created_at: str
     started_at: str | None = None
     finished_at: str | None = None
+
+
+class WorkerRuntimeStatus(BaseModel):
+    """Internal worker-run diagnostics entity."""
+
+    run_id: str
+    worker_name: str
+    status: str
+    execution_mode: str
+    request_id: str | None = None
+    trace_id: str | None = None
+    actor_id: str | None = None
+    task_id: str | None = None
+    attempt_count: int
+    max_attempts: int
+    timeout_seconds: float | None = None
+    provider_name: str | None = None
+    model_name: str | None = None
+    error_code: str | None = None
+    error_category: str | None = None
+    error_message: str | None = None
+    created_at: str
+    updated_at: str
+    started_at: str | None = None
+    completed_at: str | None = None

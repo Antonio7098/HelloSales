@@ -3,6 +3,7 @@ from __future__ import annotations
 import httpx
 import pytest
 
+from hello_sales_backend.platform.llm import JSONSchemaHint
 from hello_sales_backend.platform.providers.llm import ChatMessage, OpenAICompatibleChatModel
 from hello_sales_backend.shared.errors import AppError
 
@@ -130,4 +131,73 @@ async def test_openai_compatible_provider_maps_remote_5xx_failures() -> None:
 
     assert exc_info.value.code == "provider.remote_5xx"
     assert exc_info.value.retryable is True
+    await client.aclose()
+
+
+@pytest.mark.asyncio
+async def test_openai_compatible_provider_requests_json_object_mode() -> None:
+    async def handler(request: httpx.Request) -> httpx.Response:
+        payload = request.read().decode()
+        assert '"response_format":{"type":"json_object"}' in payload
+        return httpx.Response(
+            200,
+            json={
+                "model": "test-model",
+                "choices": [{"message": {"content": '{"brief":"ok","key_points":["one"],"priority":"medium"}'}}],
+            },
+        )
+
+    client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    provider = OpenAICompatibleChatModel(
+        provider_name="test-provider",
+        base_url="https://example.test/v1",
+        api_key="secret",
+        model="test-model",
+        timeout_seconds=5.0,
+        http_client=client,
+    )
+
+    result = await provider.generate_json([ChatMessage(role="user", content="hello")])
+
+    assert result.output_json == {"brief": "ok", "key_points": ["one"], "priority": "medium"}
+    await client.aclose()
+
+
+@pytest.mark.asyncio
+async def test_openai_compatible_provider_uses_non_strict_json_schema_for_non_openai_providers() -> None:
+    async def handler(request: httpx.Request) -> httpx.Response:
+        payload = request.read().decode()
+        assert '"type":"json_schema"' in payload
+        assert '"strict":false' in payload
+        return httpx.Response(
+            200,
+            json={
+                "model": "test-model",
+                "choices": [{"message": {"content": '{"brief":"ok","key_points":["one"],"priority":"medium"}'}}],
+            },
+        )
+
+    client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    provider = OpenAICompatibleChatModel(
+        provider_name="groq",
+        base_url="https://example.test/v1",
+        api_key="secret",
+        model="test-model",
+        timeout_seconds=5.0,
+        http_client=client,
+    )
+
+    result = await provider.generate_json(
+        [ChatMessage(role="user", content="hello")],
+        schema_hint=JSONSchemaHint(
+            name="structured_brief_result",
+            schema={
+                "type": "object",
+                "properties": {"brief": {"type": "string"}},
+                "required": ["brief"],
+            },
+        ),
+    )
+
+    assert result.output_json == {"brief": "ok", "key_points": ["one"], "priority": "medium"}
     await client.aclose()

@@ -21,32 +21,65 @@ from hello_sales_backend.platform.agents.tools import (
     AgentToolRequest,
 )
 from hello_sales_backend.platform.config.settings import Settings
+from hello_sales_backend.platform.llm import (
+    JSONGenerationResult,
+    LLMCallContext,
+    LLMMessage,
+    LLMProviderPort,
+    TextGenerationResult,
+)
+from hello_sales_backend.platform.observability.metrics import (
+    MetricsRuntimeSnapshot,
+    PrometheusMetricsRuntime,
+)
 from hello_sales_backend.platform.observability.runtime import (
     AlertPolicy,
     InMemoryOperationalStore,
     ObservabilityRuntime,
 )
-from hello_sales_backend.platform.providers.llm.contracts import (
-    ChatCompletion,
-    ChatMessage,
-    ChatModelPort,
-)
+from hello_sales_backend.platform.providers.llm.contracts import ChatMessage
 from hello_sales_backend.platform.workflows.runtime import build_workflow_runtime
 from hello_sales_backend.shared.errors import AppError, app_error
 
 
-class FakeChatModel(ChatModelPort):
+class FakeChatModel(LLMProviderPort):
     provider_name = "fake-runtime"
 
     def __init__(self, *, configured: bool = True, output_text: str = "provider-output") -> None:
         self._configured = configured
         self._output_text = output_text
 
-    async def generate(self, messages: list[ChatMessage]) -> ChatCompletion:
-        return ChatCompletion(
+    async def generate(self, messages: list[LLMMessage]) -> TextGenerationResult:
+        return TextGenerationResult(
             provider=self.provider_name,
             model="fake-model",
             output_text=f"{self._output_text}:{messages[-1].content}",
+        )
+
+    async def generate_text(
+        self,
+        messages: list[LLMMessage],
+        *,
+        context: LLMCallContext | None = None,
+    ) -> TextGenerationResult:
+        return TextGenerationResult(
+            provider=self.provider_name,
+            model="fake-model",
+            output_text=f"{self._output_text}:{messages[-1].content}",
+        )
+
+    async def generate_json(
+        self,
+        messages: list[LLMMessage],
+        *,
+        schema_hint=None,
+        context: LLMCallContext | None = None,
+    ) -> JSONGenerationResult:
+        return JSONGenerationResult(
+            provider=self.provider_name,
+            model="fake-model",
+            raw_text="{}",
+            output_json={},
         )
 
     def is_configured(self) -> bool:
@@ -65,14 +98,16 @@ def _build_runtime(
     *,
     store: InMemoryAgentStore,
     tools: AgentToolCatalog,
-    llm_provider: ChatModelPort | None = None,
+    llm_provider: LLMProviderPort | None = None,
     selection_policy: ToolSelectionPolicy | None = None,
 ) -> GenericAgentRuntime:
     observability = ObservabilityRuntime(
         store=InMemoryOperationalStore(),
         alert_policy=AlertPolicy(),
     )
-    workflow_runtime = build_workflow_runtime(Settings(environment="test", database_url="sqlite+aiosqlite:///runtime.db"))
+    workflow_runtime = build_workflow_runtime(
+        Settings(environment="test", database_url="sqlite+aiosqlite:///runtime.db")
+    )
     return GenericAgentRuntime(
         config=AgentRuntimeConfig(),
         workflow_runtime=workflow_runtime,
@@ -85,8 +120,12 @@ def _build_runtime(
                     display_name="Test Generic Agent",
                     tools=tools,
                     selection_policy=selection_policy or FixedSelectionPolicy([]),
-                    build_messages=lambda user_input, _tool_context: [ChatMessage(role="user", content=user_input)],
-                    build_fallback_response=lambda user_input, tool_context: f"fallback:{user_input}:{tool_context}",
+                    build_messages=lambda user_input, _tool_context: [
+                        ChatMessage(role="user", content=user_input)
+                    ],
+                    build_fallback_response=lambda user_input, tool_context: (
+                        f"fallback:{user_input}:{tool_context}"
+                    ),
                 )
             ],
             default_agent_id="generic",
@@ -99,14 +138,17 @@ def _build_runtime_with_observability(
     *,
     store: InMemoryAgentStore,
     tools: AgentToolCatalog,
-    llm_provider: ChatModelPort | None = None,
+    llm_provider: LLMProviderPort | None = None,
     selection_policy: ToolSelectionPolicy | None = None,
+    observability: ObservabilityRuntime | None = None,
 ) -> tuple[GenericAgentRuntime, ObservabilityRuntime]:
-    observability = ObservabilityRuntime(
+    observability = observability or ObservabilityRuntime(
         store=InMemoryOperationalStore(),
         alert_policy=AlertPolicy(),
     )
-    workflow_runtime = build_workflow_runtime(Settings(environment="test", database_url="sqlite+aiosqlite:///runtime.db"))
+    workflow_runtime = build_workflow_runtime(
+        Settings(environment="test", database_url="sqlite+aiosqlite:///runtime.db")
+    )
     runtime = GenericAgentRuntime(
         config=AgentRuntimeConfig(),
         workflow_runtime=workflow_runtime,
@@ -119,8 +161,12 @@ def _build_runtime_with_observability(
                     display_name="Test Generic Agent",
                     tools=tools,
                     selection_policy=selection_policy or FixedSelectionPolicy([]),
-                    build_messages=lambda user_input, _tool_context: [ChatMessage(role="user", content=user_input)],
-                    build_fallback_response=lambda user_input, tool_context: f"fallback:{user_input}:{tool_context}",
+                    build_messages=lambda user_input, _tool_context: [
+                        ChatMessage(role="user", content=user_input)
+                    ],
+                    build_fallback_response=lambda user_input, tool_context: (
+                        f"fallback:{user_input}:{tool_context}"
+                    ),
                 )
             ],
             default_agent_id="generic",
@@ -167,7 +213,9 @@ async def test_generic_agent_runtime_completes_turn_with_tool_and_provider_respo
                 )
             ]
         ),
-        selection_policy=FixedSelectionPolicy([AgentToolRequest(name="get_runtime_status", arguments={})]),
+        selection_policy=FixedSelectionPolicy(
+            [AgentToolRequest(name="get_runtime_status", arguments={})]
+        ),
     )
 
     await runtime.process_turn(run_id="run-1", turn_id="turn-1")
@@ -201,7 +249,9 @@ async def test_generic_agent_runtime_pauses_for_approval() -> None:
                 )
             ]
         ),
-        selection_policy=FixedSelectionPolicy([AgentToolRequest(name="run_diagnostic_job", arguments={})]),
+        selection_policy=FixedSelectionPolicy(
+            [AgentToolRequest(name="run_diagnostic_job", arguments={})]
+        ),
     )
 
     await runtime.process_turn(run_id="run-1", turn_id="turn-1")
@@ -222,7 +272,9 @@ async def test_generic_agent_runtime_records_tool_failures() -> None:
     store = InMemoryAgentStore()
     await _seed_run(store, input_text="show runtime status")
 
-    async def failing_tool(_arguments: dict[str, object], _context: AgentToolExecutionContext) -> dict[str, object]:
+    async def failing_tool(
+        _arguments: dict[str, object], _context: AgentToolExecutionContext
+    ) -> dict[str, object]:
         raise app_error(
             "Tool failed",
             code="agent.tool.test_failure",
@@ -244,7 +296,9 @@ async def test_generic_agent_runtime_records_tool_failures() -> None:
             ]
         ),
         llm_provider=FakeChatModel(),
-        selection_policy=FixedSelectionPolicy([AgentToolRequest(name="get_runtime_status", arguments={})]),
+        selection_policy=FixedSelectionPolicy(
+            [AgentToolRequest(name="get_runtime_status", arguments={})]
+        ),
     )
 
     with pytest.raises(AppError):
@@ -268,7 +322,9 @@ async def test_generic_agent_runtime_failure_emits_operational_event_with_correl
     store = InMemoryAgentStore()
     await _seed_run(store, input_text="show runtime status")
 
-    async def failing_tool(_arguments: dict[str, object], _context: AgentToolExecutionContext) -> dict[str, object]:
+    async def failing_tool(
+        _arguments: dict[str, object], _context: AgentToolExecutionContext
+    ) -> dict[str, object]:
         raise app_error(
             "Tool failed",
             code="agent.tool.test_failure",
@@ -290,7 +346,9 @@ async def test_generic_agent_runtime_failure_emits_operational_event_with_correl
             ]
         ),
         llm_provider=FakeChatModel(),
-        selection_policy=FixedSelectionPolicy([AgentToolRequest(name="get_runtime_status", arguments={})]),
+        selection_policy=FixedSelectionPolicy(
+            [AgentToolRequest(name="get_runtime_status", arguments={})]
+        ),
     )
 
     with pytest.raises(AppError):
@@ -320,7 +378,9 @@ async def test_generic_agent_runtime_persists_correlation_on_agent_events() -> N
                 )
             ]
         ),
-        selection_policy=FixedSelectionPolicy([AgentToolRequest(name="get_runtime_status", arguments={})]),
+        selection_policy=FixedSelectionPolicy(
+            [AgentToolRequest(name="get_runtime_status", arguments={})]
+        ),
     )
 
     await runtime.process_turn(run_id="run-1", turn_id="turn-1")
@@ -329,3 +389,61 @@ async def test_generic_agent_runtime_persists_correlation_on_agent_events() -> N
     assert events
     assert all(event.request_id == "req-1" for event in events)
     assert all(event.trace_id == "tr-1" for event in events)
+
+
+@pytest.mark.asyncio
+async def test_generic_agent_runtime_emits_agent_metrics_for_execution_and_tools() -> None:
+    store = InMemoryAgentStore()
+    await _seed_run(store, input_text="show runtime status")
+    observability = ObservabilityRuntime(
+        store=InMemoryOperationalStore(),
+        alert_policy=AlertPolicy(),
+        metrics=PrometheusMetricsRuntime(
+            MetricsRuntimeSnapshot(
+                enabled=True,
+                exporter="prometheus",
+                endpoint_enabled=True,
+                endpoint_path="/metrics",
+                http_enabled=False,
+                health_enabled=False,
+                background_tasks_enabled=False,
+                agents_enabled=True,
+                workers_enabled=False,
+            )
+        ),
+    )
+    runtime, _ = _build_runtime_with_observability(
+        store=store,
+        tools=AgentToolCatalog(
+            [
+                AgentToolDefinition(
+                    name="get_runtime_status",
+                    description="status",
+                    execute=lambda _arguments, _context: {"status": "ok"},
+                )
+            ]
+        ),
+        selection_policy=FixedSelectionPolicy(
+            [AgentToolRequest(name="get_runtime_status", arguments={})]
+        ),
+        observability=observability,
+    )
+
+    await runtime.process_turn(run_id="run-1", turn_id="turn-1")
+
+    metrics_payload, _ = observability.render_metrics()
+    metrics_text = metrics_payload.decode("utf-8")
+
+    assert 'hello_sales_agent_turn_executions_started_total{profile="generic"} 1.0' in metrics_text
+    assert (
+        'hello_sales_agent_turn_executions_completed_total{profile="generic",status="completed"} 1.0'
+        in metrics_text
+    )
+    assert (
+        'hello_sales_agent_tool_calls_started_total{profile="generic",tool="get_runtime_status"} 1.0'
+        in metrics_text
+    )
+    assert (
+        'hello_sales_agent_tool_calls_completed_total{profile="generic",status="completed",tool="get_runtime_status"} 1.0'
+        in metrics_text
+    )

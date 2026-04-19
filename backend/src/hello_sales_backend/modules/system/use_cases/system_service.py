@@ -8,12 +8,14 @@ from hello_sales_backend.modules.system.domain.entities import (
     ProviderRuntimeStatus,
     RuntimeStatus,
     TaskRuntimeStatus,
+    WorkerRuntimeStatus,
 )
 from hello_sales_backend.modules.system.use_cases.ports import (
     AgentDiagnosticsPort,
     AgentRegistryPort,
     ClockPort,
     ObservabilityPort,
+    WorkerDiagnosticsPort,
 )
 from hello_sales_backend.modules.system.use_cases.views import (
     AgentDiagnosticsView,
@@ -29,6 +31,8 @@ from hello_sales_backend.modules.system.use_cases.views import (
     TaskDiagnosticsView,
     TaskSnapshotView,
     TracingDiagnosticsView,
+    WorkerDiagnosticsView,
+    WorkerRunSnapshotView,
 )
 from hello_sales_backend.platform.composition.providers import ProviderRegistry
 from hello_sales_backend.platform.config.settings import Settings
@@ -49,6 +53,7 @@ class SystemService:
         tasks: BackgroundTaskRunner,
         workflow_runtime: WorkflowRuntime,
         agent_diagnostics: AgentDiagnosticsPort,
+        worker_diagnostics: WorkerDiagnosticsPort,
         agent_registry: AgentRegistryPort,
     ) -> None:
         self._settings = settings
@@ -58,6 +63,7 @@ class SystemService:
         self._tasks = tasks
         self._workflow_runtime = workflow_runtime
         self._agent_diagnostics = agent_diagnostics
+        self._worker_diagnostics = worker_diagnostics
         self._agent_registry = agent_registry
 
     async def get_status(self) -> SystemStatusView:
@@ -99,6 +105,7 @@ class SystemService:
             for snapshot in self._tasks.list_snapshots(limit=10)
         ]
         agent_summary = await self._agent_diagnostics.summarize(limit=10)
+        worker_summary = await self._worker_diagnostics.summarize(limit=10)
         observability_diagnostics = self._observability.diagnostics()
         return SystemDiagnosticsView(
             app_name=self._settings.app_name,
@@ -140,6 +147,37 @@ class SystemService:
                         completed_at=item.completed_at.isoformat() if item.completed_at else None,
                     )
                     for item in agent_summary.recent_runs
+                ],
+            ),
+            workers=WorkerDiagnosticsView(
+                active_count=worker_summary.active_count,
+                total_count=worker_summary.total_count,
+                recent=[
+                    WorkerRunSnapshotView.model_validate(
+                        WorkerRuntimeStatus(
+                            run_id=item.run_id,
+                            worker_name=item.worker_name,
+                            status=item.status.value,
+                            execution_mode=item.execution_mode.value,
+                            request_id=item.request_id,
+                            trace_id=item.trace_id,
+                            actor_id=item.actor_id,
+                            task_id=item.task_id,
+                            attempt_count=item.attempt_count,
+                            max_attempts=item.max_attempts,
+                            timeout_seconds=item.timeout_seconds,
+                            provider_name=item.provider_name,
+                            model_name=item.model_name,
+                            error_code=item.error_code,
+                            error_category=item.error_category,
+                            error_message=item.error_message,
+                            created_at=item.created_at.isoformat(),
+                            updated_at=item.updated_at.isoformat(),
+                            started_at=item.started_at.isoformat() if item.started_at else None,
+                            completed_at=item.completed_at.isoformat() if item.completed_at else None,
+                        ).model_dump()
+                    )
+                    for item in worker_summary.recent_runs
                 ],
             ),
             observability=ObservabilityDiagnosticsView(

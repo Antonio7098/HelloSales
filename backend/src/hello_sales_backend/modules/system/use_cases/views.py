@@ -76,6 +76,39 @@ class AgentDiagnosticsView(BaseModel):
     recent: list[AgentRunSnapshotView]
 
 
+class WorkerRunSnapshotView(BaseModel):
+    """Worker-run summary for diagnostics."""
+
+    run_id: str
+    worker_name: str
+    status: str
+    execution_mode: str
+    request_id: str | None = None
+    trace_id: str | None = None
+    actor_id: str | None = None
+    task_id: str | None = None
+    attempt_count: int
+    max_attempts: int
+    timeout_seconds: float | None = None
+    provider_name: str | None = None
+    model_name: str | None = None
+    error_code: str | None = None
+    error_category: str | None = None
+    error_message: str | None = None
+    created_at: str
+    updated_at: str
+    started_at: str | None = None
+    completed_at: str | None = None
+
+
+class WorkerDiagnosticsView(BaseModel):
+    """Worker runtime diagnostics summary."""
+
+    active_count: int
+    total_count: int
+    recent: list[WorkerRunSnapshotView]
+
+
 class AgentProfileView(BaseModel):
     """Registered agent profile metadata."""
 
@@ -121,6 +154,8 @@ class MetricsDiagnosticsView(BaseModel):
     http_enabled: bool
     health_enabled: bool
     background_tasks_enabled: bool
+    agents_enabled: bool
+    workers_enabled: bool
 
 
 class TracingDiagnosticsView(BaseModel):
@@ -133,6 +168,8 @@ class TracingDiagnosticsView(BaseModel):
     environment: str
     http_enabled: bool
     background_tasks_enabled: bool
+    agents_enabled: bool
+    workers_enabled: bool
 
 
 class ObservabilityDiagnosticsView(BaseModel):
@@ -155,6 +192,7 @@ class SystemDiagnosticsView(BaseModel):
     agent_profiles: list[AgentProfileView]
     tasks: TaskDiagnosticsView
     agents: AgentDiagnosticsView
+    workers: WorkerDiagnosticsView
     observability: ObservabilityDiagnosticsView
     events: list[OperationalEventView]
     alerts: list[AlertView]

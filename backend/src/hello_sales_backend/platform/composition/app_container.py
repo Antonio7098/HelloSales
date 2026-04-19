@@ -7,9 +7,11 @@ from dataclasses import dataclass
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from hello_sales_backend.application.agents.bootstrap import build_agent_registry
+from hello_sales_backend.application.workers.bootstrap import build_worker_registry
 from hello_sales_backend.modules.agent_runs.bootstrap import build_agent_runs_module
 from hello_sales_backend.modules.jobs.bootstrap import build_jobs_module
 from hello_sales_backend.modules.system.bootstrap import build_system_module
+from hello_sales_backend.modules.worker_runs.bootstrap import build_worker_runs_module
 from hello_sales_backend.platform.agents.config import AgentRuntimeConfig
 from hello_sales_backend.platform.agents.contracts import (
     AgentProfileCatalogPort,
@@ -40,6 +42,7 @@ from hello_sales_backend.platform.observability.runtime import (
     build_tracing_runtime,
 )
 from hello_sales_backend.platform.tasks.runner import BackgroundTaskRunner
+from hello_sales_backend.platform.workers import InMemoryWorkerStore, WorkerRuntime, WorkerStorePort
 from hello_sales_backend.platform.workflows.executor import WorkflowExecutor
 from hello_sales_backend.platform.workflows.registry import WorkflowRegistry
 from hello_sales_backend.platform.workflows.runtime import WorkflowRuntime, build_workflow_runtime
@@ -66,6 +69,7 @@ class DatabaseRuntime:
     uow_factory: UnitOfWorkFactory
     task_run_store: SqlAlchemyTaskRunStore
     agent_store: AgentStorePort
+    worker_store: WorkerStorePort
 
 
 @dataclass(slots=True)
@@ -80,6 +84,7 @@ class AppContainer:
     workflow_executor: WorkflowExecutor
     workflow_registry: WorkflowRegistry
     agent_runtime: GenericAgentRuntime
+    worker_runtime: WorkerRuntime
     health_service: HealthService
     observability: ObservabilityRuntime
     modules: ModuleRegistry
@@ -97,12 +102,14 @@ def build_app_container(settings: Settings, overrides: AppOverrides | None = Non
         agent_store = InMemoryAgentStore()
     else:
         agent_store = SqlAlchemyAgentStore(session_factory)
+    worker_store: WorkerStorePort = InMemoryWorkerStore()
     db = DatabaseRuntime(
         engine=engine,
         session_factory=session_factory,
         uow_factory=build_uow_factory(session_factory),
         task_run_store=task_run_store,
         agent_store=agent_store,
+        worker_store=worker_store,
     )
     providers = build_provider_registry(settings=settings, llm_provider=resolved_overrides.llm_provider)
     task_event_sink = resolved_overrides.task_event_sink
@@ -132,6 +139,13 @@ def build_app_container(settings: Settings, overrides: AppOverrides | None = Non
         tasks=tasks,
         workflow_executor=workflow_executor,
     )
+    worker_registry = build_worker_registry()
+    worker_runtime = WorkerRuntime(
+        llm_provider=providers.llm,
+        store=worker_store,
+        workers=worker_registry,
+        observability=observability,
+    )
     agent_registry_diagnostics = AgentRegistryDiagnosticsAdapter()
     system_module = build_system_module(
         settings=settings,
@@ -140,6 +154,7 @@ def build_app_container(settings: Settings, overrides: AppOverrides | None = Non
         workflow_runtime=workflow_runtime,
         observability=observability,
         agent_diagnostics=agent_store,
+        worker_diagnostics=worker_store,
         agent_registry=agent_registry_diagnostics,
         clock=resolved_overrides.system_clock,
     )
@@ -161,10 +176,18 @@ def build_app_container(settings: Settings, overrides: AppOverrides | None = Non
         runtime=agent_runtime,
         tasks=tasks,
     )
+    worker_runs_module = build_worker_runs_module(
+        store=worker_store,
+        runtime=worker_runtime,
+        tasks=tasks,
+        workflow_executor=workflow_executor,
+        workers=worker_registry,
+    )
     modules = ModuleRegistry(
         agent_runs=agent_runs_module,
         jobs=jobs_module,
         system=system_module,
+        worker_runs=worker_runs_module,
     )
     return AppContainer(
         settings=settings,
@@ -175,6 +198,7 @@ def build_app_container(settings: Settings, overrides: AppOverrides | None = Non
         workflow_executor=workflow_executor,
         workflow_registry=workflow_registry,
         agent_runtime=agent_runtime,
+        worker_runtime=worker_runtime,
         health_service=health_service,
         observability=observability,
         modules=modules,

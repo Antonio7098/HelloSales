@@ -106,6 +106,7 @@ Important current producers include:
 - startup completion and startup failure in `platform/composition/startup.py`
 - background task failure in `platform/tasks/runner.py`
 - agent run failure in `platform/agents/runtime.py`
+- worker run lifecycle and failure events in `platform/workers/runtime.py`
 
 This is important because the diagnostics surface is not just passive storage; it reflects events emitted by runtime services.
 
@@ -122,6 +123,7 @@ The main aggregated diagnostics surface lives in:
 - provider diagnostics
 - task diagnostics
 - agent diagnostics
+- worker diagnostics
 - observability runtime configuration and enablement state
 - recent operational events
 - active alerts
@@ -143,6 +145,8 @@ Current metric families cover:
 - HTTP requests
 - health and readiness truth
 - background task lifecycle
+- agent turn execution and tool-call lifecycle
+- worker run lifecycle
 
 High-cardinality values such as request ids, trace ids, task ids, and raw error messages are intentionally excluded from metric labels.
 
@@ -156,6 +160,8 @@ That summary includes:
 - whether tracing is enabled
 - which tracing exporter is configured
 - which metric families and tracing boundaries are active
+
+For the agent runtime specifically, diagnostics now expose whether agent metrics and agent tracing are enabled through the same `observability` summary used by the rest of the platform runtime.
 
 This keeps diagnostics operator-useful without turning the diagnostics endpoint into a monitoring dashboard.
 
@@ -189,6 +195,24 @@ The diagnostics summary includes:
 
 This complements the richer per-run inspection surfaces in the `agent_runs` module.
 
+The generic-agent runtime also now contributes platform-owned monitoring signals through `/metrics` and tracing.
+Important agent-specific observability surfaces include:
+- turn execution segment counters, active gauge, and duration histogram by agent profile and terminal status
+- tool-call counters and duration histogram by agent profile, tool name, and terminal status
+- approval-request counters by agent profile and tool name
+- tracing spans for `agent_turn.execute` and `agent_tool.execute`
+
+## Worker Diagnostics
+
+Worker diagnostics come from the worker store summary surface.
+
+The diagnostics summary includes:
+- active worker count
+- total worker count
+- recent worker runs with execution mode, attempt counts, provider/model metadata, and terminal error summary where applicable
+
+This complements the richer per-run inspection surfaces in the `worker_runs` module.
+
 ## Inspectability Model
 
 Today, the backend is intentionally optimized for inspectability.
@@ -197,6 +221,7 @@ You can inspect runtime behavior through:
 - health/readiness responses
 - system diagnostics responses
 - agent-run detail and event views
+- worker-run detail and event views
 - task snapshots
 - recent operational events
 - active alerts

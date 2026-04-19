@@ -19,6 +19,7 @@ from .suites.generic_agent_provider import (
     GenericAgentProviderSmoke,
     ObserverAgentProviderSmoke,
 )
+from .suites.worker_provider import WorkerProviderBaselineSmoke
 
 
 def build_registry() -> SmokeRegistry:
@@ -32,6 +33,7 @@ def build_registry() -> SmokeRegistry:
             GenericAgentAppendTurnSmoke(),
             GenericAgentApprovalBoundarySmoke(),
             GenericAgentEventStreamSmoke(),
+            WorkerProviderBaselineSmoke(),
         ]
     )
 

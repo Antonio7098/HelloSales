@@ -108,8 +108,12 @@ class ObservabilityRuntime:
 
     store: InMemoryOperationalStore
     alert_policy: AlertPolicy
-    metrics: MetricsRuntime = field(default_factory=lambda: NoOpMetricsRuntime(_default_metrics_snapshot()))
-    tracing: TracingRuntime = field(default_factory=lambda: NoOpTracingRuntime(_default_tracing_snapshot()))
+    metrics: MetricsRuntime = field(
+        default_factory=lambda: NoOpMetricsRuntime(_default_metrics_snapshot())
+    )
+    tracing: TracingRuntime = field(
+        default_factory=lambda: NoOpTracingRuntime(_default_tracing_snapshot())
+    )
 
     async def emit(self, event: OperationalEvent) -> None:
         await self.store.emit(event)
@@ -229,6 +233,184 @@ class ObservabilityRuntime:
             error_type=error_type,
         )
 
+    def on_agent_turn_execution_started(self, *, profile_name: str) -> None:
+        self.metrics.on_agent_turn_execution_started(profile_name=profile_name)
+
+    def on_agent_turn_execution_finished(
+        self,
+        *,
+        profile_name: str,
+        status: str,
+        duration_seconds: float | None,
+    ) -> None:
+        self.metrics.on_agent_turn_execution_finished(
+            profile_name=profile_name,
+            status=status,
+            duration_seconds=duration_seconds,
+        )
+
+    def on_agent_tool_approval_requested(self, *, profile_name: str, tool_name: str) -> None:
+        self.metrics.on_agent_tool_approval_requested(
+            profile_name=profile_name, tool_name=tool_name
+        )
+
+    def on_agent_tool_call_started(self, *, profile_name: str, tool_name: str) -> None:
+        self.metrics.on_agent_tool_call_started(profile_name=profile_name, tool_name=tool_name)
+
+    def on_agent_tool_call_finished(
+        self,
+        *,
+        profile_name: str,
+        tool_name: str,
+        status: str,
+        duration_seconds: float | None,
+    ) -> None:
+        self.metrics.on_agent_tool_call_finished(
+            profile_name=profile_name,
+            tool_name=tool_name,
+            status=status,
+            duration_seconds=duration_seconds,
+        )
+
+    def start_agent_turn_span(
+        self,
+        *,
+        run_id: str,
+        turn_id: str,
+        profile_name: str,
+        request_id: str | None,
+        trace_id: str | None,
+    ) -> AbstractContextManager[Span | None]:
+        return cast(
+            AbstractContextManager[Span | None],
+            self.tracing.start_agent_turn_span(
+                run_id=run_id,
+                turn_id=turn_id,
+                profile_name=profile_name,
+                request_id=request_id,
+                trace_id=trace_id,
+            ),
+        )
+
+    def finish_agent_turn_span(
+        self,
+        span: Span | None,
+        *,
+        run_id: str,
+        turn_id: str,
+        profile_name: str,
+        status: str,
+        error_type: str | None,
+    ) -> None:
+        self.tracing.finish_agent_turn_span(
+            span,
+            run_id=run_id,
+            turn_id=turn_id,
+            profile_name=profile_name,
+            status=status,
+            error_type=error_type,
+        )
+
+    def start_agent_tool_span(
+        self,
+        *,
+        run_id: str,
+        turn_id: str,
+        tool_call_id: str,
+        profile_name: str,
+        tool_name: str,
+        request_id: str | None,
+        trace_id: str | None,
+    ) -> AbstractContextManager[Span | None]:
+        return cast(
+            AbstractContextManager[Span | None],
+            self.tracing.start_agent_tool_span(
+                run_id=run_id,
+                turn_id=turn_id,
+                tool_call_id=tool_call_id,
+                profile_name=profile_name,
+                tool_name=tool_name,
+                request_id=request_id,
+                trace_id=trace_id,
+            ),
+        )
+
+    def finish_agent_tool_span(
+        self,
+        span: Span | None,
+        *,
+        run_id: str,
+        turn_id: str,
+        tool_call_id: str,
+        profile_name: str,
+        tool_name: str,
+        status: str,
+        error_type: str | None,
+    ) -> None:
+        self.tracing.finish_agent_tool_span(
+            span,
+            run_id=run_id,
+            turn_id=turn_id,
+            tool_call_id=tool_call_id,
+            profile_name=profile_name,
+            tool_name=tool_name,
+            status=status,
+            error_type=error_type,
+        )
+
+    def on_worker_run_started(self, *, worker_name: str, execution_mode: str) -> None:
+        self.metrics.on_worker_run_started(worker_name=worker_name, execution_mode=execution_mode)
+
+    def on_worker_run_finished(
+        self,
+        *,
+        worker_name: str,
+        status: str,
+        duration_seconds: float | None,
+    ) -> None:
+        self.metrics.on_worker_run_finished(
+            worker_name=worker_name,
+            status=status,
+            duration_seconds=duration_seconds,
+        )
+
+    def start_worker_run_span(
+        self,
+        *,
+        run_id: str,
+        worker_name: str,
+        request_id: str | None,
+        trace_id: str | None,
+        execution_mode: str,
+    ) -> AbstractContextManager[Span | None]:
+        return cast(
+            AbstractContextManager[Span | None],
+            self.tracing.start_worker_run_span(
+                run_id=run_id,
+                worker_name=worker_name,
+                request_id=request_id,
+                trace_id=trace_id,
+                execution_mode=execution_mode,
+            ),
+        )
+
+    def finish_worker_run_span(
+        self,
+        span: Span | None,
+        *,
+        run_id: str,
+        worker_name: str,
+        status: str,
+        error_type: str | None,
+    ) -> None:
+        self.tracing.finish_worker_run_span(
+            span,
+            run_id=run_id,
+            worker_name=worker_name,
+            status=status,
+            error_type=error_type,
+        )
+
 
 def _default_metrics_snapshot() -> MetricsRuntimeSnapshot:
     return MetricsRuntimeSnapshot(
@@ -239,6 +421,8 @@ def _default_metrics_snapshot() -> MetricsRuntimeSnapshot:
         http_enabled=False,
         health_enabled=False,
         background_tasks_enabled=False,
+        agents_enabled=False,
+        workers_enabled=False,
     )
 
 
@@ -251,6 +435,8 @@ def _default_tracing_snapshot() -> TracingRuntimeSnapshot:
         environment="development",
         http_enabled=False,
         background_tasks_enabled=False,
+        agents_enabled=False,
+        workers_enabled=False,
     )
 
 
@@ -265,6 +451,8 @@ def build_metrics_runtime(settings: Settings) -> MetricsRuntime:
         http_enabled=settings.observability_metrics_http_enabled,
         health_enabled=settings.observability_metrics_health_enabled,
         background_tasks_enabled=settings.observability_metrics_background_tasks_enabled,
+        agents_enabled=settings.observability_metrics_agents_enabled,
+        workers_enabled=settings.observability_metrics_workers_enabled,
     )
     if not settings.observability_metrics_enabled:
         return NoOpMetricsRuntime(snapshot)
@@ -282,6 +470,8 @@ def build_tracing_runtime(settings: Settings) -> TracingRuntime:
         environment=settings.environment,
         http_enabled=settings.observability_tracing_http_enabled,
         background_tasks_enabled=settings.observability_tracing_background_tasks_enabled,
+        agents_enabled=settings.observability_tracing_agents_enabled,
+        workers_enabled=settings.observability_tracing_workers_enabled,
     )
     if not settings.observability_tracing_enabled:
         return NoOpTracingRuntime(snapshot)

@@ -20,10 +20,10 @@
 | `ops/operational-contract/README.md` | Contract usage model | Applicable | Confirms process artifacts should map sprint scope to whichever contracts apply, rather than hard-coding one contract family. |
 | `ops/operational-contract/architecture.md` | Layering and dependency direction | Applicable | The sprint extracts a shared substrate, preserves module boundaries, and adds a new module/runtime family. |
 | `ops/operational-contract/errors.md` | Failure shape and retry visibility | Applicable | Workers introduce timeout, retry, provider fallback, and structured validation failure paths. |
-| `ops/operational-contract/observability.md` | Signals, correlation, diagnostics | Applicable | Worker runs and fallback behavior must be inspectable and correlated. |
+| `ops/operational-contract/observability.md` | Signals, correlation, diagnostics | Applicable | Worker runs and fallback behavior must be inspectable, correlated, and emitted through the sprint-01 telemetry foundation rather than a parallel monitoring path. |
 | `ops/operational-contract/testing.md` | Test seams and evidence expectations | Applicable | The sprint changes provider paths, wiring, persistence, and failure behavior. |
 | `ops/operational-contract/workflows.md` | Stageflow eligibility and lifecycle semantics | Applicable | Worker execution must be callable from Stageflow without leaking engine internals or inventing premature planner abstractions. |
-| `ops/operational-contract/agents.md` | Agent runtime boundaries | Applicable | The sprint must preserve agents as conversational-only and avoid collapsing workers into the agent model. |
+| `ops/operational-contract/llm.md` | Agent and worker runtime boundaries and lifecycle semantics | Applicable | The sprint must preserve agents as conversational-only, add workers as a sibling runtime, and keep validation, retries, inspectability, operational exposure, and observability inheritance explicit. |
 | `ops/operational-contract/pre-brief-scope.md` | Scaffold-stage limits | Applicable | This is pre-brief infrastructure work and must avoid product commitments or broad public APIs. |
 
 ### Requirement Index Used In This Sprint
@@ -48,11 +48,11 @@
 | ERR-PROVIDER-001 | Provider failures must remain classified and observable | Errors | Applicable | Provider-native JSON output, timeouts, and fallback selection are central sprint behavior. |
 | ERR-DATA-001 | Persistence and data failures must be loud and distinct | Errors | Applicable | Worker run/result persistence must not hide storage failures as validation or not-found behavior. |
 | ERR-REDACT-001 | Redaction must protect secrets without destroying diagnosis | Errors | Applicable | Provider payload details and error context must stay redacted but useful. |
-| OBS-CORE-001 | Failures must produce structured operational signals | Observability | Applicable | Worker retries, fallback, cancellation, and failure outcomes must be visible. |
-| OBS-CORR-001 | Correlation identifiers must survive subsystem boundaries | Observability | Applicable | Worker runs, provider calls, and Stageflow invocations should preserve request/trace metadata. |
-| OBS-DIAG-001 | Diagnostics surfaces must expose operator-relevant state | Observability | Applicable | Worker run status and recent failure state should be inspectable through canonical operational paths. |
-| OBS-BG-001 | Background work must have visible terminal state | Observability | Applicable | Worker execution must not become fire-and-forget. |
-| OBS-ALERT-001 | High-severity signals must be machine-usable for alerting | Observability | Applicable | Stable codes are needed for provider retry exhaustion, validation exhaustion, and worker run failure. |
+| OBS-CORE-001 | Failures must produce structured operational signals | Observability | Applicable | Worker retries, fallback, cancellation, and failure outcomes must be visible through the same platform-owned events, logs, metrics, and traces established in sprint 01. |
+| OBS-CORR-001 | Correlation identifiers must survive subsystem boundaries | Observability | Applicable | Worker runs, provider calls, telemetry spans, and Stageflow invocations should preserve request/trace metadata. |
+| OBS-DIAG-001 | Diagnostics surfaces must expose operator-relevant state | Observability | Applicable | Worker run status, recent failure state, and telemetry enablement should be inspectable through canonical operational paths. |
+| OBS-BG-001 | Background work must have visible terminal state | Observability | Applicable | Worker execution must not become fire-and-forget and its terminal state must stay aligned with task and telemetry truth. |
+| OBS-ALERT-001 | High-severity signals must be machine-usable for alerting | Observability | Applicable | Stable codes are needed for provider retry exhaustion, validation exhaustion, and worker run failure across events and telemetry labels. |
 | TEST-SEAM-001 | Collaborators must be replaceable through public seams | Testing | Applicable | Providers, stores, registries, and runtime policies must be easy to fake without private patching. |
 | TEST-UNIT-001 | Business logic must have unit coverage | Testing | Applicable | Retry policy, validation flow, and provider JSON formatting are deterministic and should be unit-tested. |
 | TEST-INT-001 | Wiring and persistence changes must have integration coverage | Testing | Applicable | New modules, stores, and composition wiring require integration tests. |
@@ -64,11 +64,13 @@
 | WF-BOUNDARY-001 | Workflow engines must stay behind app-owned boundaries | Workflows | Applicable | Worker invocation must use app-owned runtime/facade seams, not raw Stageflow internals across ordinary services. |
 | WF-STATE-001 | Workflow outcomes must be explicit and inspectable | Workflows | Applicable | Stageflow-driven worker runs still need explicit worker terminal state and event visibility. |
 | WF-RETRY-001 | Retry and cancellation semantics must be explicit | Workflows | Applicable | Worker retry/timeouts must be explicit whether invoked directly or from Stageflow. |
-| AGENT-BOUNDARY-001 | Runtime mechanics and policy must stay separate | Agents | Applicable | The sprint must not push worker policy into generic agent runtime packages. |
-| AGENT-TOOL-001 | Tool execution boundaries must stay explicit | Agents | Applicable | The sprint should preserve tools as agent-only rather than making them part of the worker runtime. |
-| AGENT-RUN-001 | Runs and events must be persisted or inspectable | Agents | Applicable | Agent inspectability must remain intact while shared LLM mechanics move out. |
-| AGENT-LIFECYCLE-001 | Approval, cancellation, and resume seams must stay explicit | Agents | Applicable | Agent behavior must remain unchanged and explicit after substrate extraction. |
-| AGENT-EXPOSE-001 | Operational exposure must flow through application modules | Agents | Applicable | Worker exposure should mirror this principle through a dedicated module instead of transport reaching into platform code. |
+| LLM-BOUNDARY-001 | Shared substrate, runtime mechanics, and mode-specific policy must stay separated | LLM runtime | Applicable | The sprint must not push worker policy into generic agent runtime packages and must keep shared provider mechanics neutral. |
+| LLM-TOOL-001 | Tool execution boundaries must stay explicit and mode-scoped | LLM runtime | Applicable | The sprint should preserve tools as conversational-only rather than making them part of the worker runtime. |
+| LLM-IO-001 | Structured input and output boundaries must stay explicit when used | LLM runtime | Applicable | Worker runs depend on validated input, provider-native JSON generation, and local output validation. |
+| LLM-LIFECYCLE-001 | Lifecycle controls must stay explicit and inspectable | LLM runtime | Applicable | Agent approval/resume semantics and worker retry/timeout/fallback/cancellation behavior must remain explicit after substrate extraction. |
+| LLM-RUN-001 | Runs and events must be durable or inspectable | LLM runtime | Applicable | Agent inspectability must remain intact while worker run state, events, outputs, and failures stay visible through stable operational surfaces. |
+| LLM-EXPOSE-001 | Operational exposure must flow through application modules | LLM runtime | Applicable | Worker exposure must go through a dedicated module instead of transport reaching into platform code. |
+| LLM-OBS-001 | LLM runtime monitoring must reuse the canonical observability runtime | LLM runtime | Applicable | Worker telemetry, diagnostics, and correlation must extend the sprint-01 observability runtime instead of creating a second monitoring path. |
 
 ### Applicable Requirements
 
@@ -77,10 +79,11 @@
 - **ARCH-CORE-001 / ARCH-COMP-001 / ARCH-SHARED-001:** New worker and LLM substrate packages must have explicit ownership boundaries and be assembled through composition rather than route-level wiring or platform/agent leakage.
 - **ARCH-CORE-002 / ARCH-LAYER-002:** Use cases must depend on ports, and the shared LLM substrate must remain inward-facing and generic rather than being a provider-specific or route-owned convenience layer.
 - **ERR-CORE-001 / ERR-PROVIDER-001 / ERR-BG-001:** Worker timeout, retry, parsing, validation, and fallback behavior must all end in explicit, inspectable terminal state with stable codes and visible attempt context.
-- **OBS-CORE-001 / OBS-CORR-001 / OBS-BG-001 / OBS-DIAG-001:** Worker runs must emit inspectable events and preserve request/trace metadata across background and Stageflow boundaries.
+- **OBS-CORE-001 / OBS-CORR-001 / OBS-BG-001 / OBS-DIAG-001 / OBS-ALERT-001:** Worker runs must emit inspectable events and preserve request/trace metadata across background and Stageflow boundaries by extending the sprint-01 observability runtime rather than bypassing it with worker-local monitoring code.
 - **TEST-SEAM-001 / TEST-INT-001 / TEST-SMOKE-002 / TEST-FAIL-001:** Because the sprint changes both runtime wiring and real-provider behavior, it requires unit, integration, smoke, and explicit negative-path verification.
 - **WF-BOUNDARY-001 / WF-RETRY-001:** Worker runtime must be callable from Stageflow but still own its own retry/timeout semantics through app-owned seams.
-- **AGENT-BOUNDARY-001 / AGENT-EXPOSE-001:** The existing agent stack must remain conversational-only and must not become a dumping ground for worker semantics.
+- **LLM-BOUNDARY-001 / LLM-EXPOSE-001:** The existing agent stack must remain conversational-only and must not become a dumping ground for worker semantics.
+- **LLM-BOUNDARY-001 / LLM-IO-001 / LLM-LIFECYCLE-001 / LLM-RUN-001 / LLM-EXPOSE-001 / LLM-OBS-001:** Worker runtime behavior must stay explicitly modeled through sibling runtime/application/module layers, local structured validation, inspectable lifecycle state, module-owned exposure, and inherited platform observability.
 
 ### Non-Applicable Requirements
 
@@ -90,15 +93,12 @@
 
 ### Ambiguous Or Conflicting Requirements
 
-- **No existing worker-specific contract:** Current operational contracts strongly constrain the sprint, but none explicitly define worker runtime behavior. The safe resolution is to make `ops/operational-contract/workers.md` the first deliverable of the sprint rather than infering worker rules ad hoc.
 - **ERR-PROVIDER-001 and provider-side strict JSON mode:** The contract requires clear retry and observability boundaries, but provider strictness varies across OpenAI-compatible backends. The safe interpretation is to keep provider-side strictness as an optimization at the adapter edge and keep local validation authoritative in the worker runtime.
 - **WF-BOUNDARY-001 and Stageflow fan-out helpers:** The sprint should allow worker invocation from Stageflow, but formalising planner/fan-out as a generic runtime pattern would overreach pre-brief scope. The safe interpretation is compatibility without framework-level planner abstractions.
 
 ### Open Questions
 
-- Should the sprint include one obviously generic sample worker definition for end-to-end smoke coverage, or should it stop at runtime and module scaffolding with test doubles only?
-- Should worker run persistence store the final validated output directly on the run record, or as a separate result record tied one-to-one to the run?
-- Should provider transport retries live inside each adapter or in a tiny shared wrapper around provider calls, provided the behavior remains adapter-neutral and observable?
+- None remaining at sprint completion.
 
 ### Resolved Decisions
 
@@ -107,6 +107,10 @@
 - **Retry layering:** Keep transport retry at the provider edge, but keep structured-output and semantic retry policy in the worker runtime.
 - **Stageflow stance:** Support worker invocation from Stageflow, but do not formalise planner/fan-out as a generic runtime pattern in this sprint.
 - **Operational stance:** Expose workers through a separate `modules/worker_runs/` operational module, not through `agent_runs` and not through speculative product APIs.
+- **Observability stance:** Reuse the sprint-01 platform-owned metrics, tracing, and diagnostics runtime for worker lifecycle monitoring instead of introducing a worker-specific telemetry stack.
+- **Sample worker stance:** Ship one obviously generic `structured-brief` worker definition so end-to-end runtime and smoke paths have a stable concrete subject without committing the backend to a product workflow.
+- **Result persistence stance:** Store final validated worker output directly on the run record for the scaffold stage rather than adding a second result object before a durable worker store exists.
+- **Provider transport stance:** Keep provider transport behavior inside adapter implementations; do not add a shared retry wrapper in this sprint.
 
 ## Feature Analysis
 
@@ -115,7 +119,7 @@
 **Description:** Add a worker-specific operational contract and define the package/module boundary that separates conversational agents, structured workers, and shared LLM mechanics.
 
 **Affected Areas**
-- `ops/operational-contract/workers.md`
+- `ops/operational-contract/llm.md`
 - `ops/operational-contract/README.md`
 - `backend/src/hello_sales_backend/platform/agents/`
 - `backend/src/hello_sales_backend/platform/workers/`
@@ -127,13 +131,16 @@
 | PRE-SCOPE-003 | Prefer reusable scaffolding and clear seams | Worker/runtime contract and package split | New contract + package ownership review |
 | ARCH-CORE-001 | Keep module/runtime boundaries explicit | Separate `agents`, `workers`, and `llm` areas | File ownership and import review |
 | ARCH-SHARED-001 | Keep platform code domain-neutral | `platform/llm/` and `platform/workers/` remain generic | Review of package contents and imports |
-| AGENT-BOUNDARY-001 | Keep agent-specific behavior out of generic runtime code | Agents remain conversational-only | No worker concepts in agent runtime after extraction |
-| AGENT-EXPOSE-001 | Operational exposure must flow through modules | Worker operational surface goes through `modules/worker_runs/` | Module bootstrap/service review |
+| LLM-BOUNDARY-001 | Keep agent-specific behavior out of generic runtime code and keep shared substrate generic | Agents remain conversational-only and worker policy stays out of shared LLM packages | No worker concepts in agent runtime after extraction; package review |
+| LLM-EXPOSE-001 | Operational exposure must flow through modules | Worker operational surface goes through `modules/worker_runs/` | Module bootstrap/service review |
+| LLM-OBS-001 | Reuse canonical observability | Worker monitoring extends `platform/observability/` | Telemetry tests + observability review |
+| OBS-CORE-001 | Worker monitoring must extend existing platform observability | Worker runtime reuses `platform/observability/` for metrics, tracing, and events | Telemetry tests + observability review |
 
 **Current-System Analysis**
 - Today the repo already has a clear agent stack: `platform/agents/`, `application/agents/`, and `modules/agent_runs/`.
 - The current provider contract is chat-only in [`backend/src/hello_sales_backend/platform/providers/llm/contracts.py`](/home/antonioborgerees/coding/HelloSales/backend/src/hello_sales_backend/platform/providers/llm/contracts.py:1), which biases the whole runtime surface toward conversational output.
 - The current agent runtime in [`backend/src/hello_sales_backend/platform/agents/runtime.py`](/home/antonioborgerees/coding/HelloSales/backend/src/hello_sales_backend/platform/agents/runtime.py:1) is explicitly turn-based, tool-aware, and response-text oriented.
+- Sprint 01 already established platform-owned metrics and tracing in `platform/observability/`; worker runtime work must extend that foundation rather than invent a second monitoring seam.
 - Those nouns are already semantically agentic. Extending them to mean worker execution would blur runtime identity and violate the design decision we just settled.
 
 **Options Considered**
@@ -142,22 +149,23 @@
 - **Option C:** Skip a shared substrate and build workers as a fully separate vertical with its own providers.
 
 **Chosen Approach**
-- Adopt Option B: sibling runtimes over a shared LLM substrate, with a worker-specific operational contract added first.
+- Adopt Option B: sibling runtimes over a shared LLM substrate, with a consolidated LLM runtime contract added first.
 
 **Decision Justification**
-- Option B best satisfies `AGENT-BOUNDARY-001` because it avoids forcing worker semantics into the agent runtime while still allowing provider reuse.
+- Option B best satisfies `LLM-BOUNDARY-001` because it avoids forcing worker semantics into the agent runtime while still allowing provider reuse.
 - Option A would keep `AgentRun`, `AgentTurn`, `response_text`, approvals, and tools as the conceptual center, which is the wrong abstraction for structured workers.
 - Option C would avoid mixing, but it would duplicate provider and JSON-mode mechanics and weaken `PRE-SCOPE-003` by reducing replaceability and shared scaffolding.
-- Adding `workers.md` first is justified because the repo already treats contracts as normative process inputs; implementing worker behavior without one would create a process hole.
+- Adding `llm.md` first is justified because the repo already treats contracts as normative process inputs; implementing agent/worker LLM behavior without one would create a process hole.
 
 **Execution Notes**
-- Keep the worker contract complementary to `agents.md`; do not duplicate agent-tool or approval semantics into worker language.
-- The worker contract should explicitly rule out tools and artifacts if those are intentionally conversational-only in this design.
+- Keep the consolidated contract explicit about the distinction between conversational agents and structured workers; do not blur the two runtime identities.
+- The worker sections should explicitly rule out tools and artifacts if those are intentionally conversational-only in this design.
+- The contract should explicitly state that worker monitoring flows through the existing observability runtime and canonical diagnostics surface.
 
 **Expected Evidence**
 - **Tests:** none directly for the contract file, but follow-on tests must align with the lifecycle and retry seams it defines.
 - **Runtime Evidence:** not applicable for the contract file itself.
-- **Review Checks:** worker semantics are not implemented via agent runtime flags or overloaded agent models.
+- **Review Checks:** worker semantics are not implemented via agent runtime flags or overloaded agent models, and the contract points worker monitoring back to the sprint-01 observability foundation.
 
 ---
 
@@ -180,10 +188,12 @@
 | ARCH-SHARED-001 | Platform remains domain-neutral | `platform/llm/` stays free of agent/worker policy | Package review |
 | ERR-PROVIDER-001 | Provider failures classified and observable | Shared provider responses and error mapping stay explicit | Unit tests + error shape checks |
 | OBS-CORR-001 | Correlation survives boundaries | Provider call context carries request/trace metadata | Provider call tests/log evidence |
+| OBS-CORE-001 | Telemetry stays platform-owned | LLM substrate exposes metadata that worker telemetry can reuse without adapter duplication | Telemetry tests and review |
 
 **Current-System Analysis**
 - The current chat-only provider contract and adapter are in `platform/providers/llm/`.
 - The OpenAI-compatible adapter already captures provider, model, timeout, response status, and request metadata in structured errors, which is useful behavior to preserve.
+- Sprint 01 observability already instruments HTTP and background tasks. This sprint needs the substrate to preserve enough metadata for worker-specific telemetry and diagnostics without leaking provider-specific behavior upward.
 - The agent runtime consumes the provider directly and assumes text output only.
 - The `soft-skills` reference system uses a lower-level provider contract that separates JSON completion from tool completion and text streaming. That shape is closer to what this sprint needs.
 
@@ -205,11 +215,12 @@
 - Start with the smallest contract that covers this sprint: `generate_text(...)`, `generate_json(...)`, call context, response models, and schema helper.
 - Do not move semantic retry or fallback policy into the substrate.
 - Preserve existing provider error detail and redaction discipline during extraction.
+- Keep provider/model/timeout metadata available in normalized results or errors so worker telemetry can emit stable machine-usable labels without parsing raw exceptions.
 
 **Expected Evidence**
 - **Tests:** unit tests for response models, JSON schema normalization, provider JSON request formatting, and provider error mapping.
 - **Runtime Evidence:** provider errors continue to include stable codes, model/provider metadata, timeout values, and remote status/request ids where available.
-- **Review Checks:** neither agent nor worker runtime contains provider-specific JSON request-shaping logic.
+- **Review Checks:** neither agent nor worker runtime contains provider-specific JSON request-shaping logic, and the substrate exposes enough normalized metadata for worker monitoring.
 
 ---
 
@@ -233,13 +244,19 @@
 | ERR-PROVIDER-001 | Provider failures must remain classified | Provider timeout and retry exhaustion remain visible | Negative tests and event/log review |
 | OBS-CORE-001 | Emit structured operational signals | Worker lifecycle and retry events must be inspectable | Event tests and views |
 | OBS-BG-001 | Background work visible terminal state | Worker runs cannot be fire-and-forget | Operational view tests |
+| OBS-ALERT-001 | Signals must remain machine-usable across telemetry sinks | Worker lifecycle metrics and tracing labels must use stable worker/status/provider naming | Metrics assertions + diagnostics review |
 | TEST-SEAM-001 | Replace collaborators through seams | Providers, stores, registries, and validators must be fakeable | Unit tests with fakes |
+| LLM-IO-001 | Keep structured validation explicit and local | Inputs and outputs validate against worker models | Worker runtime tests |
+| LLM-LIFECYCLE-001 | Keep retry/timeout/fallback/cancellation explicit | Attempt budgets, backup-provider use, cancellation, and timeout flow remain inspectable | Runtime state and tests |
+| LLM-RUN-001 | Worker state and events must be inspectable | Worker run/event persistence and summaries stay visible | Integration tests + diagnostics |
+| LLM-OBS-001 | Worker monitoring must use canonical observability | Worker metrics, spans, events, and diagnostics reuse sprint-01 seams | Observability tests + diagnostics review |
 | TEST-FAIL-001 | Failure paths tested explicitly | Invalid JSON, schema failure, semantic rejection, and fallback must be tested | Negative tests |
 | WF-RETRY-001 | Retry/cancellation semantics explicit | Worker attempt budgets, timeout behavior, and fallback must be explicit | Runtime state and tests |
 
 **Current-System Analysis**
 - The repo already has background task ownership via `BackgroundTaskRunner`, which gives a good operational seam for worker execution.
 - The current agent run store and views show one pattern for explicit operational state, but the worker runtime should not reuse agent nouns such as turns or tool calls.
+- Sprint 01 already instrumented background task lifecycle. Worker runtime should layer worker-specific state and signals on top of that task truth rather than replacing it.
 - The `soft-skills` `TypedLLMOutput` and marking provider pattern provides a strong precedent for splitting structural validation retries from semantic verification retries and final backup-provider selection.
 
 **Options Considered**
@@ -263,10 +280,11 @@
   - semantic retry above parsed validation, with optional backup provider/model on the final allowed attempt
 - Keep timeout values explicit on worker invocation and preserve them in failure details.
 - Keep local validation authoritative even when provider-side schema mode is used.
+- Record worker lifecycle and terminal outcomes through the existing observability runtime so metrics, traces, and diagnostics stay aligned with persisted run state.
 
 **Expected Evidence**
 - **Tests:** unit tests for lifecycle state transitions, retry budget selection, corrective retry prompting, semantic retry, and backup-provider selection.
-- **Runtime Evidence:** worker events show attempts, validation failures, fallback selection, and terminal outcome.
+- **Runtime Evidence:** worker events show attempts, validation failures, fallback selection, and terminal outcome, and `/metrics` plus diagnostics expose worker lifecycle visibility when observability is enabled.
 - **Review Checks:** no worker runtime code depends on tool bundles or `AgentTurn`-style response text semantics.
 
 ---
@@ -293,6 +311,7 @@
 - The current OpenAI-compatible adapter only supports chat text completions and cannot request provider-native JSON output.
 - The `soft-skills` provider adapter uses `json_object` when no schema is provided and provider-specific `json_schema` handling when it is, including falling back to non-strict mode for providers with known limitations.
 - That precedent fits the sprint’s stated preference: provider-side strictness is guidance, not correctness.
+- Worker observability also depends on provider metadata staying normalized enough to distinguish transport failure, local validation failure, and fallback execution in metrics and diagnostics.
 
 **Options Considered**
 - **Option A:** Depend on prompt-only “return JSON” instructions and parse the resulting text.
@@ -311,10 +330,11 @@
 - Default JSON output request should be `json_object` when no schema hint is provided.
 - When a schema hint is present, the adapter chooses the strongest safe mode per provider.
 - Keep strict/non-strict decisions entirely inside the adapter.
+- Preserve normalized provider/model/timeout metadata on JSON-mode results and failures so worker monitoring can reuse it without adapter-specific parsing.
 
 **Expected Evidence**
 - **Tests:** adapter unit tests for `json_object`, strict `json_schema`, non-strict fallback, and provider error mapping.
-- **Runtime Evidence:** provider call logs/events include provider/model/timeout metadata and distinguish transport failure from local validation failure.
+- **Runtime Evidence:** provider call logs, diagnostics, and worker monitoring include provider/model/timeout metadata and distinguish transport failure from local validation failure.
 - **Review Checks:** worker runtime does not contain provider-specific strictness branching.
 
 ---
@@ -334,14 +354,17 @@
 | PRE-SCOPE-004 | Keep public APIs intentionally narrow | Worker endpoints must remain operational-only | Route/module review |
 | ARCH-ENTRY-001 | Transport adapters stay thin | Routes call module service/facade only | Integration tests |
 | OBS-DIAG-001 | Expose operator-relevant state | Worker run state/events should be inspectable | View/diagnostics tests |
+| OBS-CORE-001 | Operational surfaces must reuse platform telemetry | Worker routes and Stageflow integration should preserve request/trace metadata for worker metrics and traces | Integration tests + telemetry review |
 | WF-BOUNDARY-001 | Workflow engine behind app-owned boundaries | Stageflow callers use app-owned worker runtime seams | Code review |
 | WF-STATE-001 | Workflow outcomes explicit | Stageflow-driven worker outcomes still surface as worker run state | Integration tests |
-| AGENT-EXPOSE-001 | Exposure flows through application modules | Worker exposure belongs in `modules/worker_runs/` | Module bootstrap review |
+| LLM-EXPOSE-001 | Exposure flows through application modules | Worker exposure belongs in `modules/worker_runs/` | Module bootstrap review |
+| LLM-RUN-001 | Worker runs and events must stay inspectable | Operational worker endpoints expose detail and events | Integration tests |
 
 **Current-System Analysis**
 - `modules/agent_runs/` already demonstrates the right architectural pattern for exposing runtime behavior through a module facade rather than transport reaching into platform code.
 - Stageflow is already wrapped by app-owned workflow runtime helpers in `platform/workflows/`, which is the correct boundary for compatibility work.
 - The `soft-skills` generation workers use Stageflow helper functions for worker subpipelines, but that pattern should be treated here as orchestration consumer behavior rather than as runtime identity.
+- Sprint 01 diagnostics already expose observability runtime state. Worker operational surfaces should complement that by exposing worker-specific state while reusing the same correlation and telemetry foundations.
 
 **Options Considered**
 - **Option A:** Expose worker state only indirectly through generic task diagnostics.
@@ -352,33 +375,37 @@
 - Adopt Option B and explicitly defer Option C.
 
 **Decision Justification**
-- Option B matches the module pattern already established by `agent_runs` and best satisfies `AGENT-EXPOSE-001` by analogy and `PRE-SCOPE-004` by keeping surfaces narrow and operational.
+- Option B matches the module pattern already established by `agent_runs` and best satisfies `LLM-EXPOSE-001` by keeping surfaces narrow and operational.
 - Option A would not expose enough worker-specific state.
 - Option C would violate the pre-brief discipline by codifying workflow assumptions before a real product use case exists.
 
 **Execution Notes**
 - Expose only what operators need: start, inspect, list events, cancel.
 - If Stageflow compatibility requires correlation fields between parent and child runs, keep that as metadata rather than a generic planner model.
+- Keep worker transport and workflow entry points thin, with telemetry and tracing handled by the shared observability runtime rather than endpoint-local instrumentation.
 
 **Expected Evidence**
 - **Tests:** integration tests for worker run views and events, plus Stageflow compatibility tests at the worker-runtime boundary.
-- **Runtime Evidence:** worker state is inspectable independently of task-run snapshots and includes correlation metadata where available.
+- **Runtime Evidence:** worker state is inspectable independently of task-run snapshots, includes correlation metadata where available, and appears in diagnostics and metrics through the existing observability foundation.
 - **Review Checks:** no planner/synthesizer abstraction appears in generic worker runtime code.
 
 ## Deviations
 
 | Requirement ID | Deviation | Reason | Risk | Disposition | Follow-up |
 | --- | --- | --- | --- | --- | --- |
-| None planned | No planned deviations at reasoning time | The sprint is scoped to generic runtime scaffolding and should be feasible within current contracts | If implementation reveals provider or persistence gaps, deviations must be recorded during execution | N/A | Update this table if any deviation becomes necessary |
+| ARCH-LAYER-002 / TEST-INT-001 / LLM-RUN-001 | Worker persistence remains in-memory for all environments rather than gaining a SQLAlchemy-backed store in this sprint | Keeping the first worker-runtime sprint bounded made inspectable lifecycle/runtime behavior higher priority than durable DB persistence | Worker run history is not durable across process restarts and Postgres-specific worker persistence is not yet verified | Temporary | Add a SQLAlchemy-backed worker store and Postgres coverage in a follow-on sprint |
+| Sprint Execution Protocol Step 1 | Sprint executed on `main` instead of a dedicated `sprint/sprint-02-worker-runtime-foundation` branch | The workspace was already on `main` when execution began and the work proceeded there | Reviewers cannot rely on branch naming alone for sprint isolation | Temporary process deviation | Create or move to a sprint-named branch before starting later sprint execution work |
+| TEST-SMOKE-002 | Real-provider worker smoke execution was prepared but not runnable in the local environment | Local environment does not define `HELLO_SALES_GENERIC_AGENT_PROVIDER`, `HELLO_SALES_GENERIC_AGENT_MODEL`, and matching API-key settings required by the shared provider path | Review lacks same-machine proof of the external provider path until credentials are supplied | Temporary verification deferral | Run `python3 scripts/smoke.py worker-provider-baseline` once provider configuration is available |
 
 ## Cross-Cutting Reasoning
 
 ### Major Decision Summary
 
-- **Sibling runtimes over a neutral substrate:** Driven by `AGENT-BOUNDARY-001`, `ARCH-SHARED-001`, and `PRE-SCOPE-003`, because worker and agent semantics differ materially while provider mechanics are still shared.
+- **Sibling runtimes over a neutral substrate:** Driven by `LLM-BOUNDARY-001`, `ARCH-SHARED-001`, and `PRE-SCOPE-003`, because worker and agent semantics differ materially while provider mechanics are still shared.
 - **Local validation remains authoritative:** Driven by `ERR-PROVIDER-001`, `ERR-CORE-001`, and the provider variability already seen in OpenAI-compatible ecosystems.
-- **Contract-first worker implementation:** Driven by the repo’s contract-led process and by the absence of a worker-specific contract today.
+- **Contract-first LLM runtime implementation:** Driven by the repo’s contract-led process; `llm.md` now holds the normative agent and worker runtime rules this sprint depends on.
 - **Stageflow compatibility without planner framework:** Driven by `WF-SCOPE-001` and `PRE-SCOPE-002`, which both discourage speculative orchestration abstraction.
+- **Observability inheritance from sprint 01:** Driven by `OBS-CORE-001`, `OBS-CORR-001`, and `OBS-ALERT-001`, because worker runtime visibility must extend the existing platform-owned telemetry runtime rather than dilute it.
 
 ### Trade-offs
 
@@ -391,6 +418,7 @@
 - A narrow operational worker surface is acceptable pre-brief as long as it stays scaffold-oriented and not product-facing.
 - One generic sample worker definition, if added, can remain obviously infrastructural and not commit the repo to a product domain.
 - The existing task runner remains the right owner for background execution even if Stageflow is the orchestrator for some worker invocations.
+- Sprint-01 metrics, tracing, and diagnostics seams are the canonical monitoring path for this sprint’s worker runtime additions.
 
 ### Dependencies
 
@@ -400,23 +428,24 @@
 
 ### Evidence Review Checklist
 
-- [ ] Review can trace the worker/agent boundary decision back to explicit requirement IDs.
-- [ ] Review can verify that provider JSON-mode support remains generic and that worker policy stays above the provider layer.
-- [ ] Review can verify that worker lifecycle, retries, cancellation, and failure state are inspectable through stable operational surfaces.
+- [x] Review can trace the worker/agent boundary decision back to explicit requirement IDs.
+- [x] Review can verify that provider JSON-mode support remains generic and that worker policy stays above the provider layer.
+- [x] Review can verify that worker lifecycle, retries, cancellation, and failure state are inspectable through stable operational surfaces and the sprint-01 observability foundation.
 
 ## Phase Exit Criteria
 
-- [ ] Tracker scope is fully covered
-- [ ] Applicable requirements are mapped
-- [ ] Ambiguous and non-applicable requirements are recorded where relevant
-- [ ] Important decisions are explicitly justified
-- [ ] Non-trivial alternatives are discussed
-- [ ] Deviations, assumptions, risks, and unknowns are documented
-- [ ] Expected evidence is defined
+- [x] Tracker scope is fully covered
+- [x] Applicable requirements are mapped
+- [x] Ambiguous and non-applicable requirements are recorded where relevant
+- [x] Important decisions are explicitly justified
+- [x] Non-trivial alternatives are discussed
+- [x] Deviations, assumptions, risks, and unknowns are documented
+- [x] Expected evidence is defined
 
 ## Documentation Updates
 
-- `ops/operational-contract/workers.md`: must be added to define the normative worker-runtime rules that this sprint will implement.
-- `ops/operational-contract/README.md`: must list the new worker contract once it exists.
-- `backend/docs/agent-runtime.md`: must be updated to clarify that agents are conversational-only and no longer the home of future structured worker behavior.
-- `backend/docs/` worker/LLM runtime documentation: should explain the new `platform/llm/` substrate, the worker runtime boundary, and the retry/validation/fallback model.
+- `ops/operational-contract/llm.md`: added as the normative agent and worker runtime contract.
+- `ops/operational-contract/README.md`: updated to list the consolidated contract.
+- `backend/docs/agent-runtime.md`: updated to clarify that agents are conversational-only and separate from workers.
+- `backend/docs/worker-runtime.md`: added to document the worker runtime boundary, validation/retry model, and monitoring surfaces.
+- `backend/docs/README.md`, `runtime-overview.md`, `api-and-runtime-surfaces.md`, `diagnostics-and-events.md`, `testing-and-operations.md`, `codebase-map.md`, `configuration-and-environment.md`, and `persistence-and-migrations.md`: updated to reflect the neutral LLM substrate, worker runtime, and sprint-01 observability inheritance.

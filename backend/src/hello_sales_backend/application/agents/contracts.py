@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from hello_sales_backend.platform.agents.tools import AgentToolCatalog, AgentToolRequest
-from hello_sales_backend.platform.providers.llm.contracts import ChatMessage
+from hello_sales_backend.platform.llm.contracts import ChatMessage
 
 
 class ToolSelectionPolicy(Protocol):

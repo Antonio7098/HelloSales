@@ -21,6 +21,7 @@ The container builds:
 - unit-of-work factory
 - task run store
 - agent store
+- worker store
 
 This bundle is exposed as `DatabaseRuntime`.
 
@@ -78,6 +79,15 @@ Owns:
 
 This store is one of the most important persistence surfaces in the current scaffold.
 
+### `InMemoryWorkerStore`
+Owns:
+- worker run persistence
+- ordered worker event persistence
+- worker diagnostics summaries
+
+This store is intentionally in-memory for the first worker-runtime sprint.
+It provides an inspectable operational seam, but it is not durable persistence.
+
 ## Persistence Philosophy
 
 The current backend tries to preserve operationally meaningful state, not just product data.
@@ -87,6 +97,8 @@ That means persistence is used heavily for:
 - turn lifecycle state
 - tool-call state
 - event history
+- worker run lifecycle state
+- worker event history
 - task snapshots
 - error summaries
 
@@ -107,8 +119,9 @@ SQLite is primarily used for fast local tests and scaffold validation.
 Important special behavior:
 - when the configured database URL starts with `sqlite+aiosqlite`, the app container uses `InMemoryAgentStore`
 - otherwise it uses `SqlAlchemyAgentStore`
+- worker runs currently use `InMemoryWorkerStore` regardless of database backend
 
-That means SQLite-backed test paths are not necessarily exercising the exact same agent persistence path as non-SQLite runtime environments.
+That means SQLite-backed test paths are not necessarily exercising the exact same agent persistence path as non-SQLite runtime environments, and worker runs are currently scaffold-stage in-memory state across every environment.
 
 This is intentional for speed, but it matters when evaluating test coverage and runtime confidence.
 
@@ -147,6 +160,7 @@ High-signal rules of thumb for this codebase:
 - prefer explicit runtime seams over route-level DB usage
 - preserve ordered event semantics where ordering matters
 - understand whether a test path is exercising in-memory or SQLAlchemy-backed state
+- record temporary in-memory persistence decisions explicitly in sprint artifacts when they matter for review
 - update docs when persistence behavior materially changes
 
 ## Where To Read In Code

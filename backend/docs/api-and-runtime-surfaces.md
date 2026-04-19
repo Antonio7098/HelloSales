@@ -27,6 +27,17 @@ Backed by:
 - `modules/agent_runs/use_cases/agent_run_service.py`
 - `platform/agents/runtime.py`
 
+### `/worker-runs`
+Purpose:
+- start a worker run
+- inspect a worker run
+- inspect worker events
+- cancel a worker run
+
+Backed by:
+- `modules/worker_runs/use_cases/worker_run_service.py`
+- `platform/workers/runtime.py`
+
 ### `/jobs`
 Purpose:
 - start lightweight operational jobs
@@ -64,9 +75,9 @@ Owns:
 
 ### Provider Surface
 - `platform/composition/providers.py`
-- `platform/providers/llm/`
+- `platform/llm/`
 
-Current provider surface is centered on the shared LLM contract.
+Current provider surface is centered on the neutral shared LLM contract.
 
 ### Agent Runtime Surface
 - `platform/agents/runtime.py`
@@ -79,6 +90,18 @@ This runtime owns:
 - tool-call state
 - append-only event stream state
 - approval pause behavior
+- cancellation/completion/failure transitions
+
+### Worker Runtime Surface
+- `platform/workers/runtime.py`
+- `platform/workers/persistence.py`
+- `platform/workers/models.py`
+
+This runtime owns:
+- worker run state
+- local structured-output validation
+- retry and timeout behavior
+- append-only event state
 - cancellation/completion/failure transitions
 
 ### Task Surface
@@ -103,6 +126,7 @@ This runtime owns:
 - alerts derived from severity/code
 - request context correlation
 - health metadata and readiness support
+- metrics and tracing for HTTP, background tasks, and worker runs
 
 ### Workflow Surface
 - `platform/workflows/runtime.py`
@@ -135,6 +159,18 @@ POST /agent-runs
 -> persist tool calls + events + final run state
 ```
 
+### Worker Run Flow
+
+```text
+POST /worker-runs
+-> WorkerRunService.start_run()
+-> persist run
+-> BackgroundTaskRunner.start()
+-> optional WorkflowExecutor.run_worker_run_workflow()
+-> WorkerRuntime.process_run()
+-> persist worker events + final run state
+```
+
 ### Approval Flow
 
 ```text
@@ -160,7 +196,7 @@ POST /jobs...
 ```text
 GET /system/...
 -> SystemService
--> provider diagnostics + task diagnostics + agent diagnostics + events + alerts
+-> provider diagnostics + task diagnostics + agent diagnostics + worker diagnostics + events + alerts
 -> consolidated operational view
 ```
 
@@ -168,8 +204,9 @@ GET /system/...
 
 High-signal extension points today:
 - add a new module under `modules/`
-- add a new provider implementation under `platform/providers/`
+- add a new provider implementation under `platform/llm/providers/`
 - add a new agent definition under `application/agents/definitions/`
+- add a new worker definition under `application/workers/definitions/`
 - add a new smoke suite under `smoke/suites/`
 - extend diagnostics through `modules/system/`
 - extend runtime assembly through `platform/composition/`
@@ -183,4 +220,6 @@ If you are new to the backend, the best reading order is:
 4. `modules/system/use_cases/system_service.py`
 5. `modules/jobs/use_cases/jobs_service.py`
 6. `modules/agent_runs/use_cases/agent_run_service.py`
-7. `platform/agents/runtime.py`
+7. `modules/worker_runs/use_cases/worker_run_service.py`
+8. `platform/agents/runtime.py`
+9. `platform/workers/runtime.py`
