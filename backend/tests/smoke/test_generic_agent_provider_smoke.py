@@ -93,11 +93,11 @@ async def test_generic_agent_provider_smoke_executes_end_to_end(test_settings: S
     assert result.payload["provider"] == "groq"
     assert result.payload["model"] == "openai/gpt-oss-20b"
     assert result.payload["response_text"] == "processed:list recent tasks"
-    turns = result.payload["turns"]
-    assert isinstance(turns, list)
-    assert len(turns) == 2
-    assert turns[-1]["status"] == "completed"
-    assert turns[-1]["response_text"] == "processed:list recent tasks"
+    items = result.payload["items"]
+    assert isinstance(items, list)
+    assert len([item for item in items if item["item_type"] == "assistant_message"]) == 2
+    assistant_messages = [item for item in items if item["item_type"] == "assistant_message"]
+    assert assistant_messages[-1]["payload"]["text"] == "processed:list recent tasks"
     scenarios = result.payload["scenarios"]
     assert isinstance(scenarios, list)
     assert {item["name"] for item in scenarios} == {

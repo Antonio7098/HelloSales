@@ -54,14 +54,16 @@ The current concrete profiles are:
 
 ### 3. Operational Exposure Through A Module
 Location:
+- `src/hello_sales_backend/modules/sessions/`
 - `src/hello_sales_backend/modules/agent_runs/`
 
 Owns:
-- public use cases for starting runs and appending turns
+- public use cases for session creation and append
+- attached execution use cases for starting runs and appending turns
 - approval decisions
 - event inspection / observation
 - cancellation
-- transport-facing application facade for the agent system
+- transport-facing application facade for the session-backed agent system
 
 This keeps transport and public operational behavior out of the generic runtime itself.
 
@@ -88,7 +90,7 @@ Location:
 - `modules/agent_runs/use_cases/agent_run_service.py`
 
 Responsibilities:
-- create runs and turns
+- create attached runs and turns
 - schedule background execution through the task runner
 - expose run details and event views
 - decide approvals
@@ -160,7 +162,9 @@ This event stream supports diagnostics and replay.
 The normal flow is:
 
 ```text
-AgentRunService.start_run() or append_turn()
+SessionService.create_session() or append_message()
+-> persist session / user message
+-> AgentRunService.start_run() or append_turn()
 -> persist run / turn
 -> BackgroundTaskRunner.start()
 -> GenericAgentRuntime.process_turn()
@@ -310,9 +314,10 @@ They intentionally do not label by:
 
 Best reading order:
 1. `platform/agents/runtime.py`
-2. `modules/agent_runs/use_cases/agent_run_service.py`
-3. `application/agents/bootstrap.py`
-4. `application/agents/registry.py`
-5. `application/agents/definitions/`
-6. `platform/agents/models.py`
-7. `platform/agents/persistence.py`
+2. `modules/sessions/use_cases/session_service.py`
+3. `modules/agent_runs/use_cases/agent_run_service.py`
+4. `application/agents/bootstrap.py`
+5. `application/agents/registry.py`
+6. `application/agents/definitions/`
+7. `platform/agents/models.py`
+8. `platform/agents/persistence.py`

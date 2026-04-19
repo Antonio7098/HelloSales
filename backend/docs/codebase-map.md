@@ -48,7 +48,7 @@ Owns:
 
 Current route groups:
 - `health`
-- `agent_runs`
+- `sessions`
 - `worker_runs`
 - `jobs`
 - `system`
@@ -66,9 +66,15 @@ Owns:
 - operational jobs capability
 - diagnostic workflow orchestration through application-level services
 
+#### `modules/sessions/`
+Owns:
+- public session-first conversational surface
+- durable session ownership and chronology
+- session summary and attached execution entrypoints
+
 #### `modules/agent_runs/`
 Owns:
-- public operational surface for generic agent runs
+- attached execution surface for generic agent runs
 - run lifecycle actions
 - event replay / inspection
 - approval and cancellation surfaces
@@ -89,6 +95,13 @@ Owns:
 - runtime config and models
 - persistence contracts
 - tool execution context/contracts
+
+#### `platform/sessions/`
+Owns:
+- neutral session models
+- session persistence seams
+- attached execution mirroring into session chronology
+- session summary prompt and lifecycle helpers
 
 #### `platform/composition/`
 Owns:
@@ -176,6 +189,7 @@ Owns:
 ### Public Application Facades
 - `modules/system/use_cases/system_service.py`
 - `modules/jobs/use_cases/jobs_service.py`
+- `modules/sessions/use_cases/session_service.py`
 - `modules/agent_runs/use_cases/agent_run_service.py`
 - `modules/worker_runs/use_cases/worker_run_service.py`
 

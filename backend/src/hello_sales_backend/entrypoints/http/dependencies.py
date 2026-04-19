@@ -8,6 +8,7 @@ from fastapi import Request
 
 from hello_sales_backend.modules.agent_runs import AgentRunService
 from hello_sales_backend.modules.jobs import JobsService
+from hello_sales_backend.modules.sessions import SessionService
 from hello_sales_backend.modules.system import SystemService
 from hello_sales_backend.modules.worker_runs import WorkerRunService
 from hello_sales_backend.platform.composition.app_container import AppContainer
@@ -36,6 +37,12 @@ async def get_system_service(request: Request) -> SystemService:
     """Resolve the system service from the container."""
 
     return (await get_container(request)).modules.system.service
+
+
+async def get_session_service(request: Request) -> SessionService:
+    """Resolve the sessions service from the container."""
+
+    return (await get_container(request)).modules.sessions.service
 
 
 async def get_jobs_service(request: Request) -> JobsService:

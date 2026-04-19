@@ -60,21 +60,21 @@ def _json_dict(payload: object) -> dict[str, Any]:
     return cast(dict[str, Any], payload)
 
 
-async def _wait_for_run_completion(
+async def _wait_for_session_completion(
     client: AsyncClient,
-    run_id: str,
+    session_id: str,
     *,
     attempts: int = 20,
     terminal_statuses: set[str] | None = None,
 ) -> dict[str, Any]:
     target_statuses = terminal_statuses or {"awaiting_approval", "completed", "failed", "cancelled"}
     for _ in range(attempts):
-        response = await client.get(f"/api/agent-runs/{run_id}")
+        response = await client.get(f"/api/sessions/{session_id}")
         payload = _json_dict(response.json()["data"])
         if payload["status"] in target_statuses:
             return payload
         await asyncio.sleep(0.02)
-    raise AssertionError(f"run {run_id} did not reach a terminal state")
+    raise AssertionError(f"session {session_id} did not reach a terminal state")
 
 
 async def test_agent_run_executes_tools_and_completes(test_settings: Settings) -> None:
@@ -86,23 +86,27 @@ async def test_agent_run_executes_tools_and_completes(test_settings: Settings) -
         transport = ASGITransport(app=app, raise_app_exceptions=True)
         async with AsyncClient(transport=transport, base_url="http://testserver") as client:
             start_response = await client.post(
-                "/api/agent-runs",
+                "/api/sessions",
                 json={"input_text": "show me the current system status"},
             )
             assert start_response.status_code == 200
-            run_id = start_response.json()["data"]["run_id"]
+            session_id = start_response.json()["data"]["session_id"]
 
-            detail = await _wait_for_run_completion(client, run_id)
+            detail = await _wait_for_session_completion(client, session_id)
 
             assert detail["status"] == "completed"
-            assert len(detail["turns"]) == 1
-            assert detail["turns"][0]["tools"][0]["tool_name"] == "get_runtime_status"
-            assert detail["turns"][0]["tools"][0]["status"] == "completed"
-            assert (
-                detail["turns"][0]["response_text"] == "processed:show me the current system status"
+            assert len(detail["items"]) >= 3
+            assert detail["items"][0]["item_type"] == "user_message"
+            assert detail["items"][1]["item_type"] == "tool_call"
+            assert detail["items"][1]["payload"]["tool_name"] == "get_runtime_status"
+            assert detail["items"][2]["item_type"] in {"tool_result", "assistant_message"}
+            assert any(
+                item["item_type"] == "assistant_message"
+                and item["payload"]["text"] == "processed:show me the current system status"
+                for item in detail["items"]
             )
 
-            events_response = await client.get(f"/api/agent-runs/{run_id}/events")
+            events_response = await client.get(f"/api/sessions/{session_id}/events")
             assert events_response.status_code == 200
             event_types = [item["event_type"] for item in events_response.json()["data"]]
             assert "agent.turn.started" in event_types
@@ -119,32 +123,33 @@ async def test_agent_run_supports_approval_flow(test_settings: Settings) -> None
         transport = ASGITransport(app=app, raise_app_exceptions=True)
         async with AsyncClient(transport=transport, base_url="http://testserver") as client:
             start_response = await client.post(
-                "/api/agent-runs",
+                "/api/sessions",
                 json={"input_text": "please run diagnostic job now"},
             )
             assert start_response.status_code == 200
-            run_id = start_response.json()["data"]["run_id"]
+            session_id = start_response.json()["data"]["session_id"]
 
-            awaiting_detail = await _wait_for_run_completion(client, run_id)
+            awaiting_detail = await _wait_for_session_completion(client, session_id)
             assert awaiting_detail["status"] == "awaiting_approval"
-            approval_id = awaiting_detail["turns"][0]["tools"][0]["approval_id"]
+            tool_call_item = next(item for item in awaiting_detail["items"] if item["item_type"] == "tool_call")
+            approval_id = tool_call_item["payload"]["approval_id"]
             assert approval_id is not None
 
             approval_response = await client.post(
-                f"/api/agent-runs/approvals/{approval_id}",
+                f"/api/sessions/approvals/{approval_id}",
                 json={"approved": True},
             )
             assert approval_response.status_code == 200
             assert approval_response.json()["data"]["status"] == "approved"
 
-            completed_detail = await _wait_for_run_completion(
+            completed_detail = await _wait_for_session_completion(
                 client,
-                run_id,
+                session_id,
                 terminal_statuses={"completed", "failed", "cancelled"},
             )
             assert completed_detail["status"] == "completed"
-            assert completed_detail["turns"][0]["tools"][0]["status"] == "completed"
-            assert (
-                completed_detail["turns"][0]["response_text"]
-                == "processed:please run diagnostic job now"
+            assert any(
+                item["item_type"] == "assistant_message"
+                and item["payload"]["text"] == "processed:please run diagnostic job now"
+                for item in completed_detail["items"]
             )

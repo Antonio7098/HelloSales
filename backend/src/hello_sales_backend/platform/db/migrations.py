@@ -7,6 +7,9 @@ from hello_sales_backend.platform.db.models import (
     AgentStreamEventRecord,
     AgentToolCallRecord,
     AgentTurnRecord,
+    SessionItemRecord,
+    SessionRecord,
+    SessionSummaryRecord,
     TaskRunRecord,
 )
 
@@ -16,6 +19,9 @@ __all__ = [
     "AgentStreamEventRecord",
     "AgentToolCallRecord",
     "AgentTurnRecord",
+    "SessionItemRecord",
+    "SessionRecord",
+    "SessionSummaryRecord",
     "TaskRunRecord",
     "metadata",
 ]

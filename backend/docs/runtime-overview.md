@@ -6,7 +6,7 @@ This document explains the implemented runtime model of the HelloSales backend.
 It describes:
 - how the app starts
 - how the composition root is assembled
-- how requests, background jobs, workflows, agent runs, and worker runs flow through the system
+- how requests, background jobs, sessions, attached agent execution, and worker runs flow through the system
 - which runtime services are foundational
 
 ## Top-Level Shape
@@ -62,7 +62,7 @@ create_app()
 - background task runner
 - workflow runtime and executor
 - health service
-- system, jobs, agent-runs, and worker-runs modules
+- system, jobs, sessions, agent-runs, and worker-runs modules
 - agent registry and generic agent runtime
 - worker registry and worker runtime
 
@@ -75,6 +75,7 @@ The container builds:
 - unit-of-work factory
 - task run store
 - agent store
+- session store
 
 This is exposed through `DatabaseRuntime` in `platform/composition/app_container.py`.
 
@@ -148,7 +149,14 @@ The runtime wrapper:
 
 ## Application Capability Modules
 
-The backend currently exposes three modules:
+The backend currently exposes four modules:
+
+### `modules/sessions`
+Purpose:
+- session-first conversational API
+- durable conversation chronology
+- session summary state and materialized summaries
+- approval and cancellation entrypoints for attached execution
 
 ### `modules/system`
 Purpose:
@@ -174,10 +182,10 @@ The jobs service starts a diagnostic LLM workflow through the task runner and wo
 
 ### `modules/agent_runs`
 Purpose:
-- operational surface for generic agent runs
-- run creation, append-turn, approval, event replay, cancellation
+- attached execution facade over the generic agent runtime
+- run creation, append-turn, approval, event replay, cancellation for session-backed execution
 
-The agent-runs module is the public application facade over the generic agent runtime.
+The agent-runs module remains an internal-facing execution module while `/sessions` is the public conversation root.
 
 ### `modules/worker_runs`
 Purpose:
@@ -186,7 +194,7 @@ Purpose:
 
 The worker-runs module is the public application facade over the worker runtime.
 
-## Agent Execution Model
+## Session And Agent Execution Model
 
 The generic agent runtime lives in:
 - `platform/agents/runtime.py`
@@ -194,24 +202,28 @@ The generic agent runtime lives in:
 Execution shape:
 
 ```text
-AgentRunService
--> create run + turn
+SessionService
+-> create session + first user message
+-> AgentRunService.start_run(session_id=...)
 -> schedule background task
 -> GenericAgentRuntime.process_turn()
 -> Stageflow-backed pipeline
    -> prepare_turn
    -> execute_tools
    -> generate_response
+-> mirror chronology into session items
+-> optionally schedule session summary generation
 -> persist run/turn/tool/event state
 -> emit operational signal on failure
 ```
 
-The runtime currently owns:
-- run lifecycle state
-- turn lifecycle state
+The combined session/agent runtime currently owns:
+- session lifecycle state
+- session item chronology
+- agent run and turn lifecycle state
 - tool-call lifecycle state
 - approval pause handling
-- event append-only history
+- summary task lifecycle and materialized summary state
 - completion / failure / cancellation transitions
 
 ## Worker Execution Model
@@ -248,7 +260,7 @@ The top-level router lives in:
 
 Mounted route groups:
 - `/health`
-- `/agent-runs`
+- `/sessions`
 - `/worker-runs`
 - `/jobs`
 - `/system`

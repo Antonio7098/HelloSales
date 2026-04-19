@@ -62,20 +62,20 @@ def _json_dict(payload: object) -> dict[str, Any]:
     return cast(dict[str, Any], payload)
 
 
-async def _wait_for_run_status(
+async def _wait_for_session_status(
     client: AsyncClient,
-    run_id: str,
+    session_id: str,
     *,
     target_statuses: set[str],
     attempts: int = 50,
 ) -> dict[str, Any]:
     for _ in range(attempts):
-        response = await client.get(f"/api/agent-runs/{run_id}")
+        response = await client.get(f"/api/sessions/{session_id}")
         payload = _json_dict(response.json()["data"])
         if payload["status"] in target_statuses:
             return payload
         await asyncio.sleep(0.02)
-    raise AssertionError(f"run {run_id} did not reach one of {sorted(target_statuses)}")
+    raise AssertionError(f"session {session_id} did not reach one of {sorted(target_statuses)}")
 
 
 @pytest.mark.asyncio
@@ -94,26 +94,26 @@ async def test_agent_runs_are_visible_in_metrics_and_diagnostics(tmp_path: Path)
         transport = ASGITransport(app=app, raise_app_exceptions=True)
         async with AsyncClient(transport=transport, base_url="http://testserver") as client:
             completed_start = await client.post(
-                "/api/agent-runs",
+                "/api/sessions",
                 json={"input_text": "show me the current system status"},
             )
             assert completed_start.status_code == 200
-            completed_run_id = completed_start.json()["data"]["run_id"]
-            completed_detail = await _wait_for_run_status(
+            completed_session_id = completed_start.json()["data"]["session_id"]
+            completed_detail = await _wait_for_session_status(
                 client,
-                completed_run_id,
+                completed_session_id,
                 target_statuses={"completed"},
             )
 
             approval_start = await client.post(
-                "/api/agent-runs",
+                "/api/sessions",
                 json={"input_text": "please run diagnostic job now"},
             )
             assert approval_start.status_code == 200
-            approval_run_id = approval_start.json()["data"]["run_id"]
-            awaiting_detail = await _wait_for_run_status(
+            approval_session_id = approval_start.json()["data"]["session_id"]
+            awaiting_detail = await _wait_for_session_status(
                 client,
-                approval_run_id,
+                approval_session_id,
                 target_statuses={"awaiting_approval"},
             )
 
@@ -125,6 +125,8 @@ async def test_agent_runs_are_visible_in_metrics_and_diagnostics(tmp_path: Path)
     diagnostics_payload = diagnostics.json()["data"]
     assert diagnostics_payload["agents"]["total_count"] == 2
     assert diagnostics_payload["agents"]["awaiting_approval_count"] == 1
+    assert diagnostics_payload["sessions"]["total_count"] == 2
+    assert diagnostics_payload["sessions"]["awaiting_approval_count"] == 1
     assert diagnostics_payload["observability"]["metrics"]["agents_enabled"] is True
     assert 'hello_sales_agent_turn_executions_started_total{profile="generic"} 2.0' in metrics.text
     assert (

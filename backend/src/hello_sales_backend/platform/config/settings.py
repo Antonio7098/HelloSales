@@ -62,6 +62,7 @@ class Settings(BaseSettings):
     generic_agent_model: str = ""
     generic_agent_base_url: str = ""
     generic_agent_timeout_seconds: float = Field(default=30.0, gt=0)
+    session_summary_turn_interval: int = Field(default=8, ge=1)
     groq_api_key: str = ""
     openrouter_api_key: str = ""
     openai_api_key: str = ""

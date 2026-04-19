@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-PromptOwnerKind = Literal["agent", "worker"]
+PromptOwnerKind = Literal["agent", "worker", "session"]
 
 
 @dataclass(slots=True, frozen=True)

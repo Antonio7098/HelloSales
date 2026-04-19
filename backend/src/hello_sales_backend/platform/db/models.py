@@ -52,6 +52,7 @@ class AgentRunRecord(Base):
     request_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     trace_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     actor_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    session_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     prompt_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     prompt_version: Mapped[str | None] = mapped_column(String(64), nullable=True)
     prompt_owner_kind: Mapped[str | None] = mapped_column(String(32), nullable=True)
@@ -170,3 +171,83 @@ class AgentStreamEventRecord(Base):
 
     def set_payload(self, payload: dict[str, object]) -> None:
         self.payload_json = json.dumps(payload, sort_keys=True)
+
+
+class SessionRecord(Base):
+    """Persist durable session state."""
+
+    __tablename__ = "sessions"
+
+    session_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    profile_name: Mapped[str] = mapped_column(String(128), nullable=False)
+    actor_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    user_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    org_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    request_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    trace_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    latest_item_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    latest_run_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    summary_task_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    summary_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    last_summarized_item_sequence: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    error_code: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    error_category: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utc_now)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class SessionItemRecord(Base):
+    """Persist append-only session chronology."""
+
+    __tablename__ = "session_items"
+
+    item_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    session_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    sequence_no: Mapped[int] = mapped_column(Integer, nullable=False)
+    item_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    actor_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    run_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    turn_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    tool_call_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    prompt_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    prompt_version: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    prompt_owner_kind: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    prompt_owner_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    prompt_purpose: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    prompt_checksum: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    payload_json: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utc_now)
+
+    def set_payload(self, payload: dict[str, object]) -> None:
+        self.payload_json = json.dumps(payload, sort_keys=True)
+
+
+class SessionSummaryRecord(Base):
+    """Persist the latest materialized session summary."""
+
+    __tablename__ = "session_summaries"
+
+    summary_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    session_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True, unique=True)
+    coverage_start_sequence: Mapped[int] = mapped_column(Integer, nullable=False)
+    coverage_end_sequence: Mapped[int] = mapped_column(Integer, nullable=False)
+    summary_text: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    task_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    provider_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    model_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    prompt_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    prompt_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    prompt_owner_kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    prompt_owner_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    prompt_purpose: Mapped[str] = mapped_column(String(128), nullable=False)
+    prompt_checksum: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    error_code: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    error_category: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utc_now)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

@@ -15,6 +15,7 @@ They are structured with:
 ## Contract Files
 
 - `architecture.md` - Core architecture rules and layering principles
+- `frontend.md` - Frontend structure, ownership boundaries, state placement, API access, and extension rules
 - `errors.md` - Error handling, logging, and failure visibility requirements
 - `observability.md` - Logging, correlation, health, and diagnostics requirements
 - `testing.md` - Test seams, coverage, and determinism requirements

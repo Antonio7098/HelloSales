@@ -24,9 +24,20 @@ from hello_sales_backend.platform.db.models import (
     AgentStreamEventRecord,
     AgentToolCallRecord,
     AgentTurnRecord,
+    SessionItemRecord,
+    SessionRecord,
+    SessionSummaryRecord,
     TaskRunRecord,
 )
 from hello_sales_backend.platform.llm import EffectivePromptRef
+from hello_sales_backend.platform.sessions.models import (
+    Session,
+    SessionItem,
+    SessionItemType,
+    SessionStatus,
+    SessionSummary,
+    SessionSummaryStatus,
+)
 from hello_sales_backend.platform.tasks.models import TaskSnapshot
 
 
@@ -138,6 +149,7 @@ class SqlAlchemyAgentStore:
                 request_id=run.request_id,
                 trace_id=run.trace_id,
                 actor_id=run.actor_id,
+                session_id=run.session_id,
                 **_prompt_kwargs(run.prompt),
                 latest_turn_id=run.latest_turn_id,
                 error_code=run.error_code,
@@ -167,6 +179,7 @@ class SqlAlchemyAgentStore:
             record.request_id = run.request_id
             record.trace_id = run.trace_id
             record.actor_id = run.actor_id
+            record.session_id = run.session_id
             record.prompt_id = run.prompt.prompt_id if run.prompt else None
             record.prompt_version = run.prompt.version if run.prompt else None
             record.prompt_owner_kind = run.prompt.owner_kind if run.prompt else None
@@ -394,6 +407,7 @@ class SqlAlchemyAgentStore:
             request_id=record.request_id,
             trace_id=record.trace_id,
             actor_id=record.actor_id,
+            session_id=record.session_id,
             prompt=_map_prompt(
                 prompt_id=record.prompt_id,
                 prompt_version=record.prompt_version,
@@ -473,4 +487,244 @@ class SqlAlchemyAgentStore:
             code=record.code,
             payload=_load_json(record.payload_json) or {},
             created_at=record.created_at,
+        )
+
+
+class SqlAlchemySessionStore:
+    """Persist neutral session state and chronology."""
+
+    def __init__(self, session_factory: async_sessionmaker[AsyncSession]) -> None:
+        self._session_factory = session_factory
+
+    async def create_session(self, session: Session) -> None:
+        async with self._session_factory() as db:
+            db.add(
+                SessionRecord(
+                    session_id=session.session_id,
+                    status=session.status.value,
+                    profile_name=session.profile_name,
+                    actor_id=session.actor_id,
+                    user_id=session.user_id,
+                    org_id=session.org_id,
+                    request_id=session.request_id,
+                    trace_id=session.trace_id,
+                    latest_item_id=session.latest_item_id,
+                    latest_run_id=session.latest_run_id,
+                    summary_task_id=session.summary_task_id,
+                    summary_status=session.summary_status,
+                    last_summarized_item_sequence=session.last_summarized_item_sequence,
+                    error_code=session.error_code,
+                    error_category=session.error_category,
+                    error_message=session.error_message,
+                    created_at=session.created_at,
+                    updated_at=session.updated_at,
+                    completed_at=session.completed_at,
+                )
+            )
+            await db.commit()
+
+    async def get_session(self, session_id: str) -> Session | None:
+        async with self._session_factory() as db:
+            record = await db.get(SessionRecord, session_id)
+            return None if record is None else self._map_session(record)
+
+    async def update_session(self, session: Session) -> None:
+        async with self._session_factory() as db:
+            record = await db.get(SessionRecord, session.session_id)
+            if record is None:
+                return
+            record.status = session.status.value
+            record.profile_name = session.profile_name
+            record.actor_id = session.actor_id
+            record.user_id = session.user_id
+            record.org_id = session.org_id
+            record.request_id = session.request_id
+            record.trace_id = session.trace_id
+            record.latest_item_id = session.latest_item_id
+            record.latest_run_id = session.latest_run_id
+            record.summary_task_id = session.summary_task_id
+            record.summary_status = session.summary_status
+            record.last_summarized_item_sequence = session.last_summarized_item_sequence
+            record.error_code = session.error_code
+            record.error_category = session.error_category
+            record.error_message = session.error_message
+            record.updated_at = session.updated_at
+            record.completed_at = session.completed_at
+            await db.commit()
+
+    async def list_sessions(self, *, limit: int = 50) -> list[Session]:
+        async with self._session_factory() as db:
+            result = await db.execute(select(SessionRecord).order_by(SessionRecord.created_at.desc()).limit(limit))
+            return [self._map_session(item) for item in result.scalars()]
+
+    async def create_item(self, item: SessionItem) -> None:
+        async with self._session_factory() as db:
+            record = SessionItemRecord(
+                item_id=item.item_id,
+                session_id=item.session_id,
+                sequence_no=item.sequence_no,
+                item_type=item.item_type.value,
+                actor_id=item.actor_id,
+                run_id=item.run_id,
+                turn_id=item.turn_id,
+                tool_call_id=item.tool_call_id,
+                **_prompt_kwargs(item.prompt),
+                created_at=item.created_at,
+            )
+            record.set_payload(item.payload)
+            db.add(record)
+            await db.commit()
+
+    async def list_items(self, session_id: str, *, limit: int = 500) -> list[SessionItem]:
+        async with self._session_factory() as db:
+            result = await db.execute(
+                select(SessionItemRecord)
+                .where(SessionItemRecord.session_id == session_id)
+                .order_by(SessionItemRecord.sequence_no.asc())
+                .limit(limit)
+            )
+            return [self._map_item(item) for item in result.scalars()]
+
+    async def next_item_sequence(self, session_id: str) -> int:
+        async with self._session_factory() as db:
+            result = await db.execute(
+                select(func.max(SessionItemRecord.sequence_no)).where(SessionItemRecord.session_id == session_id)
+            )
+            current = result.scalar_one_or_none()
+            return (int(current) if current is not None else 0) + 1
+
+    async def upsert_summary(self, summary: SessionSummary) -> None:
+        async with self._session_factory() as db:
+            result = await db.execute(
+                select(SessionSummaryRecord).where(SessionSummaryRecord.session_id == summary.session_id).limit(1)
+            )
+            record = result.scalar_one_or_none()
+            if record is None:
+                record = SessionSummaryRecord(
+                    summary_id=summary.summary_id,
+                    session_id=summary.session_id,
+                    coverage_start_sequence=summary.coverage_start_sequence,
+                    coverage_end_sequence=summary.coverage_end_sequence,
+                    summary_text=summary.summary_text,
+                    status=summary.status.value,
+                    task_id=summary.task_id,
+                    provider_name=summary.provider_name,
+                    model_name=summary.model_name,
+                    prompt_id=summary.prompt.prompt_id,
+                    prompt_version=summary.prompt.version,
+                    prompt_owner_kind=summary.prompt.owner_kind,
+                    prompt_owner_id=summary.prompt.owner_id,
+                    prompt_purpose=summary.prompt.purpose,
+                    prompt_checksum=summary.prompt.checksum,
+                    error_code=summary.error_code,
+                    error_category=summary.error_category,
+                    error_message=summary.error_message,
+                    created_at=summary.created_at,
+                    updated_at=summary.updated_at,
+                    completed_at=summary.completed_at,
+                )
+                db.add(record)
+            else:
+                record.summary_id = summary.summary_id
+                record.coverage_start_sequence = summary.coverage_start_sequence
+                record.coverage_end_sequence = summary.coverage_end_sequence
+                record.summary_text = summary.summary_text
+                record.status = summary.status.value
+                record.task_id = summary.task_id
+                record.provider_name = summary.provider_name
+                record.model_name = summary.model_name
+                record.prompt_id = summary.prompt.prompt_id
+                record.prompt_version = summary.prompt.version
+                record.prompt_owner_kind = summary.prompt.owner_kind
+                record.prompt_owner_id = summary.prompt.owner_id
+                record.prompt_purpose = summary.prompt.purpose
+                record.prompt_checksum = summary.prompt.checksum
+                record.error_code = summary.error_code
+                record.error_category = summary.error_category
+                record.error_message = summary.error_message
+                record.updated_at = summary.updated_at
+                record.completed_at = summary.completed_at
+            await db.commit()
+
+    async def get_latest_summary(self, session_id: str) -> SessionSummary | None:
+        async with self._session_factory() as db:
+            result = await db.execute(
+                select(SessionSummaryRecord).where(SessionSummaryRecord.session_id == session_id).limit(1)
+            )
+            record = result.scalar_one_or_none()
+            return None if record is None else self._map_summary(record)
+
+    @staticmethod
+    def _map_session(record: SessionRecord) -> Session:
+        return Session(
+            session_id=record.session_id,
+            status=SessionStatus(record.status),
+            profile_name=record.profile_name,
+            actor_id=record.actor_id,
+            user_id=record.user_id,
+            org_id=record.org_id,
+            request_id=record.request_id,
+            trace_id=record.trace_id,
+            latest_item_id=record.latest_item_id,
+            latest_run_id=record.latest_run_id,
+            summary_task_id=record.summary_task_id,
+            summary_status=record.summary_status,
+            last_summarized_item_sequence=record.last_summarized_item_sequence,
+            created_at=record.created_at,
+            updated_at=record.updated_at,
+            completed_at=record.completed_at,
+            error_code=record.error_code,
+            error_category=record.error_category,
+            error_message=record.error_message,
+        )
+
+    @staticmethod
+    def _map_item(record: SessionItemRecord) -> SessionItem:
+        return SessionItem(
+            item_id=record.item_id,
+            session_id=record.session_id,
+            sequence_no=record.sequence_no,
+            item_type=SessionItemType(record.item_type),
+            payload=_load_json(record.payload_json) or {},
+            actor_id=record.actor_id,
+            run_id=record.run_id,
+            turn_id=record.turn_id,
+            tool_call_id=record.tool_call_id,
+            prompt=_map_prompt(
+                prompt_id=record.prompt_id,
+                prompt_version=record.prompt_version,
+                prompt_owner_kind=record.prompt_owner_kind,
+                prompt_owner_id=record.prompt_owner_id,
+                prompt_purpose=record.prompt_purpose,
+                prompt_checksum=record.prompt_checksum,
+            ),
+            created_at=record.created_at,
+        )
+
+    @staticmethod
+    def _map_summary(record: SessionSummaryRecord) -> SessionSummary:
+        return SessionSummary(
+            summary_id=record.summary_id,
+            session_id=record.session_id,
+            coverage_start_sequence=record.coverage_start_sequence,
+            coverage_end_sequence=record.coverage_end_sequence,
+            summary_text=record.summary_text,
+            prompt=EffectivePromptRef(
+                prompt_id=record.prompt_id,
+                version=record.prompt_version,
+                owner_kind=record.prompt_owner_kind,  # type: ignore[arg-type]
+                owner_id=record.prompt_owner_id,
+                purpose=record.prompt_purpose,
+                checksum=record.prompt_checksum,
+            ),
+            status=SessionSummaryStatus(record.status),
+            task_id=record.task_id,
+            provider_name=record.provider_name,
+            model_name=record.model_name,
+            error_code=record.error_code,
+            error_category=record.error_category,
+            error_message=record.error_message,
+            created_at=record.created_at,
+            updated_at=record.updated_at,
+            completed_at=record.completed_at,
         )
