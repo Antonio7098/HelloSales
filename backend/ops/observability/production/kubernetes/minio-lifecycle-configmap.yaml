@@ -1,0 +1,53 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: minio-lifecycle-config
+data:
+  loki-lifecycle.json: |
+    {
+      "Rules": [
+        {
+          "ID": "expire-loki-objects",
+          "Status": "Enabled",
+          "Filter": {},
+          "Expiration": {
+            "Days": 30
+          },
+          "NoncurrentVersionExpiration": {
+            "NoncurrentDays": 30
+          }
+        }
+      ]
+    }
+  tempo-lifecycle.json: |
+    {
+      "Rules": [
+        {
+          "ID": "expire-tempo-objects",
+          "Status": "Enabled",
+          "Filter": {},
+          "Expiration": {
+            "Days": 14
+          },
+          "NoncurrentVersionExpiration": {
+            "NoncurrentDays": 14
+          }
+        }
+      ]
+    }
+  backups-lifecycle.json: |
+    {
+      "Rules": [
+        {
+          "ID": "expire-backup-objects",
+          "Status": "Enabled",
+          "Filter": {},
+          "Expiration": {
+            "Days": 180
+          },
+          "NoncurrentVersionExpiration": {
+            "NoncurrentDays": 180
+          }
+        }
+      ]
+    }

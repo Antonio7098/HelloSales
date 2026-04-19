@@ -11,6 +11,7 @@ from typing import Protocol, cast
 from opentelemetry.trace import Span
 
 from hello_sales_backend.platform.config.settings import Settings
+from hello_sales_backend.platform.llm import EffectivePromptRef
 from hello_sales_backend.platform.observability.events import OperationalEvent
 from hello_sales_backend.platform.observability.metrics import (
     MetricsRuntime,
@@ -135,6 +136,9 @@ class ObservabilityRuntime:
             metrics=self.metrics.snapshot(),
             tracing=self.tracing.snapshot(),
         )
+
+    def shutdown(self) -> None:
+        self.tracing.shutdown()
 
     def on_http_request_started(self) -> None:
         self.metrics.on_http_request_started()
@@ -278,6 +282,7 @@ class ObservabilityRuntime:
         run_id: str,
         turn_id: str,
         profile_name: str,
+        prompt: EffectivePromptRef | None,
         request_id: str | None,
         trace_id: str | None,
     ) -> AbstractContextManager[Span | None]:
@@ -287,6 +292,7 @@ class ObservabilityRuntime:
                 run_id=run_id,
                 turn_id=turn_id,
                 profile_name=profile_name,
+                prompt=prompt,
                 request_id=request_id,
                 trace_id=trace_id,
             ),
@@ -379,6 +385,7 @@ class ObservabilityRuntime:
         *,
         run_id: str,
         worker_name: str,
+        prompt: EffectivePromptRef | None,
         request_id: str | None,
         trace_id: str | None,
         execution_mode: str,
@@ -388,6 +395,7 @@ class ObservabilityRuntime:
             self.tracing.start_worker_run_span(
                 run_id=run_id,
                 worker_name=worker_name,
+                prompt=prompt,
                 request_id=request_id,
                 trace_id=trace_id,
                 execution_mode=execution_mode,
@@ -433,6 +441,9 @@ def _default_tracing_snapshot() -> TracingRuntimeSnapshot:
         service_name="hello-sales-backend",
         service_version="0.1.0",
         environment="development",
+        otlp_endpoint="",
+        otlp_headers={},
+        otlp_timeout_seconds=10.0,
         http_enabled=False,
         background_tasks_enabled=False,
         agents_enabled=False,
@@ -468,6 +479,9 @@ def build_tracing_runtime(settings: Settings) -> TracingRuntime:
         service_name=settings.resolved_observability_service_name,
         service_version=settings.resolved_observability_service_version,
         environment=settings.environment,
+        otlp_endpoint=settings.observability_tracing_otlp_endpoint,
+        otlp_headers=settings.resolved_observability_tracing_otlp_headers,
+        otlp_timeout_seconds=settings.observability_tracing_otlp_timeout_seconds,
         http_enabled=settings.observability_tracing_http_enabled,
         background_tasks_enabled=settings.observability_tracing_background_tasks_enabled,
         agents_enabled=settings.observability_tracing_agents_enabled,

@@ -67,6 +67,11 @@ class GenericAgentRuntime:
                 operation="agent.process_turn",
                 component="agent",
             )
+        definition = self.agents.require(run.profile_name)
+        if run.prompt is None:
+            run.prompt = definition.effective_prompt_ref()
+        if turn.prompt is None:
+            turn.prompt = run.prompt
         started_at = perf_counter()
         await self._mark_running(run=run, turn=turn)
         self.observability.on_agent_turn_execution_started(profile_name=run.profile_name)
@@ -75,11 +80,11 @@ class GenericAgentRuntime:
                 run_id=run.run_id,
                 turn_id=turn.turn_id,
                 profile_name=run.profile_name,
+                prompt=turn.prompt,
                 request_id=run.request_id,
                 trace_id=run.trace_id,
             ) as span:
                 try:
-                    definition = self.agents.require(run.profile_name)
                     result = await self._run_pipeline(run=run, turn=turn, definition=definition)
                 except asyncio.CancelledError:
                     await self._mark_cancelled(run=run, turn=turn)
@@ -294,6 +299,7 @@ class GenericAgentRuntime:
                             trace_id=run.trace_id,
                             actor_id=run.actor_id,
                             operation="agent.llm.generate_text",
+                            prompt=turn.prompt,
                         ),
                     )
                 else:
@@ -331,7 +337,13 @@ class GenericAgentRuntime:
                 ),
             ],
         )
-        self._logger.info("agent.turn.pipeline.started", run_id=run.run_id, turn_id=turn.turn_id)
+        self._logger.info(
+            "agent.turn.pipeline.started",
+            run_id=run.run_id,
+            turn_id=turn.turn_id,
+            profile_name=run.profile_name,
+            **self._prompt_fields(turn.prompt),
+        )
         try:
             results = await pipeline.run()
         except UnifiedStageExecutionError as exc:
@@ -339,7 +351,13 @@ class GenericAgentRuntime:
                 raise exc.original from exc
             raise
         output = results["generate_response"].data
-        self._logger.info("agent.turn.pipeline.completed", run_id=run.run_id, turn_id=turn.turn_id)
+        self._logger.info(
+            "agent.turn.pipeline.completed",
+            run_id=run.run_id,
+            turn_id=turn.turn_id,
+            profile_name=run.profile_name,
+            **self._prompt_fields(turn.prompt),
+        )
         return dict(output)
 
     async def _execute_tool_call(
@@ -600,6 +618,14 @@ class GenericAgentRuntime:
                 payload=structured.to_dict(),
             )
         )
+        self._logger.error(
+            "agent.turn.failed",
+            run_id=run.run_id,
+            turn_id=turn.turn_id,
+            profile_name=run.profile_name,
+            code=structured.code,
+            **self._prompt_fields(turn.prompt),
+        )
 
     async def _append_event(
         self,
@@ -612,6 +638,8 @@ class GenericAgentRuntime:
         code: str | None = None,
     ) -> None:
         run = await self.store.get_run(run_id)
+        turn = await self.store.get_turn(turn_id) if turn_id is not None else None
+        prompt_payload = self._prompt_fields(turn.prompt if turn is not None else None)
         await self.store.append_event(
             AgentStreamEvent(
                 event_id=new_id(),
@@ -623,10 +651,26 @@ class GenericAgentRuntime:
                 request_id=run.request_id if run is not None else None,
                 trace_id=run.trace_id if run is not None else None,
                 actor_id=run.actor_id if run is not None else None,
-                payload=payload,
+                payload={**prompt_payload, **payload},
                 code=code,
             )
         )
+
+    @staticmethod
+    def _prompt_fields(prompt: object | None) -> dict[str, object]:
+        if prompt is None:
+            return {}
+        payload: dict[str, object] = {
+            "prompt_id": prompt.prompt_id,
+            "prompt_version": prompt.version,
+            "prompt_owner_kind": prompt.owner_kind,
+            "prompt_owner_id": prompt.owner_id,
+            "prompt_purpose": prompt.purpose,
+        }
+        checksum = prompt.checksum
+        if checksum is not None:
+            payload["prompt_checksum"] = checksum
+        return payload
 
     async def _require_tool_call(
         self, tool_call_id: str, *, run_id: str, turn_id: str

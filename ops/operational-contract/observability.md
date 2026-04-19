@@ -81,6 +81,7 @@ Request, task, and workflow correlation identifiers must survive subsystem bound
 - preserve request and trace identifiers across downstream calls where possible
 - attach correlation metadata to background work and workflow execution
 - include correlation identifiers in structured failures and events
+- when LLM-backed execution is involved, preserve the effective prompt reference alongside correlation metadata in logs, traces, events, and diagnostics where that execution is surfaced
 
 **Forbidden**
 - generating unrelated identifiers for the same runtime path without reason
@@ -88,6 +89,7 @@ Request, task, and workflow correlation identifiers must survive subsystem bound
 
 **Evidence**
 - logs, events, and task records contain request or trace metadata
+- LLM-backed logs, events, spans, or diagnostics include stable prompt identity fields when applicable
 - diagnostics or task snapshots surface correlation fields
 
 ### OBS-HEALTH-001: Health Endpoints Must Reflect Operational Truth

@@ -4,9 +4,9 @@ This protocol defines how to create the Sprint Reasoning document.
 
 ## Purpose
 
-The reasoning agent reads the tracker, governing contracts, and relevant existing code, then produces a reasoning document that maps sprint scope to contract requirements and justifies the decisions needed to satisfy them.
+The reasoning agent reads the governing contracts and relevant existing code, then produces a reasoning document that maps sprint scope to contract requirements and justifies the decisions needed to satisfy them.
 
-The Sprint Reasoning is not a restatement of the tracker and not merely an implementation blueprint.
+The Sprint Reasoning is not a restatement of sprint scope and not merely an implementation blueprint.
 It is a structured reasoning artifact whose job is to force deep analysis before coding:
 - what requirements apply
 - how they constrain the change
@@ -16,10 +16,9 @@ It is a structured reasoning artifact whose job is to force deep analysis before
 
 ## Inputs
 
-1. **Tracker document** - `ops/sprints/sprint-[XX]-[name]/tracker.md`
-2. **Governing contracts** - The contract documents currently in force for the work being reviewed
-3. **Relevant existing code** - Code and tests relevant to the sprint scope
-4. **Known dependencies or unfinished work** - Existing constraints that affect delivery
+1. **Governing contracts** - The contract documents currently in force for the work being reviewed
+2. **Relevant existing code** - Code and tests relevant to the sprint scope
+3. **Known dependencies or unfinished work** - Existing constraints that affect delivery
 
 ## Output
 
@@ -27,15 +26,7 @@ It is a structured reasoning artifact whose job is to force deep analysis before
 
 ## Procedure
 
-### Step 1: Read the Tracker
-
-Read the tracker document to understand:
-- what features are in scope
-- what the primary and secondary goals are
-- what success criteria define completion
-- what dependencies, risks, and blockers are already known
-
-### Step 2: Read Governing Contracts
+### Step 1: Read Governing Contracts
 
 Read the governing contract documents and extract the requirements that apply to the sprint.
 
@@ -51,7 +42,7 @@ For each applicable requirement, determine:
 - what design choices are available
 - what evidence would later show conformance or deviation
 
-### Step 3: Read Relevant Existing Code
+### Step 2: Read Relevant Existing Code
 
 Examine existing code and tests to understand:
 - how similar features are structured
@@ -61,7 +52,7 @@ Examine existing code and tests to understand:
 
 The reasoning must stay grounded in the actual codebase rather than idealised structure.
 
-### Step 4: Analyse Each Feature Against The Requirements
+### Step 3: Analyse Each Feature Against The Requirements
 
 For each in-scope feature, analyse:
 - which requirements apply
@@ -75,7 +66,7 @@ For each in-scope feature, analyse:
 The emphasis is reasoning, not just listing components.
 The document should capture the chain of analysis that leads from requirement to decision.
 
-### Step 5: Justify Decisions Explicitly
+### Step 4: Justify Decisions Explicitly
 
 For every meaningful design or implementation decision, record:
 - **Requirement context** - which requirement or set of requirements drove the decision
@@ -85,7 +76,7 @@ For every meaningful design or implementation decision, record:
 - **Why not the alternatives** - what was rejected and why
 - **Evidence to verify later** - how review will know the decision was implemented correctly
 
-### Step 6: Record Deviations, Risks, Assumptions, and Unknowns
+### Step 5: Record Deviations, Risks, Assumptions, and Unknowns
 
 If the sprint cannot fully satisfy a governing rule or the preferred design, document a deviation explicitly.
 
@@ -102,7 +93,7 @@ Also record:
 - external dependencies that could block delivery
 - places where the contract language is too ambiguous to support a confident decision
 
-### Step 7: Write the Reasoning Document
+### Step 6: Write the Reasoning Document
 
 Write the document using the template, ensuring:
 1. **Readable prose format** - easy to read under delivery pressure
@@ -113,10 +104,10 @@ Write the document using the template, ensuring:
 6. **Explicit evidence expectations** - define what execution and review must later verify
 7. **Trade-offs documented** - any deviations or compromises are explicit
 
-### Step 8: Verify Exit Criteria
+### Step 7: Verify Exit Criteria
 
 Before completing, verify:
-- [ ] All tracker features are covered
+- [ ] Sprint scope is covered
 - [ ] Applicable requirements are mapped
 - [ ] Non-applicable and ambiguous requirements are recorded when relevant
 - [ ] Important decisions are justified against the requirements

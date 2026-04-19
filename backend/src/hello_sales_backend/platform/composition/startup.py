@@ -134,6 +134,7 @@ async def shutdown_container(container: AppContainer) -> None:
 
     logger = get_logger("hello_sales_backend.startup")
     await container.tasks.shutdown()
+    container.observability.shutdown()
     await container.providers.aclose()
     await container.db.engine.dispose()
     logger.info("application.shutdown.completed", environment=container.settings.environment)

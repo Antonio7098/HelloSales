@@ -45,6 +45,8 @@ class WorkerRuntimeStatus(BaseModel):
     run_id: str
     worker_name: str
     status: str
+    prompt_id: str | None = None
+    prompt_version: str | None = None
     execution_mode: str
     request_id: str | None = None
     trace_id: str | None = None

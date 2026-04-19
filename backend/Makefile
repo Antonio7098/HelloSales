@@ -1,4 +1,4 @@
-.PHONY: dev-db-up dev-db-down dev-db-logs verify-db migrate revision test test-postgres mypy smoke smoke-provider-agent smoke-provider-baseline smoke-provider-observer smoke-provider-append smoke-provider-approval smoke-provider-events smoke-provider-worker scaffold-module
+.PHONY: dev-db-up dev-db-down dev-db-logs obs-up obs-down obs-logs verify-db migrate revision test test-postgres mypy smoke smoke-provider-agent smoke-provider-baseline smoke-provider-observer smoke-provider-append smoke-provider-approval smoke-provider-events smoke-provider-worker scaffold-module
 
 dev-db-up:
 	docker compose -f docker-compose.dev.yml up -d postgres
@@ -8,6 +8,15 @@ dev-db-down:
 
 dev-db-logs:
 	docker compose -f docker-compose.dev.yml logs -f postgres
+
+obs-up:
+	docker compose -f ops/observability/docker-compose.observability.yml up -d
+
+obs-down:
+	docker compose -f ops/observability/docker-compose.observability.yml down
+
+obs-logs:
+	docker compose -f ops/observability/docker-compose.observability.yml logs -f
 
 verify-db:
 	python3 scripts/verify_postgres.py

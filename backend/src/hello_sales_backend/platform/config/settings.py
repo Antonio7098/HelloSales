@@ -19,7 +19,7 @@ class Settings(BaseSettings):
         "openai-compatible": "",
     }
     SUPPORTED_OBSERVABILITY_METRICS_EXPORTERS: ClassVar[set[str]] = {"prometheus"}
-    SUPPORTED_OBSERVABILITY_TRACING_EXPORTERS: ClassVar[set[str]] = {"console", "none"}
+    SUPPORTED_OBSERVABILITY_TRACING_EXPORTERS: ClassVar[set[str]] = {"console", "none", "otlp"}
 
     model_config = SettingsConfigDict(
         env_prefix="HELLO_SALES_",
@@ -51,6 +51,9 @@ class Settings(BaseSettings):
     observability_metrics_workers_enabled: bool = True
     observability_tracing_enabled: bool = False
     observability_tracing_exporter: str = "console"
+    observability_tracing_otlp_endpoint: str = ""
+    observability_tracing_otlp_headers: str = ""
+    observability_tracing_otlp_timeout_seconds: float = Field(default=10.0, gt=0)
     observability_tracing_http_enabled: bool = True
     observability_tracing_background_tasks_enabled: bool = True
     observability_tracing_agents_enabled: bool = True
@@ -75,6 +78,8 @@ class Settings(BaseSettings):
         "observability_metrics_exporter",
         "observability_metrics_endpoint_path",
         "observability_tracing_exporter",
+        "observability_tracing_otlp_endpoint",
+        "observability_tracing_otlp_headers",
         "generic_agent_provider",
         "generic_agent_model",
         "generic_agent_base_url",
@@ -119,6 +124,17 @@ class Settings(BaseSettings):
             supported = ", ".join(sorted(cls.SUPPORTED_OBSERVABILITY_TRACING_EXPORTERS))
             raise ValueError(f"observability_tracing_exporter must be one of: {supported}")
         return value
+
+    @field_validator("observability_tracing_otlp_endpoint")
+    @classmethod
+    def validate_tracing_otlp_endpoint(cls, value: str) -> str:
+        """Allow empty OTLP endpoint but validate configured values."""
+
+        if not value:
+            return value
+        if value.startswith(("http://", "https://")):
+            return value
+        raise ValueError("observability_tracing_otlp_endpoint must start with 'http://' or 'https://'")
 
     @property
     def resolved_generic_agent_provider(self) -> str:
@@ -166,6 +182,24 @@ class Settings(BaseSettings):
         """Return the effective service version used for telemetry resources."""
 
         return self.observability_service_version or self.app_version
+
+    @property
+    def resolved_observability_tracing_otlp_headers(self) -> dict[str, str]:
+        """Parse OTLP headers from a comma-separated key=value string."""
+
+        if not self.observability_tracing_otlp_headers:
+            return {}
+        headers: dict[str, str] = {}
+        for item in self.observability_tracing_otlp_headers.split(","):
+            key, separator, value = item.partition("=")
+            normalized_key = key.strip()
+            normalized_value = value.strip()
+            if separator != "=" or not normalized_key or not normalized_value:
+                raise ValueError(
+                    "observability_tracing_otlp_headers must be a comma-separated list of key=value pairs"
+                )
+            headers[normalized_key] = normalized_value
+        return headers
 
 
 @lru_cache(maxsize=1)

@@ -7,7 +7,7 @@ from hello_sales_backend.modules.jobs.use_cases.jobs_service import JobsService
 from hello_sales_backend.modules.system.use_cases.system_service import SystemService
 
 from .policy import KeywordToolSelectionPolicy
-from .prompts import build_fallback_response, build_messages
+from .prompts import GENERIC_AGENT_RESPONSE_PROMPT
 from .tools import build_tool_catalog
 
 
@@ -23,6 +23,5 @@ def build_generic_agent_definition(
         display_name="Generic Agent",
         tools=build_tool_catalog(system_service=system_service, jobs_service=jobs_service),
         selection_policy=KeywordToolSelectionPolicy(),
-        build_messages=build_messages,
-        build_fallback_response=build_fallback_response,
+        prompt=GENERIC_AGENT_RESPONSE_PROMPT,
     )

@@ -7,7 +7,7 @@ from typing import Protocol
 
 from pydantic import BaseModel
 
-from hello_sales_backend.platform.llm import LLMMessage
+from hello_sales_backend.platform.llm import EffectivePromptRef, LLMMessage
 
 
 class WorkerDefinitionPort(Protocol):
@@ -34,7 +34,12 @@ class WorkerDefinitionPort(Protocol):
     @property
     def validate_output(self) -> Callable[[BaseModel], None] | None: ...
 
+    @property
+    def prompt(self) -> object: ...
+
     def build_messages(self, validated_input: BaseModel, retry_issue: str | None) -> list[LLMMessage]: ...
+
+    def effective_prompt_ref(self) -> EffectivePromptRef: ...
 
 
 class WorkerRegistryPort(Protocol):

@@ -6,6 +6,8 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import StrEnum
 
+from hello_sales_backend.platform.llm import EffectivePromptRef
+
 
 def utc_now() -> datetime:
     """Return the current UTC timestamp."""
@@ -58,6 +60,7 @@ class AgentRun:
     request_id: str | None
     trace_id: str | None
     actor_id: str | None
+    prompt: EffectivePromptRef | None = None
     created_at: datetime = field(default_factory=utc_now)
     updated_at: datetime = field(default_factory=utc_now)
     started_at: datetime | None = None
@@ -78,6 +81,7 @@ class AgentTurn:
     sequence_no: int
     input_text: str
     status: AgentTurnStatus
+    prompt: EffectivePromptRef | None = None
     created_at: datetime = field(default_factory=utc_now)
     started_at: datetime | None = None
     completed_at: datetime | None = None

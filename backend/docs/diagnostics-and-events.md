@@ -159,11 +159,17 @@ That summary includes:
 - whether the metrics endpoint is enabled and where it is mounted
 - whether tracing is enabled
 - which tracing exporter is configured
+- which OTLP endpoint is configured when OTLP tracing is enabled
 - which metric families and tracing boundaries are active
 
 For the agent runtime specifically, diagnostics now expose whether agent metrics and agent tracing are enabled through the same `observability` summary used by the rest of the platform runtime.
 
 This keeps diagnostics operator-useful without turning the diagnostics endpoint into a monitoring dashboard.
+
+In the self-hosted monitoring direction introduced in Sprint 03:
+- `/api/system/diagnostics` remains the canonical in-process operator surface
+- Grafana and the telemetry backends provide durable historical inspection
+- a future custom internal dashboard should consume stable backend-owned summaries and diagnostics rather than reaching into app internals or querying hidden debug routes
 
 ## Task Diagnostics
 

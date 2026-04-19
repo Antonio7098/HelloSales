@@ -54,6 +54,8 @@ class AgentRunSnapshotView(BaseModel):
     run_id: str
     profile_name: str
     status: str
+    prompt_id: str | None = None
+    prompt_version: str | None = None
     request_id: str | None = None
     trace_id: str | None = None
     actor_id: str | None = None
@@ -82,6 +84,8 @@ class WorkerRunSnapshotView(BaseModel):
     run_id: str
     worker_name: str
     status: str
+    prompt_id: str | None = None
+    prompt_version: str | None = None
     execution_mode: str
     request_id: str | None = None
     trace_id: str | None = None
@@ -170,6 +174,7 @@ class TracingDiagnosticsView(BaseModel):
     background_tasks_enabled: bool
     agents_enabled: bool
     workers_enabled: bool
+    otlp_endpoint: str = ""
 
 
 class ObservabilityDiagnosticsView(BaseModel):

@@ -1,0 +1,30 @@
+groups:
+  - name: hello-sales-observability
+    rules:
+      - alert: HelloSalesHighHttp5xxRate
+        expr: sum(rate(hello_sales_http_requests_total{outcome="failure"}[5m])) > 0.2
+        for: 10m
+        labels:
+          severity: warning
+          component: http
+        annotations:
+          summary: Elevated HTTP failure rate
+          description: HTTP failure rate has been above threshold for 10 minutes.
+      - alert: HelloSalesBackgroundTaskFailures
+        expr: sum(rate(hello_sales_background_tasks_failed_total[10m])) > 0
+        for: 10m
+        labels:
+          severity: warning
+          component: tasks
+        annotations:
+          summary: Background tasks are failing
+          description: One or more background task purposes are accumulating failure-like terminal states.
+      - alert: HelloSalesWorkerRunsStuck
+        expr: sum(hello_sales_worker_runs_active) > 20
+        for: 15m
+        labels:
+          severity: warning
+          component: workers
+        annotations:
+          summary: Worker run concurrency is abnormally high
+          description: Worker active count has stayed above 20 for 15 minutes.

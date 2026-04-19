@@ -59,6 +59,8 @@ class WorkerRuntime:
                 component="worker",
             )
         definition = self.workers.require(run.worker_name)
+        if run.prompt is None:
+            run.prompt = definition.effective_prompt_ref()
         started_at = perf_counter()
         await self._mark_running(run)
         self.observability.on_worker_run_started(
@@ -68,6 +70,7 @@ class WorkerRuntime:
         with self.observability.start_worker_run_span(
             run_id=run.run_id,
             worker_name=run.worker_name,
+            prompt=run.prompt,
             request_id=run.request_id,
             trace_id=run.trace_id,
             execution_mode=run.execution_mode.value,
@@ -120,6 +123,7 @@ class WorkerRuntime:
                                     actor_id=run.actor_id,
                                     timeout_seconds=run.timeout_seconds,
                                     operation="worker.llm.generate_json",
+                                    prompt=run.prompt,
                                 ),
                             )
                     except TimeoutError as exc:
@@ -389,7 +393,7 @@ class WorkerRuntime:
             event_type=event_type,
             severity=severity,
             code=code,
-            payload=payload,
+            payload={**self._prompt_fields(run.prompt), **payload},
             request_id=run.request_id,
             trace_id=run.trace_id,
             actor_id=run.actor_id,
@@ -407,6 +411,7 @@ class WorkerRuntime:
                 payload={
                     "run_id": run.run_id,
                     "worker_name": run.worker_name,
+                    **self._prompt_fields(run.prompt),
                     "severity": severity,
                     "code": code,
                     "message": event_type,
@@ -421,5 +426,22 @@ class WorkerRuntime:
             event_type=event_type,
             severity=severity,
             code=code,
+            **self._prompt_fields(run.prompt),
             payload=payload,
         )
+
+    @staticmethod
+    def _prompt_fields(prompt: object | None) -> dict[str, object]:
+        if prompt is None:
+            return {}
+        payload: dict[str, object] = {
+            "prompt_id": prompt.prompt_id,
+            "prompt_version": prompt.version,
+            "prompt_owner_kind": prompt.owner_kind,
+            "prompt_owner_id": prompt.owner_id,
+            "prompt_purpose": prompt.purpose,
+        }
+        checksum = prompt.checksum
+        if checksum is not None:
+            payload["prompt_checksum"] = checksum
+        return payload

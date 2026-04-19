@@ -5,6 +5,7 @@ from __future__ import annotations
 from hello_sales_backend.application.workers.registry import WorkerRegistry
 from hello_sales_backend.modules.worker_runs.use_cases.commands import StartWorkerRunCommand
 from hello_sales_backend.modules.worker_runs.use_cases.views import (
+    PromptRefView,
     WorkerEventView,
     WorkerRunDetailView,
     WorkerRunSummaryView,
@@ -61,6 +62,7 @@ class WorkerRunService:
             request_id=request_id,
             trace_id=trace_id,
             actor_id=actor_id,
+            prompt=definition.effective_prompt_ref(),
             execution_mode=execution_mode,
             max_attempts=command.max_attempts or definition.max_attempts,
             timeout_seconds=command.timeout_seconds or definition.timeout_seconds,
@@ -161,6 +163,7 @@ class WorkerRunService:
             run_id=run.run_id,
             worker_name=run.worker_name,
             status=run.status.value,
+            prompt=WorkerRunService._prompt_view(run.prompt),
             execution_mode=run.execution_mode.value,
             request_id=run.request_id,
             trace_id=run.trace_id,
@@ -178,4 +181,17 @@ class WorkerRunService:
             error_code=run.error_code,
             error_category=run.error_category,
             error_message=run.error_message,
+        )
+
+    @staticmethod
+    def _prompt_view(prompt: object | None) -> PromptRefView | None:
+        if prompt is None:
+            return None
+        return PromptRefView(
+            prompt_id=prompt.prompt_id,
+            version=prompt.version,
+            owner_kind=prompt.owner_kind,
+            owner_id=prompt.owner_id,
+            purpose=prompt.purpose,
+            checksum=prompt.checksum,
         )

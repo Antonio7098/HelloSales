@@ -17,7 +17,9 @@ from hello_sales_backend.modules.agent_runs.use_cases.views import (
     AgentRunSummaryView,
     AgentToolCallView,
     AgentTurnView,
+    PromptRefView,
 )
+from hello_sales_backend.platform.agents.contracts import AgentDefinitionResolverPort
 from hello_sales_backend.platform.agents.models import (
     AgentRun,
     AgentRunStatus,
@@ -45,10 +47,12 @@ class AgentRunService:
         store: AgentStorePort,
         runtime: AgentExecutionRuntime,
         tasks: BackgroundTaskRunner,
+        agents: AgentDefinitionResolverPort,
     ) -> None:
         self._store = store
         self._runtime = runtime
         self._tasks = tasks
+        self._agents = agents
 
     async def start_run(
         self,
@@ -65,6 +69,7 @@ class AgentRunService:
             request_id=request_id,
             trace_id=trace_id,
             actor_id=actor_id,
+            prompt=self._agents.require(command.profile_name).effective_prompt_ref(),
         )
         turn = AgentTurn(
             turn_id=new_id(),
@@ -72,6 +77,7 @@ class AgentRunService:
             sequence_no=await self._store.next_turn_sequence(run.run_id),
             input_text=command.input_text,
             status=AgentTurnStatus.PENDING,
+            prompt=run.prompt,
         )
         run.latest_turn_id = turn.turn_id
         await self._store.create_run(run)
@@ -115,6 +121,7 @@ class AgentRunService:
             sequence_no=await self._store.next_turn_sequence(run_id),
             input_text=command.input_text,
             status=AgentTurnStatus.PENDING,
+            prompt=run.prompt,
         )
         run.request_id = request_id or run.request_id
         run.trace_id = trace_id or run.trace_id
@@ -396,6 +403,7 @@ class AgentRunService:
             run_id=run.run_id,
             profile_name=run.profile_name,
             status=run.status.value,
+            prompt=AgentRunService._prompt_view(run.prompt),
             request_id=run.request_id,
             trace_id=run.trace_id,
             actor_id=run.actor_id,
@@ -416,6 +424,7 @@ class AgentRunService:
             sequence_no=turn.sequence_no,
             status=turn.status.value,
             input_text=turn.input_text,
+            prompt=AgentRunService._prompt_view(turn.prompt),
             response_text=turn.response_text,
             created_at=turn.created_at.isoformat(),
             started_at=turn.started_at.isoformat() if turn.started_at else None,
@@ -438,4 +447,17 @@ class AgentRunService:
                 )
                 for item in tools
             ],
+        )
+
+    @staticmethod
+    def _prompt_view(prompt: object | None) -> PromptRefView | None:
+        if prompt is None:
+            return None
+        return PromptRefView(
+            prompt_id=prompt.prompt_id,
+            version=prompt.version,
+            owner_kind=prompt.owner_kind,
+            owner_id=prompt.owner_id,
+            purpose=prompt.purpose,
+            checksum=prompt.checksum,
         )

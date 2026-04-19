@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: hello-sales-observability
+    orgId: 1
+    folder: HelloSales
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /var/lib/grafana/dashboards

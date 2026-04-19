@@ -2,7 +2,11 @@ from __future__ import annotations
 
 import pytest
 
-from hello_sales_backend.application.agents.contracts import AgentDefinition, ToolSelectionPolicy
+from hello_sales_backend.application.agents.contracts import (
+    AgentDefinition,
+    AgentPromptDefinition,
+    ToolSelectionPolicy,
+)
 from hello_sales_backend.application.agents.registry import AgentRegistry
 from hello_sales_backend.platform.agents.config import AgentRuntimeConfig
 from hello_sales_backend.platform.agents.memory import InMemoryAgentStore
@@ -26,6 +30,7 @@ from hello_sales_backend.platform.llm import (
     LLMCallContext,
     LLMMessage,
     LLMProviderPort,
+    PromptMetadata,
     TextGenerationResult,
 )
 from hello_sales_backend.platform.observability.metrics import (
@@ -120,11 +125,20 @@ def _build_runtime(
                     display_name="Test Generic Agent",
                     tools=tools,
                     selection_policy=selection_policy or FixedSelectionPolicy([]),
-                    build_messages=lambda user_input, _tool_context: [
-                        ChatMessage(role="user", content=user_input)
-                    ],
-                    build_fallback_response=lambda user_input, tool_context: (
-                        f"fallback:{user_input}:{tool_context}"
+                    prompt=AgentPromptDefinition(
+                        metadata=PromptMetadata(
+                            prompt_id="agent.generic.test",
+                            version="v1",
+                            owner_kind="agent",
+                            owner_id="generic",
+                            purpose="response",
+                        ),
+                        build_messages=lambda user_input, _tool_context: [
+                            ChatMessage(role="user", content=user_input)
+                        ],
+                        build_fallback_response=lambda user_input, tool_context: (
+                            f"fallback:{user_input}:{tool_context}"
+                        ),
                     ),
                 )
             ],
@@ -161,11 +175,20 @@ def _build_runtime_with_observability(
                     display_name="Test Generic Agent",
                     tools=tools,
                     selection_policy=selection_policy or FixedSelectionPolicy([]),
-                    build_messages=lambda user_input, _tool_context: [
-                        ChatMessage(role="user", content=user_input)
-                    ],
-                    build_fallback_response=lambda user_input, tool_context: (
-                        f"fallback:{user_input}:{tool_context}"
+                    prompt=AgentPromptDefinition(
+                        metadata=PromptMetadata(
+                            prompt_id="agent.generic.test",
+                            version="v1",
+                            owner_kind="agent",
+                            owner_id="generic",
+                            purpose="response",
+                        ),
+                        build_messages=lambda user_input, _tool_context: [
+                            ChatMessage(role="user", content=user_input)
+                        ],
+                        build_fallback_response=lambda user_input, tool_context: (
+                            f"fallback:{user_input}:{tool_context}"
+                        ),
                     ),
                 )
             ],
