@@ -34,6 +34,7 @@ async def start_agent_run(
             request_id=getattr(request.state, "request_id", None),
             trace_id=getattr(request.state, "trace_id", None),
             actor_id=None,
+            session_id=None,
             command=command,
         )
     )

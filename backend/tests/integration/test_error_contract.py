@@ -38,7 +38,9 @@ async def test_structured_app_errors_include_operational_context(tmp_path: Path)
     async with app.router.lifespan_context(app):
         transport = ASGITransport(app=app, raise_app_exceptions=False)
         async with AsyncClient(transport=transport, base_url="http://testserver") as client:
-            response = await client.get("/test-errors/boom", headers={"x-request-id": "req-123", "x-trace-id": "tr-456"})
+            response = await client.get(
+                "/test-errors/boom", headers={"x-request-id": "req-123", "x-trace-id": "tr-456"}
+            )
             diagnostics = await client.get("/api/system/diagnostics")
 
     assert response.status_code == 502
@@ -81,8 +83,12 @@ async def test_unhandled_exceptions_are_returned_as_internal_errors(tmp_path: Pa
     assert payload["category"] == "internal"
     assert payload["details"]["exception_type"] == "RuntimeError"
     diagnostics_payload = diagnostics.json()["data"]
-    assert any(event["code"] == "internal.unhandled_exception" for event in diagnostics_payload["events"])
-    assert any(alert["code"] == "internal.unhandled_exception" for alert in diagnostics_payload["alerts"])
+    assert any(
+        event["code"] == "internal.unhandled_exception" for event in diagnostics_payload["events"]
+    )
+    assert any(
+        alert["code"] == "internal.unhandled_exception" for alert in diagnostics_payload["alerts"]
+    )
 
 
 @pytest.mark.asyncio
@@ -112,6 +118,7 @@ async def test_generic_agent_provider_without_provider_key_fails_startup(tmp_pat
             database_url=f"sqlite+aiosqlite:///{tmp_path / 'generic-provider.db'}",
             generic_agent_provider="groq",
             generic_agent_model="openai/gpt-oss-20b",
+            groq_api_key="",
         )
     )
 

@@ -15,6 +15,7 @@ from hello_sales_backend.modules.system.use_cases.ports import (
     AgentRegistryPort,
     ClockPort,
     ObservabilityPort,
+    SessionDiagnosticsPort,
     WorkerDiagnosticsPort,
 )
 from hello_sales_backend.modules.system.use_cases.views import (
@@ -26,6 +27,8 @@ from hello_sales_backend.modules.system.use_cases.views import (
     ObservabilityDiagnosticsView,
     OperationalEventView,
     ProviderDiagnosticsView,
+    SessionDiagnosticsView,
+    SessionSnapshotView,
     SystemDiagnosticsView,
     SystemStatusView,
     TaskDiagnosticsView,
@@ -53,6 +56,7 @@ class SystemService:
         tasks: BackgroundTaskRunner,
         workflow_runtime: WorkflowRuntime,
         agent_diagnostics: AgentDiagnosticsPort,
+        session_diagnostics: SessionDiagnosticsPort,
         worker_diagnostics: WorkerDiagnosticsPort,
         agent_registry: AgentRegistryPort,
     ) -> None:
@@ -63,6 +67,7 @@ class SystemService:
         self._tasks = tasks
         self._workflow_runtime = workflow_runtime
         self._agent_diagnostics = agent_diagnostics
+        self._session_diagnostics = session_diagnostics
         self._worker_diagnostics = worker_diagnostics
         self._agent_registry = agent_registry
 
@@ -105,6 +110,7 @@ class SystemService:
             for snapshot in self._tasks.list_snapshots(limit=10)
         ]
         agent_summary = await self._agent_diagnostics.summarize(limit=10)
+        session_summary = await self._session_diagnostics.list_sessions(limit=10)
         worker_summary = await self._worker_diagnostics.summarize(limit=10)
         observability_diagnostics = self._observability.diagnostics()
         return SystemDiagnosticsView(
@@ -149,6 +155,37 @@ class SystemService:
                         completed_at=item.completed_at.isoformat() if item.completed_at else None,
                     )
                     for item in agent_summary.recent_runs
+                ],
+            ),
+            sessions=SessionDiagnosticsView(
+                total_count=len(session_summary),
+                active_count=sum(1 for item in session_summary if item.status.value == "active"),
+                awaiting_approval_count=sum(
+                    1 for item in session_summary if item.status.value == "awaiting_approval"
+                ),
+                recent=[
+                    SessionSnapshotView(
+                        session_id=item.session_id,
+                        status=item.status.value,
+                        profile_name=item.profile_name,
+                        latest_run_id=item.latest_run_id,
+                        latest_item_id=item.latest_item_id,
+                        summary_task_id=item.summary_task_id,
+                        summary_status=item.summary_status,
+                        last_summarized_item_sequence=item.last_summarized_item_sequence,
+                        request_id=item.request_id,
+                        trace_id=item.trace_id,
+                        actor_id=item.actor_id,
+                        user_id=item.user_id,
+                        org_id=item.org_id,
+                        error_code=item.error_code,
+                        error_category=item.error_category,
+                        error_message=item.error_message,
+                        created_at=item.created_at.isoformat(),
+                        updated_at=item.updated_at.isoformat(),
+                        completed_at=item.completed_at.isoformat() if item.completed_at else None,
+                    )
+                    for item in session_summary
                 ],
             ),
             workers=WorkerDiagnosticsView(

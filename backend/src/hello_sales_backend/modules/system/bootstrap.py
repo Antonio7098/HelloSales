@@ -10,11 +10,13 @@ from hello_sales_backend.modules.system.use_cases.ports import (
     AgentRegistryPort,
     ClockPort,
     ObservabilityPort,
+    SessionDiagnosticsPort,
     WorkerDiagnosticsPort,
 )
 from hello_sales_backend.modules.system.use_cases.system_service import SystemService
 from hello_sales_backend.platform.composition.providers import ProviderRegistry
 from hello_sales_backend.platform.config.settings import Settings
+from hello_sales_backend.platform.sessions.memory import InMemorySessionStore
 from hello_sales_backend.platform.tasks.runner import BackgroundTaskRunner
 from hello_sales_backend.platform.workers.models import WorkerDiagnosticsSummary
 from hello_sales_backend.platform.workflows.runtime import WorkflowRuntime
@@ -34,6 +36,10 @@ class _NoOpWorkerDiagnostics:
         return WorkerDiagnosticsSummary(active_count=0, total_count=0, recent_runs=[])
 
 
+class _NoOpSessionDiagnostics(InMemorySessionStore):
+    """Compatibility shim for tests and bootstrap paths without session wiring."""
+
+
 def build_system_module(
     *,
     settings: Settings,
@@ -42,6 +48,7 @@ def build_system_module(
     workflow_runtime: WorkflowRuntime,
     observability: ObservabilityPort,
     agent_diagnostics: AgentDiagnosticsPort,
+    session_diagnostics: SessionDiagnosticsPort | None = None,
     worker_diagnostics: WorkerDiagnosticsPort | None = None,
     agent_registry: AgentRegistryPort,
     clock: ClockPort | None = None,
@@ -56,6 +63,7 @@ def build_system_module(
         workflow_runtime=workflow_runtime,
         observability=observability,
         agent_diagnostics=agent_diagnostics,
+        session_diagnostics=session_diagnostics or _NoOpSessionDiagnostics(),
         worker_diagnostics=worker_diagnostics or _NoOpWorkerDiagnostics(),
         agent_registry=agent_registry,
     )

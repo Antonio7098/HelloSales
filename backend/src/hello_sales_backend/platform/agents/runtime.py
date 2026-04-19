@@ -28,6 +28,7 @@ from hello_sales_backend.platform.llm.contracts import LLMCallContext, LLMProvid
 from hello_sales_backend.platform.observability.events import OperationalEvent
 from hello_sales_backend.platform.observability.logging import get_logger
 from hello_sales_backend.platform.observability.runtime import ObservabilityRuntime
+from hello_sales_backend.platform.sessions.attachment import SessionAttachmentStore
 from hello_sales_backend.platform.workflows.pipeline import WorkflowStageKind, WorkflowStageSpec
 from hello_sales_backend.platform.workflows.runtime import WorkflowRuntime
 from hello_sales_backend.shared.errors import AppError, app_error, internal_error
@@ -50,6 +51,7 @@ class GenericAgentRuntime:
     store: AgentStorePort
     agents: AgentRegistry
     observability: ObservabilityRuntime
+    sessions: SessionAttachmentStore | None = None
     _logger: Any = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
@@ -75,6 +77,8 @@ class GenericAgentRuntime:
             turn.prompt = run.prompt
         started_at = perf_counter()
         await self._mark_running(run=run, turn=turn)
+        if self.sessions is not None:
+            await self.sessions.mark_running(run=run)
         self.observability.on_agent_turn_execution_started(profile_name=run.profile_name)
         try:
             with self.observability.start_agent_turn_span(
@@ -203,6 +207,8 @@ class GenericAgentRuntime:
                     approval_id=new_id() if tool_definition.requires_approval else None,
                 )
                 await self.store.create_tool_call(tool_call)
+                if self.sessions is not None:
+                    await self.sessions.append_tool_call(run=run, turn=turn, tool_call=tool_call)
                 await self._append_event(
                     run_id=run.run_id,
                     turn_id=turn.turn_id,
@@ -424,6 +430,8 @@ class GenericAgentRuntime:
                     tool_call.error_message = structured.message
                     tool_call.error_details = structured.to_dict()
                     await self.store.update_tool_call(tool_call)
+                    if self.sessions is not None:
+                        await self.sessions.append_tool_result(run=run, turn=turn, tool_call=tool_call)
                     await self._append_event(
                         run_id=run.run_id,
                         turn_id=turn.turn_id,
@@ -451,6 +459,8 @@ class GenericAgentRuntime:
                 tool_call.completed_at = utc_now()
                 tool_call.result_payload = result
                 await self.store.update_tool_call(tool_call)
+                if self.sessions is not None:
+                    await self.sessions.append_tool_result(run=run, turn=turn, tool_call=tool_call)
                 await self._append_event(
                     run_id=run.run_id,
                     turn_id=turn.turn_id,
@@ -507,6 +517,8 @@ class GenericAgentRuntime:
         turn.status = AgentTurnStatus.AWAITING_APPROVAL
         await self.store.update_run(run)
         await self.store.update_turn(turn)
+        if self.sessions is not None:
+            await self.sessions.mark_awaiting_approval(run=run)
         await self._append_event(
             run_id=run.run_id,
             turn_id=turn.turn_id,
@@ -534,6 +546,8 @@ class GenericAgentRuntime:
         turn.error_details = None
         await self.store.update_turn(turn)
         await self.store.update_run(run)
+        if self.sessions is not None:
+            await self.sessions.append_assistant_message(run=run, turn=turn, response_text=response_text)
         await self._append_event(
             run_id=run.run_id,
             turn_id=turn.turn_id,
@@ -552,6 +566,8 @@ class GenericAgentRuntime:
         turn.completed_at = now
         await self.store.update_turn(turn)
         await self.store.update_run(run)
+        if self.sessions is not None:
+            await self.sessions.mark_cancelled(run=run)
         for tool_call in await self.store.list_tool_calls(run.run_id, turn.turn_id):
             if tool_call.status in {
                 AgentToolCallStatus.QUEUED,
@@ -599,6 +615,12 @@ class GenericAgentRuntime:
         turn.error_details = structured.to_dict()
         await self.store.update_turn(turn)
         await self.store.update_run(run)
+        if self.sessions is not None:
+            await self.sessions.mark_failed(
+                run=run,
+                error_code=structured.code,
+                error_message=structured.message,
+            )
         await self._append_event(
             run_id=run.run_id,
             turn_id=turn.turn_id,

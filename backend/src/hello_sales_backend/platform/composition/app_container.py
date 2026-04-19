@@ -10,6 +10,7 @@ from hello_sales_backend.application.agents.bootstrap import build_agent_registr
 from hello_sales_backend.application.workers.bootstrap import build_worker_registry
 from hello_sales_backend.modules.agent_runs.bootstrap import build_agent_runs_module
 from hello_sales_backend.modules.jobs.bootstrap import build_jobs_module
+from hello_sales_backend.modules.sessions.bootstrap import build_sessions_module
 from hello_sales_backend.modules.system.bootstrap import build_system_module
 from hello_sales_backend.modules.worker_runs.bootstrap import build_worker_runs_module
 from hello_sales_backend.platform.agents.config import AgentRuntimeConfig
@@ -29,6 +30,7 @@ from hello_sales_backend.platform.config.settings import Settings
 from hello_sales_backend.platform.db.engine import build_engine
 from hello_sales_backend.platform.db.repositories import (
     SqlAlchemyAgentStore,
+    SqlAlchemySessionStore,
     SqlAlchemyTaskRunStore,
 )
 from hello_sales_backend.platform.db.session import build_session_factory
@@ -41,6 +43,9 @@ from hello_sales_backend.platform.observability.runtime import (
     build_metrics_runtime,
     build_tracing_runtime,
 )
+from hello_sales_backend.platform.sessions.attachment import SessionAttachmentStore
+from hello_sales_backend.platform.sessions.memory import InMemorySessionStore
+from hello_sales_backend.platform.sessions.persistence import SessionStorePort
 from hello_sales_backend.platform.tasks.runner import BackgroundTaskRunner
 from hello_sales_backend.platform.workers import InMemoryWorkerStore, WorkerRuntime, WorkerStorePort
 from hello_sales_backend.platform.workflows.executor import WorkflowExecutor
@@ -69,6 +74,7 @@ class DatabaseRuntime:
     uow_factory: UnitOfWorkFactory
     task_run_store: SqlAlchemyTaskRunStore
     agent_store: AgentStorePort
+    session_store: SessionStorePort
     worker_store: WorkerStorePort
 
 
@@ -98,10 +104,13 @@ def build_app_container(settings: Settings, overrides: AppOverrides | None = Non
     session_factory = build_session_factory(engine)
     task_run_store = SqlAlchemyTaskRunStore(session_factory)
     agent_store: AgentStorePort
+    session_store: SessionStorePort
     if settings.database_url.startswith("sqlite+aiosqlite"):
         agent_store = InMemoryAgentStore()
+        session_store = InMemorySessionStore()
     else:
         agent_store = SqlAlchemyAgentStore(session_factory)
+        session_store = SqlAlchemySessionStore(session_factory)
     worker_store: WorkerStorePort = InMemoryWorkerStore()
     db = DatabaseRuntime(
         engine=engine,
@@ -109,6 +118,7 @@ def build_app_container(settings: Settings, overrides: AppOverrides | None = Non
         uow_factory=build_uow_factory(session_factory),
         task_run_store=task_run_store,
         agent_store=agent_store,
+        session_store=session_store,
         worker_store=worker_store,
     )
     providers = build_provider_registry(settings=settings, llm_provider=resolved_overrides.llm_provider)
@@ -154,6 +164,7 @@ def build_app_container(settings: Settings, overrides: AppOverrides | None = Non
         workflow_runtime=workflow_runtime,
         observability=observability,
         agent_diagnostics=agent_store,
+        session_diagnostics=session_store,
         worker_diagnostics=worker_store,
         agent_registry=agent_registry_diagnostics,
         clock=resolved_overrides.system_clock,
@@ -170,12 +181,22 @@ def build_app_container(settings: Settings, overrides: AppOverrides | None = Non
         store=agent_store,
         agents=agent_registry,
         observability=observability,
+        sessions=SessionAttachmentStore(
+            session_store,
+            tasks=tasks,
+            llm_provider=providers.llm,
+            settings=settings,
+        ),
     )
     agent_runs_module = build_agent_runs_module(
         store=agent_store,
         runtime=agent_runtime,
         tasks=tasks,
         agents=agent_registry,
+    )
+    sessions_module = build_sessions_module(
+        store=session_store,
+        agent_runs=agent_runs_module.service,
     )
     worker_runs_module = build_worker_runs_module(
         store=worker_store,
@@ -187,6 +208,7 @@ def build_app_container(settings: Settings, overrides: AppOverrides | None = Non
     modules = ModuleRegistry(
         agent_runs=agent_runs_module,
         jobs=jobs_module,
+        sessions=sessions_module,
         system=system_module,
         worker_runs=worker_runs_module,
     )

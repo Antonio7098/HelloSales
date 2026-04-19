@@ -14,16 +14,18 @@ Mounted route groups:
 Purpose:
 - liveness and readiness-style operational checks
 
-### `/agent-runs`
+### `/sessions`
 Purpose:
-- start an agent run
-- append turns to a run
-- inspect a run
-- replay or observe run events
-- decide approvals
-- cancel a run
+- create a durable session
+- append session messages
+- inspect ordered session items
+- replay or observe attached execution events
+- decide approvals for attached agent execution
+- cancel a session-backed conversation
 
 Backed by:
+- `modules/sessions/use_cases/session_service.py`
+- `platform/sessions/`
 - `modules/agent_runs/use_cases/agent_run_service.py`
 - `platform/agents/runtime.py`
 
@@ -85,12 +87,10 @@ Current provider surface is centered on the neutral shared LLM contract.
 - `platform/agents/models.py`
 
 This runtime owns:
-- run state
-- turn state
-- tool-call state
-- append-only event stream state
-- approval pause behavior
-- cancellation/completion/failure transitions
+- neutral session state
+- append-only session chronology
+- summary state and latest materialized session summary
+- attached execution references
 
 ### Worker Runtime Surface
 - `platform/workers/runtime.py`
@@ -148,15 +148,16 @@ HTTP route
 -> transport response
 ```
 
-### Agent Run Flow
+### Session Flow
 
 ```text
-POST /agent-runs
--> AgentRunService.start_run()
--> persist run + first turn
+POST /sessions
+-> SessionService.create_session()
+-> persist session + first user message
+-> AgentRunService.start_run(session_id=...)
 -> BackgroundTaskRunner.start()
 -> GenericAgentRuntime.process_turn()
--> persist tool calls + events + final run state
+-> persist session items + events + final attached run state
 ```
 
 ### Worker Run Flow
@@ -175,7 +176,7 @@ POST /worker-runs
 
 ```text
 approval decision endpoint
--> AgentRunService.decide_approval()
+-> SessionService.decide_approval()
 -> update tool-call approval state
 -> reschedule turn if approved
 -> finalize turn if rejected
@@ -219,7 +220,7 @@ If you are new to the backend, the best reading order is:
 3. `entrypoints/http/router.py`
 4. `modules/system/use_cases/system_service.py`
 5. `modules/jobs/use_cases/jobs_service.py`
-6. `modules/agent_runs/use_cases/agent_run_service.py`
+6. `modules/sessions/use_cases/session_service.py`
 7. `modules/worker_runs/use_cases/worker_run_service.py`
 8. `platform/agents/runtime.py`
 9. `platform/workers/runtime.py`

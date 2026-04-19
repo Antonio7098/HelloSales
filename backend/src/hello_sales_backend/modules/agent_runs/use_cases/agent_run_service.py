@@ -61,6 +61,7 @@ class AgentRunService:
         request_id: str | None,
         trace_id: str | None,
         actor_id: str | None,
+        session_id: str | None,
         command: StartAgentRunCommand,
     ) -> AgentRunSummaryView:
         run = AgentRun(
@@ -70,6 +71,7 @@ class AgentRunService:
             request_id=request_id,
             trace_id=trace_id,
             actor_id=actor_id,
+            session_id=session_id,
             prompt=self._agents.require(command.profile_name).effective_prompt_ref(),
         )
         turn = AgentTurn(

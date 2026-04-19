@@ -113,6 +113,39 @@ class WorkerDiagnosticsView(BaseModel):
     recent: list[WorkerRunSnapshotView]
 
 
+class SessionSnapshotView(BaseModel):
+    """Session summary for diagnostics."""
+
+    session_id: str
+    status: str
+    profile_name: str
+    latest_run_id: str | None = None
+    latest_item_id: str | None = None
+    summary_task_id: str | None = None
+    summary_status: str | None = None
+    last_summarized_item_sequence: int
+    request_id: str | None = None
+    trace_id: str | None = None
+    actor_id: str | None = None
+    user_id: str | None = None
+    org_id: str | None = None
+    error_code: str | None = None
+    error_category: str | None = None
+    error_message: str | None = None
+    created_at: str
+    updated_at: str
+    completed_at: str | None = None
+
+
+class SessionDiagnosticsView(BaseModel):
+    """Session runtime diagnostics summary."""
+
+    total_count: int
+    active_count: int
+    awaiting_approval_count: int
+    recent: list[SessionSnapshotView]
+
+
 class AgentProfileView(BaseModel):
     """Registered agent profile metadata."""
 
@@ -197,6 +230,7 @@ class SystemDiagnosticsView(BaseModel):
     agent_profiles: list[AgentProfileView]
     tasks: TaskDiagnosticsView
     agents: AgentDiagnosticsView
+    sessions: SessionDiagnosticsView
     workers: WorkerDiagnosticsView
     observability: ObservabilityDiagnosticsView
     events: list[OperationalEventView]

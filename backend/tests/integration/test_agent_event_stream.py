@@ -67,20 +67,20 @@ def _require_int(value: object) -> int:
     return value
 
 
-async def _wait_for_run_status(
+async def _wait_for_session_status(
     client: AsyncClient,
-    run_id: str,
+    session_id: str,
     *,
     target_statuses: set[str],
     attempts: int = 30,
 ) -> dict[str, Any]:
     for _ in range(attempts):
-        response = await client.get(f"/api/agent-runs/{run_id}")
+        response = await client.get(f"/api/sessions/{session_id}")
         payload = _json_dict(response.json()["data"])
         if payload["status"] in target_statuses:
             return payload
         await asyncio.sleep(0.02)
-    raise AssertionError(f"run {run_id} did not reach one of {sorted(target_statuses)}")
+    raise AssertionError(f"session {session_id} did not reach one of {sorted(target_statuses)}")
 
 
 def _parse_sse_events(body: str) -> list[dict[str, Any]]:
@@ -109,12 +109,12 @@ async def test_agent_event_stream_replays_and_tails_run_events(test_settings: Se
         transport = ASGITransport(app=app, raise_app_exceptions=True)
         async with AsyncClient(transport=transport, base_url="http://testserver") as client:
             start_response = await client.post(
-                "/api/agent-runs",
+                "/api/sessions",
                 json={"input_text": "show me the current system status"},
             )
-            run_id = start_response.json()["data"]["run_id"]
+            session_id = start_response.json()["data"]["session_id"]
 
-            async with client.stream("GET", f"/api/agent-runs/{run_id}/events/stream") as response:
+            async with client.stream("GET", f"/api/sessions/{session_id}/events/stream") as response:
                 assert response.status_code == 200
                 assert response.headers["content-type"].startswith("text/event-stream")
                 body = "".join([chunk async for chunk in response.aiter_text()])
@@ -128,7 +128,7 @@ async def test_agent_event_stream_replays_and_tails_run_events(test_settings: Se
 
             cutoff = _require_int(events[0]["id"])
             async with client.stream(
-                "GET", f"/api/agent-runs/{run_id}/events/stream?after_sequence={cutoff}"
+                "GET", f"/api/sessions/{session_id}/events/stream?after_sequence={cutoff}"
             ) as response:
                 replay_body = "".join([chunk async for chunk in response.aiter_text()])
 
@@ -146,25 +146,26 @@ async def test_agent_event_log_records_rejection_and_cancellation(test_settings:
         transport = ASGITransport(app=app, raise_app_exceptions=True)
         async with AsyncClient(transport=transport, base_url="http://testserver") as client:
             reject_response = await client.post(
-                "/api/agent-runs",
+                "/api/sessions",
                 json={"input_text": "please run diagnostic job now"},
             )
-            reject_run_id = reject_response.json()["data"]["run_id"]
-            reject_detail = await _wait_for_run_status(
+            reject_session_id = reject_response.json()["data"]["session_id"]
+            reject_detail = await _wait_for_session_status(
                 client,
-                reject_run_id,
+                reject_session_id,
                 target_statuses={"awaiting_approval"},
             )
-            reject_approval_id = reject_detail["turns"][0]["tools"][0]["approval_id"]
+            reject_tool_call = next(item for item in reject_detail["items"] if item["item_type"] == "tool_call")
+            reject_approval_id = reject_tool_call["payload"]["approval_id"]
             assert reject_approval_id is not None
 
             approval_response = await client.post(
-                f"/api/agent-runs/approvals/{reject_approval_id}",
+                f"/api/sessions/approvals/{reject_approval_id}",
                 json={"approved": False},
             )
             assert approval_response.status_code == 200
 
-            reject_events = (await client.get(f"/api/agent-runs/{reject_run_id}/events")).json()[
+            reject_events = (await client.get(f"/api/sessions/{reject_session_id}/events")).json()[
                 "data"
             ]
             reject_types = [item["event_type"] for item in reject_events]
@@ -172,31 +173,30 @@ async def test_agent_event_log_records_rejection_and_cancellation(test_settings:
             assert "agent.turn.completed" in reject_types
 
             cancel_response = await client.post(
-                "/api/agent-runs",
+                "/api/sessions",
                 json={"input_text": "please run diagnostic job now"},
             )
-            cancel_run_id = cancel_response.json()["data"]["run_id"]
-            cancel_detail = await _wait_for_run_status(
+            cancel_session_id = cancel_response.json()["data"]["session_id"]
+            cancel_detail = await _wait_for_session_status(
                 client,
-                cancel_run_id,
+                cancel_session_id,
                 target_statuses={"awaiting_approval"},
             )
-            cancel_turn = cancel_detail["turns"][0]
-            assert cancel_turn["tools"][0]["status"] == "pending_approval"
+            cancel_tool_call = next(item for item in cancel_detail["items"] if item["item_type"] == "tool_call")
+            assert cancel_tool_call["payload"]["status"] == "pending_approval"
 
-            cancelled = await client.post(f"/api/agent-runs/{cancel_run_id}/cancel")
+            cancelled = await client.post(f"/api/sessions/{cancel_session_id}/cancel")
             assert cancelled.status_code == 200
             assert cancelled.json()["data"]["status"] == "cancelled"
 
-            cancelled_detail = await _wait_for_run_status(
+            cancelled_detail = await _wait_for_session_status(
                 client,
-                cancel_run_id,
+                cancel_session_id,
                 target_statuses={"cancelled"},
             )
-            assert cancelled_detail["turns"][0]["status"] == "cancelled"
-            assert cancelled_detail["turns"][0]["tools"][0]["status"] == "cancelled"
+            assert cancelled_detail["status"] == "cancelled"
 
-            cancel_events = (await client.get(f"/api/agent-runs/{cancel_run_id}/events")).json()[
+            cancel_events = (await client.get(f"/api/sessions/{cancel_session_id}/events")).json()[
                 "data"
             ]
             cancel_types = [item["event_type"] for item in cancel_events]

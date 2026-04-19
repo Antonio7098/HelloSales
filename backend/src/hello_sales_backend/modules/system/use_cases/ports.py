@@ -10,6 +10,7 @@ from hello_sales_backend.platform.observability.runtime import (
     AlertRecord,
     ObservabilityDiagnosticsSnapshot,
 )
+from hello_sales_backend.platform.sessions.models import Session
 from hello_sales_backend.platform.workers.models import WorkerDiagnosticsSummary
 
 
@@ -39,6 +40,12 @@ class WorkerDiagnosticsPort(Protocol):
     """Provides operator-facing worker run diagnostics."""
 
     async def summarize(self, limit: int = 10) -> WorkerDiagnosticsSummary: ...
+
+
+class SessionDiagnosticsPort(Protocol):
+    """Provides operator-facing session diagnostics."""
+
+    async def list_sessions(self, *, limit: int = 10) -> list[Session]: ...
 
 
 class AgentRegistryPort(Protocol):
