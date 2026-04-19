@@ -13,6 +13,7 @@ from hello_sales_backend.platform.providers.llm.contracts import (
     ChatCompletion,
     ChatMessage,
     ChatModelPort,
+    JSONGenerationResult,
 )
 
 
@@ -24,6 +25,32 @@ class FakeChatModel(ChatModelPort):
             provider=self.provider_name,
             model="fake-model",
             output_text=f"processed:{messages[-1].content}",
+        )
+
+    async def generate_text(
+        self,
+        messages: list[ChatMessage],
+        *,
+        context=None,
+    ) -> ChatCompletion:
+        return ChatCompletion(
+            provider=self.provider_name,
+            model="fake-model",
+            output_text=f"processed:{messages[-1].content}",
+        )
+
+    async def generate_json(
+        self,
+        messages: list[ChatMessage],
+        *,
+        schema_hint=None,
+        context=None,
+    ) -> JSONGenerationResult:
+        return JSONGenerationResult(
+            provider=self.provider_name,
+            model="fake-model",
+            raw_text="{}",
+            output_json={},
         )
 
     def is_configured(self) -> bool:
@@ -100,7 +127,9 @@ async def test_agent_event_stream_replays_and_tails_run_events(test_settings: Se
             assert event_types[-1] == "agent.turn.completed"
 
             cutoff = _require_int(events[0]["id"])
-            async with client.stream("GET", f"/api/agent-runs/{run_id}/events/stream?after_sequence={cutoff}") as response:
+            async with client.stream(
+                "GET", f"/api/agent-runs/{run_id}/events/stream?after_sequence={cutoff}"
+            ) as response:
                 replay_body = "".join([chunk async for chunk in response.aiter_text()])
 
             replay_events = _parse_sse_events(replay_body)
@@ -135,7 +164,9 @@ async def test_agent_event_log_records_rejection_and_cancellation(test_settings:
             )
             assert approval_response.status_code == 200
 
-            reject_events = (await client.get(f"/api/agent-runs/{reject_run_id}/events")).json()["data"]
+            reject_events = (await client.get(f"/api/agent-runs/{reject_run_id}/events")).json()[
+                "data"
+            ]
             reject_types = [item["event_type"] for item in reject_events]
             assert "agent.approval.rejected" in reject_types
             assert "agent.turn.completed" in reject_types
@@ -165,7 +196,9 @@ async def test_agent_event_log_records_rejection_and_cancellation(test_settings:
             assert cancelled_detail["turns"][0]["status"] == "cancelled"
             assert cancelled_detail["turns"][0]["tools"][0]["status"] == "cancelled"
 
-            cancel_events = (await client.get(f"/api/agent-runs/{cancel_run_id}/events")).json()["data"]
+            cancel_events = (await client.get(f"/api/agent-runs/{cancel_run_id}/events")).json()[
+                "data"
+            ]
             cancel_types = [item["event_type"] for item in cancel_events]
             assert "agent.run.cancel_requested" in cancel_types
             assert "agent.tool.cancelled" in cancel_types

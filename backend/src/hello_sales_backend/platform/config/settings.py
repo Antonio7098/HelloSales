@@ -47,10 +47,14 @@ class Settings(BaseSettings):
     observability_metrics_http_enabled: bool = True
     observability_metrics_health_enabled: bool = True
     observability_metrics_background_tasks_enabled: bool = True
+    observability_metrics_agents_enabled: bool = True
+    observability_metrics_workers_enabled: bool = True
     observability_tracing_enabled: bool = False
     observability_tracing_exporter: str = "console"
     observability_tracing_http_enabled: bool = True
     observability_tracing_background_tasks_enabled: bool = True
+    observability_tracing_agents_enabled: bool = True
+    observability_tracing_workers_enabled: bool = True
     generic_agent_provider: str = ""
     generic_agent_model: str = ""
     generic_agent_base_url: str = ""

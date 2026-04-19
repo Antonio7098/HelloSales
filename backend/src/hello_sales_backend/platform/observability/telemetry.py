@@ -60,6 +60,8 @@ class TracingRuntimeSnapshot:
     environment: str
     http_enabled: bool
     background_tasks_enabled: bool
+    agents_enabled: bool = False
+    workers_enabled: bool = False
 
 
 class TracingRuntime(Protocol):
@@ -83,6 +85,38 @@ class TracingRuntime(Protocol):
         trace_id: str | None,
     ) -> Any: ...
 
+    def start_agent_turn_span(
+        self,
+        *,
+        run_id: str,
+        turn_id: str,
+        profile_name: str,
+        request_id: str | None,
+        trace_id: str | None,
+    ) -> Any: ...
+
+    def start_agent_tool_span(
+        self,
+        *,
+        run_id: str,
+        turn_id: str,
+        tool_call_id: str,
+        profile_name: str,
+        tool_name: str,
+        request_id: str | None,
+        trace_id: str | None,
+    ) -> Any: ...
+
+    def start_worker_run_span(
+        self,
+        *,
+        run_id: str,
+        worker_name: str,
+        request_id: str | None,
+        trace_id: str | None,
+        execution_mode: str,
+    ) -> Any: ...
+
     def finish_http_span(
         self,
         span: Span | None,
@@ -98,6 +132,40 @@ class TracingRuntime(Protocol):
         *,
         task_id: str,
         purpose: str,
+        status: str,
+        error_type: str | None,
+    ) -> None: ...
+
+    def finish_agent_turn_span(
+        self,
+        span: Span | None,
+        *,
+        run_id: str,
+        turn_id: str,
+        profile_name: str,
+        status: str,
+        error_type: str | None,
+    ) -> None: ...
+
+    def finish_agent_tool_span(
+        self,
+        span: Span | None,
+        *,
+        run_id: str,
+        turn_id: str,
+        tool_call_id: str,
+        profile_name: str,
+        tool_name: str,
+        status: str,
+        error_type: str | None,
+    ) -> None: ...
+
+    def finish_worker_run_span(
+        self,
+        span: Span | None,
+        *,
+        run_id: str,
+        worker_name: str,
         status: str,
         error_type: str | None,
     ) -> None: ...
@@ -135,6 +203,47 @@ class NoOpTracingRuntime:
         with nullcontext(None) as span:
             yield span
 
+    @contextmanager
+    def start_agent_turn_span(
+        self,
+        *,
+        run_id: str,
+        turn_id: str,
+        profile_name: str,
+        request_id: str | None,
+        trace_id: str | None,
+    ) -> Iterator[Span | None]:
+        with nullcontext(None) as span:
+            yield span
+
+    @contextmanager
+    def start_agent_tool_span(
+        self,
+        *,
+        run_id: str,
+        turn_id: str,
+        tool_call_id: str,
+        profile_name: str,
+        tool_name: str,
+        request_id: str | None,
+        trace_id: str | None,
+    ) -> Iterator[Span | None]:
+        with nullcontext(None) as span:
+            yield span
+
+    @contextmanager
+    def start_worker_run_span(
+        self,
+        *,
+        run_id: str,
+        worker_name: str,
+        request_id: str | None,
+        trace_id: str | None,
+        execution_mode: str,
+    ) -> Iterator[Span | None]:
+        with nullcontext(None) as span:
+            yield span
+
     def finish_http_span(
         self,
         span: Span | None,
@@ -151,6 +260,43 @@ class NoOpTracingRuntime:
         *,
         task_id: str,
         purpose: str,
+        status: str,
+        error_type: str | None,
+    ) -> None:
+        return None
+
+    def finish_agent_turn_span(
+        self,
+        span: Span | None,
+        *,
+        run_id: str,
+        turn_id: str,
+        profile_name: str,
+        status: str,
+        error_type: str | None,
+    ) -> None:
+        return None
+
+    def finish_agent_tool_span(
+        self,
+        span: Span | None,
+        *,
+        run_id: str,
+        turn_id: str,
+        tool_call_id: str,
+        profile_name: str,
+        tool_name: str,
+        status: str,
+        error_type: str | None,
+    ) -> None:
+        return None
+
+    def finish_worker_run_span(
+        self,
+        span: Span | None,
+        *,
+        run_id: str,
+        worker_name: str,
         status: str,
         error_type: str | None,
     ) -> None:
@@ -233,6 +379,100 @@ class OpenTelemetryTracingRuntime:
         ) as span:
             yield span
 
+    @contextmanager
+    def start_agent_turn_span(
+        self,
+        *,
+        run_id: str,
+        turn_id: str,
+        profile_name: str,
+        request_id: str | None,
+        trace_id: str | None,
+    ) -> Iterator[Span | None]:
+        if not self._snapshot.agents_enabled:
+            with nullcontext(None) as span:
+                yield span
+            return
+        attributes: dict[str, str] = {
+            "hello_sales.agent_run_id": run_id,
+            "hello_sales.agent_turn_id": turn_id,
+            "hello_sales.agent_profile": profile_name,
+        }
+        if request_id is not None:
+            attributes["hello_sales.request_id"] = request_id
+        if trace_id is not None:
+            attributes["hello_sales.trace_id"] = trace_id
+        with self._tracer.start_as_current_span(
+            "agent_turn.execute",
+            context=_parent_context(trace_id),
+            attributes=attributes,
+        ) as span:
+            yield span
+
+    @contextmanager
+    def start_agent_tool_span(
+        self,
+        *,
+        run_id: str,
+        turn_id: str,
+        tool_call_id: str,
+        profile_name: str,
+        tool_name: str,
+        request_id: str | None,
+        trace_id: str | None,
+    ) -> Iterator[Span | None]:
+        if not self._snapshot.agents_enabled:
+            with nullcontext(None) as span:
+                yield span
+            return
+        attributes: dict[str, str] = {
+            "hello_sales.agent_run_id": run_id,
+            "hello_sales.agent_turn_id": turn_id,
+            "hello_sales.agent_tool_call_id": tool_call_id,
+            "hello_sales.agent_profile": profile_name,
+            "hello_sales.agent_tool_name": tool_name,
+        }
+        if request_id is not None:
+            attributes["hello_sales.request_id"] = request_id
+        if trace_id is not None:
+            attributes["hello_sales.trace_id"] = trace_id
+        with self._tracer.start_as_current_span(
+            "agent_tool.execute",
+            context=_parent_context(trace_id),
+            attributes=attributes,
+        ) as span:
+            yield span
+
+    @contextmanager
+    def start_worker_run_span(
+        self,
+        *,
+        run_id: str,
+        worker_name: str,
+        request_id: str | None,
+        trace_id: str | None,
+        execution_mode: str,
+    ) -> Iterator[Span | None]:
+        if not self._snapshot.workers_enabled:
+            with nullcontext(None) as span:
+                yield span
+            return
+        attributes: dict[str, str] = {
+            "hello_sales.worker_run_id": run_id,
+            "hello_sales.worker_name": worker_name,
+            "hello_sales.worker_execution_mode": execution_mode,
+        }
+        if request_id is not None:
+            attributes["hello_sales.request_id"] = request_id
+        if trace_id is not None:
+            attributes["hello_sales.trace_id"] = trace_id
+        with self._tracer.start_as_current_span(
+            "worker_run.execute",
+            context=_parent_context(trace_id),
+            attributes=attributes,
+        ) as span:
+            yield span
+
     def finish_http_span(
         self,
         span: Span | None,
@@ -246,7 +486,9 @@ class OpenTelemetryTracingRuntime:
         span.set_attribute("http.route", route)
         span.set_attribute("http.response.status_code", status_code)
         if error_type is not None or status_code >= 500:
-            span.set_status(Status(status_code=StatusCode.ERROR, description=error_type or str(status_code)))
+            span.set_status(
+                Status(status_code=StatusCode.ERROR, description=error_type or str(status_code))
+            )
             if error_type is not None:
                 span.set_attribute("error.type", error_type)
             return
@@ -266,6 +508,74 @@ class OpenTelemetryTracingRuntime:
         span.set_attribute("hello_sales.task_id", task_id)
         span.set_attribute("hello_sales.task_purpose", purpose)
         span.set_attribute("hello_sales.task_status", status)
+        if error_type is not None:
+            span.set_attribute("error.type", error_type)
+            span.set_status(Status(status_code=StatusCode.ERROR, description=error_type))
+            return
+        span.set_status(Status(status_code=StatusCode.OK))
+
+    def finish_agent_turn_span(
+        self,
+        span: Span | None,
+        *,
+        run_id: str,
+        turn_id: str,
+        profile_name: str,
+        status: str,
+        error_type: str | None,
+    ) -> None:
+        if span is None:
+            return
+        span.set_attribute("hello_sales.agent_run_id", run_id)
+        span.set_attribute("hello_sales.agent_turn_id", turn_id)
+        span.set_attribute("hello_sales.agent_profile", profile_name)
+        span.set_attribute("hello_sales.agent_turn_status", status)
+        if error_type is not None:
+            span.set_attribute("error.type", error_type)
+            span.set_status(Status(status_code=StatusCode.ERROR, description=error_type))
+            return
+        span.set_status(Status(status_code=StatusCode.OK))
+
+    def finish_agent_tool_span(
+        self,
+        span: Span | None,
+        *,
+        run_id: str,
+        turn_id: str,
+        tool_call_id: str,
+        profile_name: str,
+        tool_name: str,
+        status: str,
+        error_type: str | None,
+    ) -> None:
+        if span is None:
+            return
+        span.set_attribute("hello_sales.agent_run_id", run_id)
+        span.set_attribute("hello_sales.agent_turn_id", turn_id)
+        span.set_attribute("hello_sales.agent_tool_call_id", tool_call_id)
+        span.set_attribute("hello_sales.agent_profile", profile_name)
+        span.set_attribute("hello_sales.agent_tool_name", tool_name)
+        span.set_attribute("hello_sales.agent_tool_status", status)
+        if error_type is not None:
+            span.set_attribute("error.type", error_type)
+            span.set_status(Status(status_code=StatusCode.ERROR, description=error_type))
+            return
+        span.set_status(Status(status_code=StatusCode.OK))
+
+    def finish_worker_run_span(
+        self,
+        span: Span | None,
+        *,
+        run_id: str,
+        worker_name: str,
+        status: str,
+        error_type: str | None,
+    ) -> None:
+        if span is None:
+            return
+        span.set_attribute("hello_sales.worker_run_id", run_id)
+        span.set_attribute("hello_sales.worker_name", worker_name)
+        span.set_attribute("hello_sales.worker_status", status)
         if error_type is not None:
             span.set_attribute("error.type", error_type)
             span.set_status(Status(status_code=StatusCode.ERROR, description=error_type))

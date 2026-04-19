@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from httpx import ASGITransport, AsyncClient
 
 from hello_sales_backend.app import create_app
 from hello_sales_backend.platform.config.settings import Settings
 
 
-async def test_metrics_endpoint_smoke(tmp_path) -> None:
+async def test_metrics_endpoint_smoke(tmp_path: Path) -> None:
     app = create_app(
         Settings(
             environment="test",

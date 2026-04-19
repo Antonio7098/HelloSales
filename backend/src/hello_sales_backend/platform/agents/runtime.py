@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass, field
+from time import perf_counter
 from typing import Any, Protocol
 
 from stageflow.pipeline.dag import UnifiedStageExecutionError
@@ -22,10 +23,10 @@ from hello_sales_backend.platform.agents.models import (
 )
 from hello_sales_backend.platform.agents.persistence import AgentStorePort
 from hello_sales_backend.platform.agents.tools import AgentToolExecutionContext
+from hello_sales_backend.platform.llm.contracts import LLMCallContext, LLMProviderPort
 from hello_sales_backend.platform.observability.events import OperationalEvent
 from hello_sales_backend.platform.observability.logging import get_logger
 from hello_sales_backend.platform.observability.runtime import ObservabilityRuntime
-from hello_sales_backend.platform.providers.llm.contracts import ChatModelPort
 from hello_sales_backend.platform.workflows.pipeline import WorkflowStageKind, WorkflowStageSpec
 from hello_sales_backend.platform.workflows.runtime import WorkflowRuntime
 from hello_sales_backend.shared.errors import AppError, app_error, internal_error
@@ -44,7 +45,7 @@ class GenericAgentRuntime:
 
     config: AgentRuntimeConfig
     workflow_runtime: WorkflowRuntime
-    llm_provider: ChatModelPort
+    llm_provider: LLMProviderPort
     store: AgentStorePort
     agents: AgentRegistry
     observability: ObservabilityRuntime
@@ -66,23 +67,85 @@ class GenericAgentRuntime:
                 operation="agent.process_turn",
                 component="agent",
             )
+        started_at = perf_counter()
         await self._mark_running(run=run, turn=turn)
+        self.observability.on_agent_turn_execution_started(profile_name=run.profile_name)
         try:
-            definition = self.agents.require(run.profile_name)
-            result = await self._run_pipeline(run=run, turn=turn, definition=definition)
-        except asyncio.CancelledError:
-            await self._mark_cancelled(run=run, turn=turn)
-            raise
-        except Exception as exc:
-            await self._mark_failed(run=run, turn=turn, exc=exc)
-            raise
-        if result.get("awaiting_approval") is True:
-            await self._mark_awaiting_approval(run=run, turn=turn)
-            return
-        response_text = str(result.get("response_text", "")).strip()
-        await self._mark_completed(run=run, turn=turn, response_text=response_text)
+            with self.observability.start_agent_turn_span(
+                run_id=run.run_id,
+                turn_id=turn.turn_id,
+                profile_name=run.profile_name,
+                request_id=run.request_id,
+                trace_id=run.trace_id,
+            ) as span:
+                try:
+                    definition = self.agents.require(run.profile_name)
+                    result = await self._run_pipeline(run=run, turn=turn, definition=definition)
+                except asyncio.CancelledError:
+                    await self._mark_cancelled(run=run, turn=turn)
+                    self.observability.finish_agent_turn_span(
+                        span,
+                        run_id=run.run_id,
+                        turn_id=turn.turn_id,
+                        profile_name=run.profile_name,
+                        status=run.status.value,
+                        error_type="CancelledError",
+                    )
+                    raise
+                except Exception as exc:
+                    structured = (
+                        exc
+                        if isinstance(exc, AppError)
+                        else internal_error(
+                            "Generic-agent turn failed unexpectedly",
+                            code="agent.turn.failed_unexpected",
+                            details={"run_id": run.run_id, "turn_id": turn.turn_id},
+                            operation="agent.process_turn",
+                            component="agent",
+                            exc=exc,
+                        )
+                    )
+                    await self._mark_failed(run=run, turn=turn, exc=structured)
+                    self.observability.finish_agent_turn_span(
+                        span,
+                        run_id=run.run_id,
+                        turn_id=turn.turn_id,
+                        profile_name=run.profile_name,
+                        status=run.status.value,
+                        error_type=structured.__class__.__name__,
+                    )
+                    raise structured from exc
+                if result.get("awaiting_approval") is True:
+                    await self._mark_awaiting_approval(run=run, turn=turn)
+                    self.observability.finish_agent_turn_span(
+                        span,
+                        run_id=run.run_id,
+                        turn_id=turn.turn_id,
+                        profile_name=run.profile_name,
+                        status=run.status.value,
+                        error_type=None,
+                    )
+                    return
+                response_text = str(result.get("response_text", "")).strip()
+                await self._mark_completed(run=run, turn=turn, response_text=response_text)
+                self.observability.finish_agent_turn_span(
+                    span,
+                    run_id=run.run_id,
+                    turn_id=turn.turn_id,
+                    profile_name=run.profile_name,
+                    status=run.status.value,
+                    error_type=None,
+                )
+        finally:
+            self.observability.on_agent_turn_execution_finished(
+                profile_name=run.profile_name,
+                status=run.status.value,
+                duration_seconds=perf_counter() - started_at,
+            )
 
-    async def _run_pipeline(self, *, run: AgentRun, turn: AgentTurn, definition: Any) -> dict[str, object]:
+    async def _run_pipeline(
+        self, *, run: AgentRun, turn: AgentTurn, definition: Any
+    ) -> dict[str, object]:
         if not self.workflow_runtime.installed:
             raise app_error(
                 "Workflow runtime is not available for generic-agent execution",
@@ -107,7 +170,9 @@ class GenericAgentRuntime:
         async def prepare_turn(_ctx: Any) -> dict[str, object]:
             existing_calls = await self.store.list_tool_calls(run.run_id, turn.turn_id)
             if existing_calls:
-                awaiting = any(item.status == AgentToolCallStatus.PENDING_APPROVAL for item in existing_calls)
+                awaiting = any(
+                    item.status == AgentToolCallStatus.PENDING_APPROVAL for item in existing_calls
+                )
                 return {
                     "awaiting_approval": awaiting,
                     "tool_call_ids": [item.tool_call_id for item in existing_calls],
@@ -146,6 +211,10 @@ class GenericAgentRuntime:
                     },
                 )
                 if tool_call.status == AgentToolCallStatus.PENDING_APPROVAL:
+                    self.observability.on_agent_tool_approval_requested(
+                        profile_name=run.profile_name,
+                        tool_name=tool_call.tool_name,
+                    )
                     await self._append_event(
                         run_id=run.run_id,
                         turn_id=turn.turn_id,
@@ -159,13 +228,19 @@ class GenericAgentRuntime:
                         },
                     )
             return {
-                "awaiting_approval": any(definition.tools.require(item.name).requires_approval for item in selected_tools),
+                "awaiting_approval": any(
+                    definition.tools.require(item.name).requires_approval for item in selected_tools
+                ),
             }
 
         async def execute_tools(_ctx: Any) -> dict[str, object]:
             tool_calls = await self.store.list_tool_calls(run.run_id, turn.turn_id)
             pending_approval = next(
-                (item for item in tool_calls if item.status == AgentToolCallStatus.PENDING_APPROVAL),
+                (
+                    item
+                    for item in tool_calls
+                    if item.status == AgentToolCallStatus.PENDING_APPROVAL
+                ),
                 None,
             )
             if pending_approval is not None:
@@ -176,14 +251,21 @@ class GenericAgentRuntime:
                 }
             tool_results: list[str] = []
             for tool_call in tool_calls:
-                if tool_call.status == AgentToolCallStatus.COMPLETED and tool_call.result_payload is not None:
+                if (
+                    tool_call.status == AgentToolCallStatus.COMPLETED
+                    and tool_call.result_payload is not None
+                ):
                     tool_results.append(self._tool_result_summary(tool_call))
                     continue
                 if tool_call.status == AgentToolCallStatus.REJECTED:
                     tool_results.append(f"{tool_call.tool_name}: approval rejected")
                     continue
-                await self._execute_tool_call(run=run, turn=turn, tool_call=tool_call, definition=definition)
-                refreshed = await self._require_tool_call(tool_call.tool_call_id, turn_id=turn.turn_id, run_id=run.run_id)
+                await self._execute_tool_call(
+                    run=run, turn=turn, tool_call=tool_call, definition=definition
+                )
+                refreshed = await self._require_tool_call(
+                    tool_call.tool_call_id, turn_id=turn.turn_id, run_id=run.run_id
+                )
                 if refreshed.result_payload is not None:
                     tool_results.append(self._tool_result_summary(refreshed))
             return {"awaiting_approval": False, "tool_results": tool_results}
@@ -196,10 +278,26 @@ class GenericAgentRuntime:
             if result.get("awaiting_approval") is True:
                 return result
             tool_results_raw = result.get("tool_results", [])
-            tool_results = [str(item) for item in tool_results_raw] if isinstance(tool_results_raw, list) else []
+            tool_results = (
+                [str(item) for item in tool_results_raw]
+                if isinstance(tool_results_raw, list)
+                else []
+            )
             if self.llm_provider.is_configured():
                 messages = definition.build_messages(turn.input_text, tool_results)
-                completion = await self.llm_provider.generate(messages)
+                generate_text = getattr(self.llm_provider, "generate_text", None)
+                if callable(generate_text):
+                    completion = await generate_text(
+                        messages,
+                        context=LLMCallContext(
+                            request_id=run.request_id,
+                            trace_id=run.trace_id,
+                            actor_id=run.actor_id,
+                            operation="agent.llm.generate_text",
+                        ),
+                    )
+                else:
+                    completion = await self.llm_provider.generate(messages)
                 return {
                     "awaiting_approval": False,
                     "response_text": completion.output_text,
@@ -216,7 +314,9 @@ class GenericAgentRuntime:
         pipeline = self.workflow_runtime.pipeline_factory.create_pipeline(
             name="generic_agent_turn",
             stages=[
-                WorkflowStageSpec(name="prepare_turn", handler=prepare_turn, kind=WorkflowStageKind.GUARD),
+                WorkflowStageSpec(
+                    name="prepare_turn", handler=prepare_turn, kind=WorkflowStageKind.GUARD
+                ),
                 WorkflowStageSpec(
                     name="execute_tools",
                     handler=execute_tools,
@@ -242,10 +342,17 @@ class GenericAgentRuntime:
         self._logger.info("agent.turn.pipeline.completed", run_id=run.run_id, turn_id=turn.turn_id)
         return dict(output)
 
-    async def _execute_tool_call(self, *, run: AgentRun, turn: AgentTurn, tool_call: AgentToolCall, definition: Any) -> None:
+    async def _execute_tool_call(
+        self, *, run: AgentRun, turn: AgentTurn, tool_call: AgentToolCall, definition: Any
+    ) -> None:
+        started_at = perf_counter()
         tool_call.status = AgentToolCallStatus.RUNNING
         tool_call.started_at = utc_now()
         await self.store.update_tool_call(tool_call)
+        self.observability.on_agent_tool_call_started(
+            profile_name=run.profile_name,
+            tool_name=tool_call.tool_name,
+        )
         await self._append_event(
             run_id=run.run_id,
             turn_id=turn.turn_id,
@@ -255,60 +362,105 @@ class GenericAgentRuntime:
             payload={"tool_call_id": tool_call.tool_call_id, "tool_name": tool_call.tool_name},
         )
         try:
-            result = await definition.tools.execute(
-                name=tool_call.tool_name,
-                arguments=tool_call.arguments,
-                context=AgentToolExecutionContext(
-                    request_id=run.request_id,
-                    trace_id=run.trace_id,
-                    actor_id=run.actor_id,
-                ),
-            )
-        except Exception as exc:
-            structured = exc if isinstance(exc, AppError) else internal_error(
-                "Agent tool execution failed unexpectedly",
-                code="agent.tool.failed_unexpected",
-                details={"tool_name": tool_call.tool_name, "run_id": run.run_id, "turn_id": turn.turn_id},
-                operation="agent.tool.execute",
-                component="agent",
-                exc=exc,
-            )
-            tool_call.status = AgentToolCallStatus.FAILED
-            tool_call.completed_at = utc_now()
-            tool_call.error_code = structured.code
-            tool_call.error_category = structured.category
-            tool_call.error_message = structured.message
-            tool_call.error_details = structured.to_dict()
-            await self.store.update_tool_call(tool_call)
-            await self._append_event(
+            with self.observability.start_agent_tool_span(
                 run_id=run.run_id,
                 turn_id=turn.turn_id,
-                event_type="agent.tool.failed",
-                severity=structured.severity,
-                code=structured.code,
-                payload={
-                    "tool_call_id": tool_call.tool_call_id,
-                    "tool_name": tool_call.tool_name,
-                    "error": structured.to_dict(),
-                },
+                tool_call_id=tool_call.tool_call_id,
+                profile_name=run.profile_name,
+                tool_name=tool_call.tool_name,
+                request_id=run.request_id,
+                trace_id=run.trace_id,
+            ) as span:
+                try:
+                    result = await definition.tools.execute(
+                        name=tool_call.tool_name,
+                        arguments=tool_call.arguments,
+                        context=AgentToolExecutionContext(
+                            request_id=run.request_id,
+                            trace_id=run.trace_id,
+                            actor_id=run.actor_id,
+                        ),
+                    )
+                except Exception as exc:
+                    structured = (
+                        exc
+                        if isinstance(exc, AppError)
+                        else internal_error(
+                            "Agent tool execution failed unexpectedly",
+                            code="agent.tool.failed_unexpected",
+                            details={
+                                "tool_name": tool_call.tool_name,
+                                "run_id": run.run_id,
+                                "turn_id": turn.turn_id,
+                            },
+                            operation="agent.tool.execute",
+                            component="agent",
+                            exc=exc,
+                        )
+                    )
+                    tool_call.status = AgentToolCallStatus.FAILED
+                    tool_call.completed_at = utc_now()
+                    tool_call.error_code = structured.code
+                    tool_call.error_category = structured.category
+                    tool_call.error_message = structured.message
+                    tool_call.error_details = structured.to_dict()
+                    await self.store.update_tool_call(tool_call)
+                    await self._append_event(
+                        run_id=run.run_id,
+                        turn_id=turn.turn_id,
+                        event_type="agent.tool.failed",
+                        severity=structured.severity,
+                        code=structured.code,
+                        payload={
+                            "tool_call_id": tool_call.tool_call_id,
+                            "tool_name": tool_call.tool_name,
+                            "error": structured.to_dict(),
+                        },
+                    )
+                    self.observability.finish_agent_tool_span(
+                        span,
+                        run_id=run.run_id,
+                        turn_id=turn.turn_id,
+                        tool_call_id=tool_call.tool_call_id,
+                        profile_name=run.profile_name,
+                        tool_name=tool_call.tool_name,
+                        status=tool_call.status.value,
+                        error_type=structured.__class__.__name__,
+                    )
+                    raise structured from exc
+                tool_call.status = AgentToolCallStatus.COMPLETED
+                tool_call.completed_at = utc_now()
+                tool_call.result_payload = result
+                await self.store.update_tool_call(tool_call)
+                await self._append_event(
+                    run_id=run.run_id,
+                    turn_id=turn.turn_id,
+                    event_type="agent.tool.completed",
+                    severity="info",
+                    code="agent.tool.completed",
+                    payload={
+                        "tool_call_id": tool_call.tool_call_id,
+                        "tool_name": tool_call.tool_name,
+                        "result": result,
+                    },
+                )
+                self.observability.finish_agent_tool_span(
+                    span,
+                    run_id=run.run_id,
+                    turn_id=turn.turn_id,
+                    tool_call_id=tool_call.tool_call_id,
+                    profile_name=run.profile_name,
+                    tool_name=tool_call.tool_name,
+                    status=tool_call.status.value,
+                    error_type=None,
+                )
+        finally:
+            self.observability.on_agent_tool_call_finished(
+                profile_name=run.profile_name,
+                tool_name=tool_call.tool_name,
+                status=tool_call.status.value,
+                duration_seconds=perf_counter() - started_at,
             )
-            raise structured from exc
-        tool_call.status = AgentToolCallStatus.COMPLETED
-        tool_call.completed_at = utc_now()
-        tool_call.result_payload = result
-        await self.store.update_tool_call(tool_call)
-        await self._append_event(
-            run_id=run.run_id,
-            turn_id=turn.turn_id,
-            event_type="agent.tool.completed",
-            severity="info",
-            code="agent.tool.completed",
-            payload={
-                "tool_call_id": tool_call.tool_call_id,
-                "tool_name": tool_call.tool_name,
-                "result": result,
-            },
-        )
 
     async def _mark_running(self, *, run: AgentRun, turn: AgentTurn) -> None:
         now = utc_now()
@@ -382,7 +534,11 @@ class GenericAgentRuntime:
         await self.store.update_turn(turn)
         await self.store.update_run(run)
         for tool_call in await self.store.list_tool_calls(run.run_id, turn.turn_id):
-            if tool_call.status in {AgentToolCallStatus.QUEUED, AgentToolCallStatus.RUNNING, AgentToolCallStatus.APPROVED}:
+            if tool_call.status in {
+                AgentToolCallStatus.QUEUED,
+                AgentToolCallStatus.RUNNING,
+                AgentToolCallStatus.APPROVED,
+            }:
                 tool_call.status = AgentToolCallStatus.CANCELLED
                 tool_call.completed_at = now
                 await self.store.update_tool_call(tool_call)
@@ -396,13 +552,17 @@ class GenericAgentRuntime:
         )
 
     async def _mark_failed(self, *, run: AgentRun, turn: AgentTurn, exc: Exception) -> None:
-        structured = exc if isinstance(exc, AppError) else internal_error(
-            "Generic-agent turn failed unexpectedly",
-            code="agent.turn.failed_unexpected",
-            details={"run_id": run.run_id, "turn_id": turn.turn_id},
-            operation="agent.process_turn",
-            component="agent",
-            exc=exc,
+        structured = (
+            exc
+            if isinstance(exc, AppError)
+            else internal_error(
+                "Generic-agent turn failed unexpectedly",
+                code="agent.turn.failed_unexpected",
+                details={"run_id": run.run_id, "turn_id": turn.turn_id},
+                operation="agent.process_turn",
+                component="agent",
+                exc=exc,
+            )
         )
         now = utc_now()
         run.status = AgentRunStatus.FAILED
@@ -468,7 +628,9 @@ class GenericAgentRuntime:
             )
         )
 
-    async def _require_tool_call(self, tool_call_id: str, *, run_id: str, turn_id: str) -> AgentToolCall:
+    async def _require_tool_call(
+        self, tool_call_id: str, *, run_id: str, turn_id: str
+    ) -> AgentToolCall:
         for tool_call in await self.store.list_tool_calls(run_id, turn_id):
             if tool_call.tool_call_id == tool_call_id:
                 return tool_call

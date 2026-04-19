@@ -56,10 +56,14 @@ Relevant variables include:
 - `HELLO_SALES_OBSERVABILITY_METRICS_HTTP_ENABLED`
 - `HELLO_SALES_OBSERVABILITY_METRICS_HEALTH_ENABLED`
 - `HELLO_SALES_OBSERVABILITY_METRICS_BACKGROUND_TASKS_ENABLED`
+- `HELLO_SALES_OBSERVABILITY_METRICS_AGENTS_ENABLED`
+- `HELLO_SALES_OBSERVABILITY_METRICS_WORKERS_ENABLED`
 - `HELLO_SALES_OBSERVABILITY_TRACING_ENABLED`
 - `HELLO_SALES_OBSERVABILITY_TRACING_EXPORTER`
 - `HELLO_SALES_OBSERVABILITY_TRACING_HTTP_ENABLED`
 - `HELLO_SALES_OBSERVABILITY_TRACING_BACKGROUND_TASKS_ENABLED`
+- `HELLO_SALES_OBSERVABILITY_TRACING_AGENTS_ENABLED`
+- `HELLO_SALES_OBSERVABILITY_TRACING_WORKERS_ENABLED`
 
 Behavior:
 - metrics and tracing can be enabled independently
@@ -68,10 +72,12 @@ Behavior:
 - tracing currently supports `console` export or disabled/no-op operation
 - service metadata falls back to app metadata when observability-specific values are not set
 - metric families can be disabled individually without removing the overall observability runtime
+- agent metrics and tracing are controlled independently so generic-agent monitoring can be enabled without forcing those signals in every environment
+- worker metrics and tracing are controlled independently so sprint-01 observability can be extended without forcing worker-specific signals on every environment
 
 ## Provider Configuration Model
 
-The backend currently supports a generic-agent provider path.
+The backend currently resolves one shared LLM provider path that both the conversational agent runtime and the worker runtime consume.
 
 Relevant variables include:
 - `HELLO_SALES_GENERIC_AGENT_PROVIDER`
@@ -81,6 +87,11 @@ Relevant variables include:
 - `HELLO_SALES_GROQ_API_KEY`
 - `HELLO_SALES_OPENROUTER_API_KEY`
 - `HELLO_SALES_OPENAI_API_KEY`
+
+The settings name remains `generic_agent_*` because that path existed before the neutral `platform/llm/` extraction.
+At runtime, the resolved provider now backs:
+- conversational response generation in the agent runtime
+- JSON generation and structured worker execution in the worker runtime
 
 ### Provider Resolution
 The settings model computes resolved values through properties:
@@ -130,6 +141,7 @@ Current runtime behavior:
 - readiness behavior changes depending on whether the configured DB is SQLite or not
 
 The app container also uses the DB scheme to choose some runtime behavior, such as whether to use the in-memory agent store or the SQLAlchemy-backed agent store.
+Worker runs currently use an in-memory worker store in all environments, which is intentional scaffold-stage behavior rather than durable SQL persistence.
 
 ## Workflow Configuration Behavior
 

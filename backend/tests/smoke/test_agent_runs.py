@@ -12,6 +12,7 @@ from hello_sales_backend.platform.providers.llm.contracts import (
     ChatCompletion,
     ChatMessage,
     ChatModelPort,
+    JSONGenerationResult,
 )
 
 
@@ -23,6 +24,32 @@ class FakeChatModel(ChatModelPort):
             provider=self.provider_name,
             model="fake-model",
             output_text=f"processed:{messages[-1].content}",
+        )
+
+    async def generate_text(
+        self,
+        messages: list[ChatMessage],
+        *,
+        context=None,
+    ) -> ChatCompletion:
+        return ChatCompletion(
+            provider=self.provider_name,
+            model="fake-model",
+            output_text=f"processed:{messages[-1].content}",
+        )
+
+    async def generate_json(
+        self,
+        messages: list[ChatMessage],
+        *,
+        schema_hint=None,
+        context=None,
+    ) -> JSONGenerationResult:
+        return JSONGenerationResult(
+            provider=self.provider_name,
+            model="fake-model",
+            raw_text="{}",
+            output_json={},
         )
 
     def is_configured(self) -> bool:
@@ -71,7 +98,9 @@ async def test_agent_run_executes_tools_and_completes(test_settings: Settings) -
             assert len(detail["turns"]) == 1
             assert detail["turns"][0]["tools"][0]["tool_name"] == "get_runtime_status"
             assert detail["turns"][0]["tools"][0]["status"] == "completed"
-            assert detail["turns"][0]["response_text"] == "processed:show me the current system status"
+            assert (
+                detail["turns"][0]["response_text"] == "processed:show me the current system status"
+            )
 
             events_response = await client.get(f"/api/agent-runs/{run_id}/events")
             assert events_response.status_code == 200
@@ -115,4 +144,7 @@ async def test_agent_run_supports_approval_flow(test_settings: Settings) -> None
             )
             assert completed_detail["status"] == "completed"
             assert completed_detail["turns"][0]["tools"][0]["status"] == "completed"
-            assert completed_detail["turns"][0]["response_text"] == "processed:please run diagnostic job now"
+            assert (
+                completed_detail["turns"][0]["response_text"]
+                == "processed:please run diagnostic job now"
+            )

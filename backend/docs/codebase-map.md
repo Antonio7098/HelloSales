@@ -25,6 +25,12 @@ Owns:
 - concrete agent definitions
 - per-agent policy and selection behavior
 
+#### `application/workers/`
+Owns:
+- worker registry assembly
+- concrete worker definitions
+- per-worker schema and prompt policy
+
 #### `application/tools/`
 Owns:
 - reusable application-level tools used by agents
@@ -43,6 +49,7 @@ Owns:
 Current route groups:
 - `health`
 - `agent_runs`
+- `worker_runs`
 - `jobs`
 - `system`
 
@@ -66,6 +73,13 @@ Owns:
 - event replay / inspection
 - approval and cancellation surfaces
 
+#### `modules/worker_runs/`
+Owns:
+- public operational surface for generic worker runs
+- worker lifecycle actions
+- worker event inspection
+- cancellation surface
+
 ### `platform/`
 Owns runtime infrastructure.
 
@@ -87,6 +101,13 @@ Owns:
 Owns:
 - settings parsing and environment-driven runtime config
 
+#### `platform/llm/`
+Owns:
+- neutral LLM contracts
+- text and JSON generation response models
+- JSON schema hints
+- OpenAI-compatible provider adapters
+
 #### `platform/db/`
 Owns:
 - engine and session construction
@@ -101,15 +122,17 @@ Owns:
 - operational event and alert runtime
 - observability data models
 
-#### `platform/providers/`
-Owns:
-- concrete provider integrations and provider contracts
-- current LLM provider seam
-
 #### `platform/tasks/`
 Owns:
 - task metadata and task state models
 - background task runner and task event persistence seam
+
+#### `platform/workers/`
+Owns:
+- generic worker runtime mechanics
+- worker run and event models
+- worker persistence seams
+- worker diagnostics summary surface
 
 #### `platform/workflows/`
 Owns:
@@ -154,10 +177,15 @@ Owns:
 - `modules/system/use_cases/system_service.py`
 - `modules/jobs/use_cases/jobs_service.py`
 - `modules/agent_runs/use_cases/agent_run_service.py`
+- `modules/worker_runs/use_cases/worker_run_service.py`
 
 ### Generic Agent Runtime
 - `platform/agents/runtime.py`
 - `application/agents/bootstrap.py`
+
+### Generic Worker Runtime
+- `platform/workers/runtime.py`
+- `application/workers/bootstrap.py`
 
 ### Transport Entry Surface
 - `entrypoints/http/router.py`
@@ -169,10 +197,10 @@ Owns:
 Focused unit tests for runtime components, provider seams, task runner, smoke runner, and registry behavior.
 
 ### `tests/integration/`
-Focused integration tests for app factory, overrides, event streaming, and error contract behavior.
+Focused integration tests for app factory, overrides, event streaming, worker runtime wiring, and error contract behavior.
 
 ### `tests/smoke/`
-HTTP and runtime smoke validation for health, jobs, system, agent runs, and provider-backed smoke behavior.
+HTTP and runtime smoke validation for health, jobs, system, agent runs, worker runs, and provider-backed smoke behavior.
 
 ### `tests/postgres/`
 Optional Postgres-backed verification for readiness and SQLAlchemy-backed persistence.

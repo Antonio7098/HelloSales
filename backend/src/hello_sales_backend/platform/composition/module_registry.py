@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from hello_sales_backend.modules.agent_runs.bootstrap import AgentRunsModule
 from hello_sales_backend.modules.jobs.bootstrap import JobsModule
 from hello_sales_backend.modules.system.bootstrap import SystemModule
+from hello_sales_backend.modules.worker_runs.bootstrap import WorkerRunsModule
 
 
 @dataclass(slots=True)
@@ -16,3 +17,4 @@ class ModuleRegistry:
     agent_runs: AgentRunsModule
     jobs: JobsModule
     system: SystemModule
+    worker_runs: WorkerRunsModule

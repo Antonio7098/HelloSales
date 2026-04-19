@@ -7,10 +7,12 @@ from httpx import ASGITransport, AsyncClient
 from hello_sales_backend.app import create_app
 from hello_sales_backend.platform.composition.overrides import AppOverrides
 from hello_sales_backend.platform.config.settings import Settings
-from hello_sales_backend.platform.providers.llm.contracts import (
-    ChatCompletion,
-    ChatMessage,
-    ChatModelPort,
+from hello_sales_backend.platform.llm import (
+    JSONGenerationResult,
+    LLMCallContext,
+    LLMMessage,
+    LLMProviderPort,
+    TextGenerationResult,
 )
 
 
@@ -19,11 +21,37 @@ class FixedClock:
         return "2026-01-01T00:00:00+00:00"
 
 
-class FakeChatModel(ChatModelPort):
+class FakeChatModel(LLMProviderPort):
     provider_name = "fake"
 
-    async def generate(self, messages: list[ChatMessage]) -> ChatCompletion:
-        return ChatCompletion(provider=self.provider_name, model="fake-model", output_text="ok")
+    async def generate(self, messages: list[LLMMessage]) -> TextGenerationResult:
+        return TextGenerationResult(
+            provider=self.provider_name, model="fake-model", output_text="ok"
+        )
+
+    async def generate_text(
+        self,
+        messages: list[LLMMessage],
+        *,
+        context: LLMCallContext | None = None,
+    ) -> TextGenerationResult:
+        return TextGenerationResult(
+            provider=self.provider_name, model="fake-model", output_text="ok"
+        )
+
+    async def generate_json(
+        self,
+        messages: list[LLMMessage],
+        *,
+        schema_hint=None,
+        context: LLMCallContext | None = None,
+    ) -> JSONGenerationResult:
+        return JSONGenerationResult(
+            provider=self.provider_name,
+            model="fake-model",
+            raw_text="{}",
+            output_json={},
+        )
 
     def is_configured(self) -> bool:
         return True

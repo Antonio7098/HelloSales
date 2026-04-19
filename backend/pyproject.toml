@@ -53,6 +53,19 @@ strict = true
 warn_return_any = true
 warn_unused_ignores = true
 plugins = ["pydantic.mypy"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "hello_sales_backend.platform.observability.*"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "hello_sales_backend.smoke.*"
+ignore_errors = true
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

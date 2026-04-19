@@ -19,7 +19,7 @@ They are structured with:
 - `observability.md` - Logging, correlation, health, and diagnostics requirements
 - `testing.md` - Test seams, coverage, and determinism requirements
 - `workflows.md` - Workflow eligibility, boundaries, and retry/cancellation semantics
-- `agents.md` - Agent runtime boundaries, tool execution, and lifecycle rules
+- `llm.md` - Agent and worker runtime boundaries, tool and structured-output rules, lifecycle semantics, and operational exposure
 - `pre-brief-scope.md` - What is safe to build before the product brief exists
 
 ## How To Use Contracts

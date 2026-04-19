@@ -10,6 +10,7 @@ The backend test suite is split into four layers.
 ### `tests/unit/`
 Owns fast unit verification for:
 - generic agent runtime behavior
+- worker runtime behavior
 - provider adapters and provider registry
 - task runner behavior
 - smoke runner behavior
@@ -21,11 +22,13 @@ Owns integration verification for:
 - composition overrides
 - agent event stream behavior
 - error contract behavior
+- worker-runs operational behavior and metrics visibility
 
 ### `tests/smoke/`
 Owns high-signal smoke verification for:
 - health surface
 - agent-runs surface
+- worker-runs surface
 - jobs diagnostic flow
 - system diagnostics and system status
 - provider-backed smoke behavior
@@ -54,6 +57,7 @@ Current provider-backed suites include:
 - `generic-agent-provider-append-turn`
 - `generic-agent-provider-approval-boundary`
 - `generic-agent-provider-event-stream`
+- `worker-provider-baseline`
 
 ## Development Operations
 
@@ -85,6 +89,7 @@ Examples:
 - `make smoke-provider-append`
 - `make smoke-provider-approval`
 - `make smoke-provider-events`
+- `make smoke-provider-worker`
 
 ## Environment Model
 
@@ -102,7 +107,7 @@ The scaffold currently provides:
 - async SQLAlchemy runtime
 - composition root
 - Stageflow runtime boundary
-- OpenAI-compatible provider seam
+- neutral LLM substrate with an OpenAI-compatible adapter
 - request context middleware
 - request, provider, workflow, and task failure logging
 - background task runner
@@ -111,6 +116,7 @@ The scaffold currently provides:
 - a system module
 - an operational jobs module with a diagnostic workflow
 - an agent-runs module exposing the generic agent runtime
+- a worker-runs module exposing the worker runtime
 
 ## Recommended Reading With This Doc
 

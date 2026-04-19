@@ -5,9 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from hello_sales_backend.platform.config.settings import Settings
-from hello_sales_backend.platform.providers.llm.contracts import ChatModelPort
-from hello_sales_backend.platform.providers.llm.noop import NoopChatModel
-from hello_sales_backend.platform.providers.llm.openai_compatible import OpenAICompatibleChatModel
+from hello_sales_backend.platform.llm.contracts import LLMProviderPort
+from hello_sales_backend.platform.llm.providers import NoopLLMProvider, OpenAICompatibleLLMProvider
 
 
 @dataclass(slots=True, frozen=True)
@@ -22,7 +21,7 @@ class ProviderStatus:
 class ProviderRegistry:
     """Shared provider registry."""
 
-    llm: ChatModelPort
+    llm: LLMProviderPort
 
     def diagnostics(self) -> list[ProviderStatus]:
         return [
@@ -38,7 +37,7 @@ class ProviderRegistry:
 def build_provider_registry(
     *,
     settings: Settings | None = None,
-    llm_provider: ChatModelPort | None = None,
+    llm_provider: LLMProviderPort | None = None,
 ) -> ProviderRegistry:
     """Build the shared provider registry."""
 
@@ -46,7 +45,7 @@ def build_provider_registry(
         return ProviderRegistry(llm=llm_provider)
     if settings is not None and settings.resolved_generic_agent_api_key:
         return ProviderRegistry(
-            llm=OpenAICompatibleChatModel(
+            llm=OpenAICompatibleLLMProvider(
                 provider_name=settings.resolved_generic_agent_provider,
                 base_url=settings.resolved_generic_agent_base_url,
                 api_key=settings.resolved_generic_agent_api_key,
@@ -54,4 +53,4 @@ def build_provider_registry(
                 timeout_seconds=settings.generic_agent_timeout_seconds,
             )
         )
-    return ProviderRegistry(llm=NoopChatModel())
+    return ProviderRegistry(llm=NoopLLMProvider())

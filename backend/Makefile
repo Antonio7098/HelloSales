@@ -1,4 +1,4 @@
-.PHONY: dev-db-up dev-db-down dev-db-logs verify-db migrate revision test test-postgres mypy smoke smoke-provider-agent smoke-provider-baseline smoke-provider-observer smoke-provider-append smoke-provider-approval smoke-provider-events scaffold-module
+.PHONY: dev-db-up dev-db-down dev-db-logs verify-db migrate revision test test-postgres mypy smoke smoke-provider-agent smoke-provider-baseline smoke-provider-observer smoke-provider-append smoke-provider-approval smoke-provider-events smoke-provider-worker scaffold-module
 
 dev-db-up:
 	docker compose -f docker-compose.dev.yml up -d postgres
@@ -48,6 +48,9 @@ smoke-provider-approval:
 
 smoke-provider-events:
 	python3 scripts/smoke.py generic-agent-provider-event-stream
+
+smoke-provider-worker:
+	python3 scripts/smoke.py worker-provider-baseline
 
 scaffold-module:
 	@test -n "$(name)" || (echo "Usage: make scaffold-module name=deals" && exit 1)

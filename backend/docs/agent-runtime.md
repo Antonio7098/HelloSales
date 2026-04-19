@@ -9,6 +9,9 @@ It focuses on:
 - approvals, cancellations, and event replay
 - how the LLM provider and tools are used
 
+This document is intentionally conversational-only.
+Structured workers now live in the separate worker runtime described in `worker-runtime.md`.
+
 ## Architectural Split
 
 The current agent system is deliberately split into three layers.
@@ -78,6 +81,7 @@ Responsibilities:
 - mark success / failure / cancellation
 - append stream events
 - emit operational failure events
+- emit agent execution metrics and tracing through the shared observability runtime
 
 ### `AgentRunService`
 Location:
@@ -275,6 +279,32 @@ This means you should be able to inspect a failed run through:
 - tool-call state
 - stream event history
 - operational events
+
+## Agent Observability
+
+The generic agent runtime now extends the shared platform observability runtime rather than introducing agent-local monitoring code.
+
+Current agent telemetry includes:
+- turn execution segment metrics for started, active, completed, failed, cancelled, and awaiting-approval outcomes
+- tool-call metrics for approval requests, starts, completions, failures, and duration
+- tracing spans for `agent_turn.execute` and `agent_tool.execute`
+- correlation preservation through existing request and trace metadata
+
+The term "execution segment" matters for approvals.
+When a turn pauses for approval, the first runtime pass finishes with status `awaiting_approval`.
+If that approval is later granted, the resumed execution creates a second execution segment for the same persisted turn.
+
+The agent metrics are intentionally labeled only by low-cardinality fields:
+- agent profile
+- tool name
+- terminal status
+
+They intentionally do not label by:
+- request id
+- trace id
+- run id
+- turn id
+- response text or raw tool output
 
 ## What To Read In Code
 

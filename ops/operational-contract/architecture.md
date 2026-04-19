@@ -258,5 +258,5 @@ Reject a change if it:
 - [observability.md](/home/antonioborgerees/coding/HelloSales/ops/operational-contract/observability.md)
 - [testing.md](/home/antonioborgerees/coding/HelloSales/ops/operational-contract/testing.md)
 - [workflows.md](/home/antonioborgerees/coding/HelloSales/ops/operational-contract/workflows.md)
-- [agents.md](/home/antonioborgerees/coding/HelloSales/ops/operational-contract/agents.md)
+- [llm.md](/home/antonioborgerees/coding/HelloSales/ops/operational-contract/llm.md)
 - [pre-brief-scope.md](/home/antonioborgerees/coding/HelloSales/ops/operational-contract/pre-brief-scope.md)

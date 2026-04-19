@@ -44,6 +44,8 @@ class MetricsRuntimeSnapshot:
     http_enabled: bool
     health_enabled: bool
     background_tasks_enabled: bool
+    agents_enabled: bool = False
+    workers_enabled: bool = False
 
 
 class MetricsRuntime(Protocol):
@@ -77,6 +79,39 @@ class MetricsRuntime(Protocol):
         self,
         *,
         purpose: str,
+        status: str,
+        duration_seconds: float | None,
+    ) -> None: ...
+
+    def on_agent_turn_execution_started(self, *, profile_name: str) -> None: ...
+
+    def on_agent_turn_execution_finished(
+        self,
+        *,
+        profile_name: str,
+        status: str,
+        duration_seconds: float | None,
+    ) -> None: ...
+
+    def on_agent_tool_approval_requested(self, *, profile_name: str, tool_name: str) -> None: ...
+
+    def on_agent_tool_call_started(self, *, profile_name: str, tool_name: str) -> None: ...
+
+    def on_agent_tool_call_finished(
+        self,
+        *,
+        profile_name: str,
+        tool_name: str,
+        status: str,
+        duration_seconds: float | None,
+    ) -> None: ...
+
+    def on_worker_run_started(self, *, worker_name: str, execution_mode: str) -> None: ...
+
+    def on_worker_run_finished(
+        self,
+        *,
+        worker_name: str,
         status: str,
         duration_seconds: float | None,
     ) -> None: ...
@@ -123,6 +158,46 @@ class NoOpMetricsRuntime:
         self,
         *,
         purpose: str,
+        status: str,
+        duration_seconds: float | None,
+    ) -> None:
+        return None
+
+    def on_agent_turn_execution_started(self, *, profile_name: str) -> None:
+        return None
+
+    def on_agent_turn_execution_finished(
+        self,
+        *,
+        profile_name: str,
+        status: str,
+        duration_seconds: float | None,
+    ) -> None:
+        return None
+
+    def on_agent_tool_approval_requested(self, *, profile_name: str, tool_name: str) -> None:
+        return None
+
+    def on_agent_tool_call_started(self, *, profile_name: str, tool_name: str) -> None:
+        return None
+
+    def on_agent_tool_call_finished(
+        self,
+        *,
+        profile_name: str,
+        tool_name: str,
+        status: str,
+        duration_seconds: float | None,
+    ) -> None:
+        return None
+
+    def on_worker_run_started(self, *, worker_name: str, execution_mode: str) -> None:
+        return None
+
+    def on_worker_run_finished(
+        self,
+        *,
+        worker_name: str,
         status: str,
         duration_seconds: float | None,
     ) -> None:
@@ -197,6 +272,78 @@ class PrometheusMetricsRuntime:
             ["purpose", "status"],
             registry=self._registry,
         )
+        self._agent_turn_executions_started_total = Counter(
+            "hello_sales_agent_turn_executions_started_total",
+            "Total agent turn execution segments started.",
+            ["profile"],
+            registry=self._registry,
+        )
+        self._agent_turn_executions_completed_total = Counter(
+            "hello_sales_agent_turn_executions_completed_total",
+            "Total agent turn execution segments completed by terminal status.",
+            ["profile", "status"],
+            registry=self._registry,
+        )
+        self._agent_turn_executions_active = Gauge(
+            "hello_sales_agent_turn_executions_active",
+            "Number of active agent turn execution segments by profile.",
+            ["profile"],
+            registry=self._registry,
+        )
+        self._agent_turn_execution_duration_seconds = Histogram(
+            "hello_sales_agent_turn_execution_duration_seconds",
+            "Duration of agent turn execution segments in seconds.",
+            ["profile", "status"],
+            registry=self._registry,
+        )
+        self._agent_tool_approval_requests_total = Counter(
+            "hello_sales_agent_tool_approval_requests_total",
+            "Total agent tool approval requests raised.",
+            ["profile", "tool"],
+            registry=self._registry,
+        )
+        self._agent_tool_calls_started_total = Counter(
+            "hello_sales_agent_tool_calls_started_total",
+            "Total agent tool calls started.",
+            ["profile", "tool"],
+            registry=self._registry,
+        )
+        self._agent_tool_calls_completed_total = Counter(
+            "hello_sales_agent_tool_calls_completed_total",
+            "Total agent tool calls completed by terminal status.",
+            ["profile", "tool", "status"],
+            registry=self._registry,
+        )
+        self._agent_tool_call_duration_seconds = Histogram(
+            "hello_sales_agent_tool_call_duration_seconds",
+            "Duration of agent tool calls in seconds.",
+            ["profile", "tool", "status"],
+            registry=self._registry,
+        )
+        self._worker_runs_started_total = Counter(
+            "hello_sales_worker_runs_started_total",
+            "Total worker runs started.",
+            ["worker", "execution_mode"],
+            registry=self._registry,
+        )
+        self._worker_runs_completed_total = Counter(
+            "hello_sales_worker_runs_completed_total",
+            "Total worker runs completed by terminal status.",
+            ["worker", "status"],
+            registry=self._registry,
+        )
+        self._worker_runs_active = Gauge(
+            "hello_sales_worker_runs_active",
+            "Number of active worker runs by worker name.",
+            ["worker"],
+            registry=self._registry,
+        )
+        self._worker_run_duration_seconds = Histogram(
+            "hello_sales_worker_run_duration_seconds",
+            "Duration of worker runs in seconds.",
+            ["worker", "status"],
+            registry=self._registry,
+        )
 
     def render_latest(self) -> tuple[bytes, str]:
         return generate_latest(self._registry), CONTENT_TYPE_LATEST
@@ -268,6 +415,82 @@ class PrometheusMetricsRuntime:
             self._background_tasks_failed_total.labels(purpose=purpose, status=status).inc()
         if duration_seconds is not None:
             self._background_task_duration_seconds.labels(purpose=purpose, status=status).observe(
+                duration_seconds
+            )
+
+    def on_agent_turn_execution_started(self, *, profile_name: str) -> None:
+        if not self._snapshot.agents_enabled:
+            return
+        self._agent_turn_executions_started_total.labels(profile=profile_name).inc()
+        self._agent_turn_executions_active.labels(profile=profile_name).inc()
+
+    def on_agent_turn_execution_finished(
+        self,
+        *,
+        profile_name: str,
+        status: str,
+        duration_seconds: float | None,
+    ) -> None:
+        if not self._snapshot.agents_enabled:
+            return
+        self._agent_turn_executions_active.labels(profile=profile_name).dec()
+        self._agent_turn_executions_completed_total.labels(
+            profile=profile_name, status=status
+        ).inc()
+        if duration_seconds is not None:
+            self._agent_turn_execution_duration_seconds.labels(
+                profile=profile_name, status=status
+            ).observe(duration_seconds)
+
+    def on_agent_tool_approval_requested(self, *, profile_name: str, tool_name: str) -> None:
+        if not self._snapshot.agents_enabled:
+            return
+        self._agent_tool_approval_requests_total.labels(profile=profile_name, tool=tool_name).inc()
+
+    def on_agent_tool_call_started(self, *, profile_name: str, tool_name: str) -> None:
+        if not self._snapshot.agents_enabled:
+            return
+        self._agent_tool_calls_started_total.labels(profile=profile_name, tool=tool_name).inc()
+
+    def on_agent_tool_call_finished(
+        self,
+        *,
+        profile_name: str,
+        tool_name: str,
+        status: str,
+        duration_seconds: float | None,
+    ) -> None:
+        if not self._snapshot.agents_enabled:
+            return
+        self._agent_tool_calls_completed_total.labels(
+            profile=profile_name, tool=tool_name, status=status
+        ).inc()
+        if duration_seconds is not None:
+            self._agent_tool_call_duration_seconds.labels(
+                profile=profile_name, tool=tool_name, status=status
+            ).observe(duration_seconds)
+
+    def on_worker_run_started(self, *, worker_name: str, execution_mode: str) -> None:
+        if not self._snapshot.workers_enabled:
+            return
+        self._worker_runs_started_total.labels(
+            worker=worker_name, execution_mode=execution_mode
+        ).inc()
+        self._worker_runs_active.labels(worker=worker_name).inc()
+
+    def on_worker_run_finished(
+        self,
+        *,
+        worker_name: str,
+        status: str,
+        duration_seconds: float | None,
+    ) -> None:
+        if not self._snapshot.workers_enabled:
+            return
+        self._worker_runs_active.labels(worker=worker_name).dec()
+        self._worker_runs_completed_total.labels(worker=worker_name, status=status).inc()
+        if duration_seconds is not None:
+            self._worker_run_duration_seconds.labels(worker=worker_name, status=status).observe(
                 duration_seconds
             )
 

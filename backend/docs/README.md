@@ -30,6 +30,9 @@ These backend docs are implementation-oriented and describe the code as it exist
 - **`agent-runtime.md`**
   Detailed explanation of the generic agent runtime, approvals, tools, lifecycle, and event model.
 
+- **`worker-runtime.md`**
+  Detailed explanation of the worker runtime, structured-output validation, retries, and operational monitoring.
+
 - **`errors-and-logging.md`**
   Codebase-level explanation of error philosophy, taxonomy usage, structured logging, and failure visibility.
 

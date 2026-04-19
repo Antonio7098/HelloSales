@@ -1,0 +1,145 @@
+from __future__ import annotations
+
+import asyncio
+from pathlib import Path
+from typing import Any, cast
+
+import pytest
+from httpx import ASGITransport, AsyncClient
+
+from hello_sales_backend.app import create_app
+from hello_sales_backend.platform.composition.overrides import AppOverrides
+from hello_sales_backend.platform.config.settings import Settings
+from hello_sales_backend.platform.providers.llm.contracts import (
+    ChatCompletion,
+    ChatMessage,
+    ChatModelPort,
+    JSONGenerationResult,
+)
+
+
+class FakeChatModel(ChatModelPort):
+    provider_name = "fake-agent"
+
+    async def generate(self, messages: list[ChatMessage]) -> ChatCompletion:
+        return ChatCompletion(
+            provider=self.provider_name,
+            model="fake-model",
+            output_text=f"processed:{messages[-1].content}",
+        )
+
+    async def generate_text(
+        self,
+        messages: list[ChatMessage],
+        *,
+        context=None,
+    ) -> ChatCompletion:
+        return ChatCompletion(
+            provider=self.provider_name,
+            model="fake-model",
+            output_text=f"processed:{messages[-1].content}",
+        )
+
+    async def generate_json(
+        self,
+        messages: list[ChatMessage],
+        *,
+        schema_hint=None,
+        context=None,
+    ) -> JSONGenerationResult:
+        return JSONGenerationResult(
+            provider=self.provider_name,
+            model="fake-model",
+            raw_text="{}",
+            output_json={},
+        )
+
+    def is_configured(self) -> bool:
+        return True
+
+
+def _json_dict(payload: object) -> dict[str, Any]:
+    return cast(dict[str, Any], payload)
+
+
+async def _wait_for_run_status(
+    client: AsyncClient,
+    run_id: str,
+    *,
+    target_statuses: set[str],
+    attempts: int = 50,
+) -> dict[str, Any]:
+    for _ in range(attempts):
+        response = await client.get(f"/api/agent-runs/{run_id}")
+        payload = _json_dict(response.json()["data"])
+        if payload["status"] in target_statuses:
+            return payload
+        await asyncio.sleep(0.02)
+    raise AssertionError(f"run {run_id} did not reach one of {sorted(target_statuses)}")
+
+
+@pytest.mark.asyncio
+async def test_agent_runs_are_visible_in_metrics_and_diagnostics(tmp_path: Path) -> None:
+    app = create_app(
+        Settings(
+            environment="test",
+            database_url=f"sqlite+aiosqlite:///{tmp_path / 'agent-metrics.db'}",
+            observability_metrics_enabled=True,
+            observability_metrics_endpoint_enabled=True,
+        ),
+        overrides=AppOverrides(llm_provider=FakeChatModel()),
+    )
+
+    async with app.router.lifespan_context(app):
+        transport = ASGITransport(app=app, raise_app_exceptions=True)
+        async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+            completed_start = await client.post(
+                "/api/agent-runs",
+                json={"input_text": "show me the current system status"},
+            )
+            assert completed_start.status_code == 200
+            completed_run_id = completed_start.json()["data"]["run_id"]
+            completed_detail = await _wait_for_run_status(
+                client,
+                completed_run_id,
+                target_statuses={"completed"},
+            )
+
+            approval_start = await client.post(
+                "/api/agent-runs",
+                json={"input_text": "please run diagnostic job now"},
+            )
+            assert approval_start.status_code == 200
+            approval_run_id = approval_start.json()["data"]["run_id"]
+            awaiting_detail = await _wait_for_run_status(
+                client,
+                approval_run_id,
+                target_statuses={"awaiting_approval"},
+            )
+
+            diagnostics = await client.get("/api/system/diagnostics")
+            metrics = await client.get("/metrics")
+
+    assert completed_detail["status"] == "completed"
+    assert awaiting_detail["status"] == "awaiting_approval"
+    diagnostics_payload = diagnostics.json()["data"]
+    assert diagnostics_payload["agents"]["total_count"] == 2
+    assert diagnostics_payload["agents"]["awaiting_approval_count"] == 1
+    assert diagnostics_payload["observability"]["metrics"]["agents_enabled"] is True
+    assert 'hello_sales_agent_turn_executions_started_total{profile="generic"} 2.0' in metrics.text
+    assert (
+        'hello_sales_agent_turn_executions_completed_total{profile="generic",status="completed"} 1.0'
+        in metrics.text
+    )
+    assert (
+        'hello_sales_agent_turn_executions_completed_total{profile="generic",status="awaiting_approval"} 1.0'
+        in metrics.text
+    )
+    assert (
+        'hello_sales_agent_tool_calls_completed_total{profile="generic",status="completed",tool="get_runtime_status"} 1.0'
+        in metrics.text
+    )
+    assert (
+        'hello_sales_agent_tool_approval_requests_total{profile="generic",tool="run_diagnostic_job"} 1.0'
+        in metrics.text
+    )

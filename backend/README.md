@@ -61,6 +61,7 @@ make smoke-provider-observer
 make smoke-provider-append
 make smoke-provider-approval
 make smoke-provider-events
+make smoke-provider-worker
 ```
 
 Apply migrations:
@@ -84,19 +85,19 @@ cp .env.example .env
 ```
 
 The application reads settings from `HELLO_SALES_*` environment variables.
-Generic-agent provider configuration uses:
+The shared LLM provider path used by both agents and workers is configured with:
 
 ```bash
-GENERIC_AGENT_PROVIDER=groq
-GENERIC_AGENT_MODEL=openai/gpt-oss-20b
-GROQ_API_KEY=...
+HELLO_SALES_GENERIC_AGENT_PROVIDER=groq
+HELLO_SALES_GENERIC_AGENT_MODEL=openai/gpt-oss-20b
+HELLO_SALES_GROQ_API_KEY=...
 ```
 
 Optional:
 
 ```bash
-GENERIC_AGENT_TIMEOUT_SECONDS=30
-GENERIC_AGENT_BASE_URL=
+HELLO_SALES_GENERIC_AGENT_TIMEOUT_SECONDS=30
+HELLO_SALES_GENERIC_AGENT_BASE_URL=
 ```
 
 ## Tests
@@ -145,7 +146,7 @@ This scaffold currently provides:
 - async SQLAlchemy runtime
 - composition root
 - Stageflow runtime boundary
-- OpenAI-compatible provider adapter seam
+- neutral `platform/llm/` provider seam with an OpenAI-compatible adapter
 - request context middleware
 - request, provider, workflow, and task failure logging
 - background task runner
@@ -153,3 +154,5 @@ This scaffold currently provides:
 - diagnostics endpoint
 - a sample module (`system`)
 - an operational jobs module with a diagnostic workflow
+- an operational `agent-runs` module
+- an operational `worker-runs` module
