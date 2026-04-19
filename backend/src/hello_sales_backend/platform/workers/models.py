@@ -6,6 +6,8 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import StrEnum
 
+from hello_sales_backend.platform.llm import EffectivePromptRef
+
 
 def utc_now() -> datetime:
     """Return the current UTC timestamp."""
@@ -42,6 +44,7 @@ class WorkerRun:
     request_id: str | None
     trace_id: str | None
     actor_id: str | None
+    prompt: EffectivePromptRef | None = None
     execution_mode: WorkerExecutionMode = WorkerExecutionMode.DIRECT
     created_at: datetime = field(default_factory=utc_now)
     updated_at: datetime = field(default_factory=utc_now)

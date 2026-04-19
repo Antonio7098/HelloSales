@@ -2,10 +2,26 @@
 
 from __future__ import annotations
 
+from hello_sales_backend.application.agents.contracts import AgentPromptDefinition
+from hello_sales_backend.platform.llm import PromptMetadata
 from hello_sales_backend.platform.providers.llm.contracts import ChatMessage
 
+OBSERVER_AGENT_RESPONSE_PROMPT = AgentPromptDefinition(
+    metadata=PromptMetadata(
+        prompt_id="agent.observer.response",
+        version="v1",
+        owner_kind="agent",
+        owner_id="observer",
+        purpose="response",
+    ),
+    build_messages=lambda user_input, tool_context: build_messages_v1(user_input, tool_context),
+    build_fallback_response=lambda user_input, tool_context: build_fallback_response_v1(
+        user_input, tool_context
+    ),
+)
 
-def build_messages(user_input: str, tool_context: list[str]) -> list[ChatMessage]:
+
+def build_messages_v1(user_input: str, tool_context: list[str]) -> list[ChatMessage]:
     """Build the prompt set for the observer agent."""
 
     tool_block = "\n".join(f"- {item}" for item in tool_context) if tool_context else "- no tools were executed"
@@ -20,7 +36,7 @@ def build_messages(user_input: str, tool_context: list[str]) -> list[ChatMessage
     ]
 
 
-def build_fallback_response(user_input: str, tool_context: list[str]) -> str:
+def build_fallback_response_v1(user_input: str, tool_context: list[str]) -> str:
     """Return a deterministic observer response when no LLM provider is configured."""
 
     if tool_context:

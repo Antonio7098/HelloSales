@@ -8,9 +8,14 @@ from dataclasses import dataclass
 from random import getrandbits
 from typing import Any, Protocol
 
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import ConsoleSpanExporter, SimpleSpanProcessor
+from opentelemetry.sdk.trace.export import (
+    BatchSpanProcessor,
+    ConsoleSpanExporter,
+    SimpleSpanProcessor,
+)
 from opentelemetry.trace import (
     NonRecordingSpan,
     Span,
@@ -21,6 +26,8 @@ from opentelemetry.trace import (
     TraceState,
     set_span_in_context,
 )
+
+from hello_sales_backend.platform.llm import EffectivePromptRef
 
 
 def _is_valid_hex_trace_id(value: str | None) -> bool:
@@ -62,6 +69,9 @@ class TracingRuntimeSnapshot:
     background_tasks_enabled: bool
     agents_enabled: bool = False
     workers_enabled: bool = False
+    otlp_endpoint: str = ""
+    otlp_headers: dict[str, str] | None = None
+    otlp_timeout_seconds: float = 10.0
 
 
 class TracingRuntime(Protocol):
@@ -91,6 +101,7 @@ class TracingRuntime(Protocol):
         run_id: str,
         turn_id: str,
         profile_name: str,
+        prompt: EffectivePromptRef | None,
         request_id: str | None,
         trace_id: str | None,
     ) -> Any: ...
@@ -112,6 +123,7 @@ class TracingRuntime(Protocol):
         *,
         run_id: str,
         worker_name: str,
+        prompt: EffectivePromptRef | None,
         request_id: str | None,
         trace_id: str | None,
         execution_mode: str,
@@ -169,6 +181,8 @@ class TracingRuntime(Protocol):
         status: str,
         error_type: str | None,
     ) -> None: ...
+
+    def shutdown(self) -> None: ...
 
     def snapshot(self) -> TracingRuntimeSnapshot: ...
 
@@ -210,6 +224,7 @@ class NoOpTracingRuntime:
         run_id: str,
         turn_id: str,
         profile_name: str,
+        prompt: EffectivePromptRef | None,
         request_id: str | None,
         trace_id: str | None,
     ) -> Iterator[Span | None]:
@@ -237,6 +252,7 @@ class NoOpTracingRuntime:
         *,
         run_id: str,
         worker_name: str,
+        prompt: EffectivePromptRef | None,
         request_id: str | None,
         trace_id: str | None,
         execution_mode: str,
@@ -302,6 +318,9 @@ class NoOpTracingRuntime:
     ) -> None:
         return None
 
+    def shutdown(self) -> None:
+        return None
+
     def snapshot(self) -> TracingRuntimeSnapshot:
         return self._snapshot
 
@@ -321,6 +340,13 @@ class OpenTelemetryTracingRuntime:
         self._provider = TracerProvider(resource=resource)
         if snapshot.exporter == "console":
             self._provider.add_span_processor(SimpleSpanProcessor(ConsoleSpanExporter()))
+        elif snapshot.exporter == "otlp":
+            exporter = OTLPSpanExporter(
+                endpoint=snapshot.otlp_endpoint,
+                headers=snapshot.otlp_headers,
+                timeout=snapshot.otlp_timeout_seconds,
+            )
+            self._provider.add_span_processor(BatchSpanProcessor(exporter))
         self._tracer = self._provider.get_tracer("hello_sales_backend.observability")
 
     @contextmanager
@@ -386,6 +412,7 @@ class OpenTelemetryTracingRuntime:
         run_id: str,
         turn_id: str,
         profile_name: str,
+        prompt: EffectivePromptRef | None,
         request_id: str | None,
         trace_id: str | None,
     ) -> Iterator[Span | None]:
@@ -398,6 +425,7 @@ class OpenTelemetryTracingRuntime:
             "hello_sales.agent_turn_id": turn_id,
             "hello_sales.agent_profile": profile_name,
         }
+        attributes.update(_prompt_span_attributes(prompt))
         if request_id is not None:
             attributes["hello_sales.request_id"] = request_id
         if trace_id is not None:
@@ -449,6 +477,7 @@ class OpenTelemetryTracingRuntime:
         *,
         run_id: str,
         worker_name: str,
+        prompt: EffectivePromptRef | None,
         request_id: str | None,
         trace_id: str | None,
         execution_mode: str,
@@ -462,6 +491,7 @@ class OpenTelemetryTracingRuntime:
             "hello_sales.worker_name": worker_name,
             "hello_sales.worker_execution_mode": execution_mode,
         }
+        attributes.update(_prompt_span_attributes(prompt))
         if request_id is not None:
             attributes["hello_sales.request_id"] = request_id
         if trace_id is not None:
@@ -582,5 +612,23 @@ class OpenTelemetryTracingRuntime:
             return
         span.set_status(Status(status_code=StatusCode.OK))
 
+    def shutdown(self) -> None:
+        self._provider.shutdown()
+
     def snapshot(self) -> TracingRuntimeSnapshot:
         return self._snapshot
+
+
+def _prompt_span_attributes(prompt: EffectivePromptRef | None) -> dict[str, str]:
+    if prompt is None:
+        return {}
+    attributes = {
+        "hello_sales.prompt_id": prompt.prompt_id,
+        "hello_sales.prompt_version": prompt.version,
+        "hello_sales.prompt_owner_kind": prompt.owner_kind,
+        "hello_sales.prompt_owner_id": prompt.owner_id,
+        "hello_sales.prompt_purpose": prompt.purpose,
+    }
+    if prompt.checksum is not None:
+        attributes["hello_sales.prompt_checksum"] = prompt.checksum
+    return attributes

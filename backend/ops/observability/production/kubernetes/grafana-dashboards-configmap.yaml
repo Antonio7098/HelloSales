@@ -1,0 +1,47 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards
+data:
+  hello-sales-overview.json: |
+    {
+      "annotations": {"list": []},
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 0,
+      "id": null,
+      "links": [],
+      "panels": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"unit": "reqps"}, "overrides": []},
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+          "id": 1,
+          "options": {"legend": {"displayMode": "table", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
+          "targets": [{"editorMode": "code", "expr": "sum by (route) (rate(hello_sales_http_requests_total[5m]))", "legendFormat": "{{route}}", "range": true, "refId": "A"}],
+          "title": "HTTP Request Rate By Route",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"unit": "s"}, "overrides": []},
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+          "id": 2,
+          "options": {"legend": {"displayMode": "table", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
+          "targets": [{"editorMode": "code", "expr": "histogram_quantile(0.95, sum by (le, route) (rate(hello_sales_http_request_duration_seconds_bucket[5m])))", "legendFormat": "{{route}}", "range": true, "refId": "A"}],
+          "title": "HTTP P95 Latency By Route",
+          "type": "timeseries"
+        }
+      ],
+      "refresh": "30s",
+      "schemaVersion": 39,
+      "style": "dark",
+      "tags": ["hello-sales", "observability"],
+      "templating": {"list": []},
+      "time": {"from": "now-6h", "to": "now"},
+      "timezone": "browser",
+      "title": "HelloSales Observability Overview",
+      "uid": "hello-sales-overview",
+      "version": 1,
+      "weekStart": ""
+    }

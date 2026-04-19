@@ -7,6 +7,8 @@ from typing import Any, Protocol
 
 from pydantic import BaseModel, Field
 
+from hello_sales_backend.platform.llm.prompts import EffectivePromptRef
+
 
 class LLMMessage(BaseModel):
     """One normalized LLM message."""
@@ -23,6 +25,7 @@ class LLMCallContext(BaseModel):
     actor_id: str | None = None
     timeout_seconds: float | None = Field(default=None, gt=0)
     operation: str | None = None
+    prompt: EffectivePromptRef | None = None
 
 
 @dataclass(slots=True, frozen=True)

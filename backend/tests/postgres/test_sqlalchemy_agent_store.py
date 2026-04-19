@@ -18,6 +18,7 @@ from hello_sales_backend.platform.db.base import metadata
 from hello_sales_backend.platform.db.engine import build_engine
 from hello_sales_backend.platform.db.repositories import SqlAlchemyAgentStore
 from hello_sales_backend.platform.db.session import build_session_factory
+from hello_sales_backend.platform.llm import EffectivePromptRef
 
 pytestmark = pytest.mark.postgres
 
@@ -48,6 +49,13 @@ async def test_sqlalchemy_agent_store_round_trips_operational_state() -> None:
         request_id="req-1",
         trace_id="tr-1",
         actor_id=None,
+        prompt=EffectivePromptRef(
+            prompt_id="agent.generic.response",
+            version="v1",
+            owner_kind="agent",
+            owner_id="generic",
+            purpose="response",
+        ),
     )
     turn = AgentTurn(
         turn_id="pg-turn-1",
@@ -55,6 +63,7 @@ async def test_sqlalchemy_agent_store_round_trips_operational_state() -> None:
         sequence_no=1,
         input_text="status",
         status=AgentTurnStatus.PENDING,
+        prompt=run.prompt,
     )
     tool_call = AgentToolCall(
         tool_call_id="pg-tool-1",
@@ -90,7 +99,9 @@ async def test_sqlalchemy_agent_store_round_trips_operational_state() -> None:
     summary = await store.summarize(limit=10)
 
     assert fetched_run is not None and fetched_run.run_id == run.run_id
+    assert fetched_run.prompt is not None and fetched_run.prompt.version == "v1"
     assert fetched_turn is not None and fetched_turn.turn_id == turn.turn_id
+    assert fetched_turn.prompt is not None and fetched_turn.prompt.prompt_id == "agent.generic.response"
     assert fetched_tools[0].tool_call_id == tool_call.tool_call_id
     assert fetched_tools[0].result_payload == {"status": "ok"}
     assert fetched_events[0].event_id == event.event_id

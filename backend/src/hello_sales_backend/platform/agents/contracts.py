@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Protocol
 
 from hello_sales_backend.platform.agents.tools import AgentToolCatalog, AgentToolRequest
-from hello_sales_backend.platform.providers.llm.contracts import ChatMessage
+from hello_sales_backend.platform.llm import ChatMessage, EffectivePromptRef
 
 
 class AgentSelectionPolicyPort(Protocol):
@@ -29,9 +29,14 @@ class AgentDefinitionPort(Protocol):
     @property
     def selection_policy(self) -> AgentSelectionPolicyPort: ...
 
+    @property
+    def prompt(self) -> object: ...
+
     def build_messages(self, user_input: str, tool_results: list[str]) -> list[ChatMessage]: ...
 
     def build_fallback_response(self, user_input: str, tool_results: list[str]) -> str: ...
+
+    def effective_prompt_ref(self) -> EffectivePromptRef: ...
 
 
 class AgentDefinitionResolverPort(Protocol):

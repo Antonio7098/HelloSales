@@ -44,6 +44,7 @@ If a rule includes mode-specific expectations, only apply those branches when th
 | LLM-IO-001 | Structured input and output boundaries must stay explicit when used | structured-output LLM runtimes | High |
 | LLM-LIFECYCLE-001 | Lifecycle controls must stay explicit and inspectable | all LLM-backed runtime code with lifecycle controls | High |
 | LLM-RUN-001 | Runs and events must be durable or inspectable | long-lived or background LLM execution | High |
+| LLM-PROMPT-001 | Prompts must be explicitly versioned and version propagation must stay observable | all LLM-backed runtime code with concrete prompts | High |
 | LLM-EXPOSE-001 | Operational exposure must flow through application modules | routes and operational APIs | High |
 | LLM-OBS-001 | LLM runtime monitoring must reuse the canonical observability runtime | metrics, tracing, diagnostics, and events | Medium |
 
@@ -169,6 +170,38 @@ LLM-backed execution that spans time, turns, or background ownership must preser
 **Evidence**
 - run state and event history are available through stable operational surfaces or durable stores
 
+### LLM-PROMPT-001: Prompts Must Be Explicitly Versioned And Version Propagation Must Stay Observable
+
+**Rule**
+Concrete prompts must be explicitly versioned, and the effective prompt version used for execution must propagate through inspectable runtime state, logging, and observability.
+
+**Required**
+- assign an explicit version identifier to every concrete system prompt, developer prompt, worker prompt, template, or prompt bundle that affects runtime behavior
+- represent concrete prompts as first-class definitions with stable prompt identity separate from agent or worker identity
+- treat prompt version changes as intentional behavioral changes rather than silent text edits
+- preserve the effective prompt version used by an execution in durable or inspectable runtime state
+- include the effective prompt identity and version in relevant logs, events, traces, diagnostics, and operational metadata emitted for that execution
+- keep prompt version fields machine-usable with stable names so operators can correlate behavior, failures, and regressions to a concrete prompt revision
+
+**Canonical fields**
+- use a stable prompt reference shape with `prompt_id`, `prompt_version`, `prompt_owner_kind`, `prompt_owner_id`, and `prompt_purpose`
+- include `prompt_checksum` when a durable content hash is available
+
+**Conversational mode specifics**
+- agent runs and turns should preserve the prompt version or prompt bundle version that shaped the response behavior
+
+**Structured mode specifics**
+- worker runs and attempts should preserve the prompt version that shaped structured generation and retry behavior
+
+**Forbidden**
+- editing production prompts in place with no explicit version change
+- relying on git history alone as the runtime prompt version record
+- emitting LLM execution logs or observability signals that cannot be tied back to the effective prompt version
+
+**Evidence**
+- prompt-bearing definitions expose explicit prompt identifiers and versions
+- runtime state, logs, and observability outputs include the effective prompt reference
+
 ### LLM-EXPOSE-001: Operational Exposure Must Flow Through Application Modules
 
 **Rule**
@@ -194,6 +227,7 @@ LLM-backed execution must emit monitoring signals through the platform-owned obs
 **Required**
 - preserve request and trace correlation through LLM-backed execution where available
 - emit relevant lifecycle signals through canonical events, metrics, tracing, and diagnostics surfaces when enabled
+- include effective prompt version in canonical monitoring surfaces for prompt-driven execution when applicable
 - keep monitoring fields machine-usable with stable names and codes
 
 **Structured mode specifics**
@@ -212,5 +246,7 @@ Reject a change if it:
 - smuggles tool execution into a mode that does not explicitly support it
 - claims structured output without explicit local validation
 - introduces hidden approval, resume, retry, fallback, timeout, or cancellation behavior
+- adds or edits a concrete prompt without an explicit version
+- fails to propagate effective prompt version through inspectable runtime state, logging, or observability
 - exposes agent or worker runtime directly from transport adapters
 - adds a second telemetry path for LLM-backed behavior outside the canonical observability runtime

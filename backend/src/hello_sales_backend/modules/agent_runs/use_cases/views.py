@@ -3,6 +3,17 @@
 from pydantic import BaseModel
 
 
+class PromptRefView(BaseModel):
+    """Serialized prompt identity used by one execution."""
+
+    prompt_id: str
+    version: str
+    owner_kind: str
+    owner_id: str
+    purpose: str
+    checksum: str | None = None
+
+
 class AgentToolCallView(BaseModel):
     """Operational view of one agent tool call."""
 
@@ -25,6 +36,7 @@ class AgentTurnView(BaseModel):
     sequence_no: int
     status: str
     input_text: str
+    prompt: PromptRefView | None = None
     response_text: str | None = None
     created_at: str
     started_at: str | None = None
@@ -41,6 +53,7 @@ class AgentRunSummaryView(BaseModel):
     run_id: str
     profile_name: str
     status: str
+    prompt: PromptRefView | None = None
     request_id: str | None = None
     trace_id: str | None = None
     actor_id: str | None = None

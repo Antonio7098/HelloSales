@@ -26,6 +26,7 @@ from hello_sales_backend.platform.db.models import (
     AgentTurnRecord,
     TaskRunRecord,
 )
+from hello_sales_backend.platform.llm import EffectivePromptRef
 from hello_sales_backend.platform.tasks.models import TaskSnapshot
 
 
@@ -84,6 +85,44 @@ def _load_json(payload: str | None) -> dict[str, object] | None:
     return loaded if isinstance(loaded, dict) else None
 
 
+def _prompt_kwargs(prompt: EffectivePromptRef | None) -> dict[str, object]:
+    return {
+        "prompt_id": None if prompt is None else prompt.prompt_id,
+        "prompt_version": None if prompt is None else prompt.version,
+        "prompt_owner_kind": None if prompt is None else prompt.owner_kind,
+        "prompt_owner_id": None if prompt is None else prompt.owner_id,
+        "prompt_purpose": None if prompt is None else prompt.purpose,
+        "prompt_checksum": None if prompt is None else prompt.checksum,
+    }
+
+
+def _map_prompt(
+    *,
+    prompt_id: str | None,
+    prompt_version: str | None,
+    prompt_owner_kind: str | None,
+    prompt_owner_id: str | None,
+    prompt_purpose: str | None,
+    prompt_checksum: str | None,
+) -> EffectivePromptRef | None:
+    if (
+        prompt_id is None
+        or prompt_version is None
+        or prompt_owner_kind is None
+        or prompt_owner_id is None
+        or prompt_purpose is None
+    ):
+        return None
+    return EffectivePromptRef(
+        prompt_id=prompt_id,
+        version=prompt_version,
+        owner_kind=prompt_owner_kind,  # type: ignore[arg-type]
+        owner_id=prompt_owner_id,
+        purpose=prompt_purpose,
+        checksum=prompt_checksum,
+    )
+
+
 class SqlAlchemyAgentStore:
     """Persist generic-agent run state."""
 
@@ -99,6 +138,7 @@ class SqlAlchemyAgentStore:
                 request_id=run.request_id,
                 trace_id=run.trace_id,
                 actor_id=run.actor_id,
+                **_prompt_kwargs(run.prompt),
                 latest_turn_id=run.latest_turn_id,
                 error_code=run.error_code,
                 error_category=run.error_category,
@@ -127,6 +167,12 @@ class SqlAlchemyAgentStore:
             record.request_id = run.request_id
             record.trace_id = run.trace_id
             record.actor_id = run.actor_id
+            record.prompt_id = run.prompt.prompt_id if run.prompt else None
+            record.prompt_version = run.prompt.version if run.prompt else None
+            record.prompt_owner_kind = run.prompt.owner_kind if run.prompt else None
+            record.prompt_owner_id = run.prompt.owner_id if run.prompt else None
+            record.prompt_purpose = run.prompt.purpose if run.prompt else None
+            record.prompt_checksum = run.prompt.checksum if run.prompt else None
             record.latest_turn_id = run.latest_turn_id
             record.error_code = run.error_code
             record.error_category = run.error_category
@@ -145,6 +191,7 @@ class SqlAlchemyAgentStore:
                 sequence_no=turn.sequence_no,
                 input_text=turn.input_text,
                 status=turn.status.value,
+                **_prompt_kwargs(turn.prompt),
                 response_text=turn.response_text,
                 error_code=turn.error_code,
                 error_category=turn.error_category,
@@ -177,6 +224,12 @@ class SqlAlchemyAgentStore:
             if record is None:
                 return
             record.status = turn.status.value
+            record.prompt_id = turn.prompt.prompt_id if turn.prompt else None
+            record.prompt_version = turn.prompt.version if turn.prompt else None
+            record.prompt_owner_kind = turn.prompt.owner_kind if turn.prompt else None
+            record.prompt_owner_id = turn.prompt.owner_id if turn.prompt else None
+            record.prompt_purpose = turn.prompt.purpose if turn.prompt else None
+            record.prompt_checksum = turn.prompt.checksum if turn.prompt else None
             record.response_text = turn.response_text
             record.error_code = turn.error_code
             record.error_category = turn.error_category
@@ -341,6 +394,14 @@ class SqlAlchemyAgentStore:
             request_id=record.request_id,
             trace_id=record.trace_id,
             actor_id=record.actor_id,
+            prompt=_map_prompt(
+                prompt_id=record.prompt_id,
+                prompt_version=record.prompt_version,
+                prompt_owner_kind=record.prompt_owner_kind,
+                prompt_owner_id=record.prompt_owner_id,
+                prompt_purpose=record.prompt_purpose,
+                prompt_checksum=record.prompt_checksum,
+            ),
             created_at=record.created_at,
             updated_at=record.updated_at,
             started_at=record.started_at,
@@ -360,6 +421,14 @@ class SqlAlchemyAgentStore:
             sequence_no=record.sequence_no,
             input_text=record.input_text,
             status=AgentTurnStatus(record.status),
+            prompt=_map_prompt(
+                prompt_id=record.prompt_id,
+                prompt_version=record.prompt_version,
+                prompt_owner_kind=record.prompt_owner_kind,
+                prompt_owner_id=record.prompt_owner_id,
+                prompt_purpose=record.prompt_purpose,
+                prompt_checksum=record.prompt_checksum,
+            ),
             created_at=record.created_at,
             started_at=record.started_at,
             completed_at=record.completed_at,

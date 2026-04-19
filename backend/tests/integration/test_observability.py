@@ -48,6 +48,35 @@ async def test_metrics_endpoint_is_operational_and_observability_state_is_visibl
 
 
 @pytest.mark.asyncio
+async def test_observability_diagnostics_show_otlp_exporter_configuration(tmp_path: Path) -> None:
+    app = create_app(
+        Settings(
+            environment="test",
+            database_url=f"sqlite+aiosqlite:///{tmp_path / 'otlp.db'}",
+            observability_tracing_enabled=True,
+            observability_tracing_exporter="otlp",
+            observability_tracing_otlp_endpoint="http://collector.test:4318/v1/traces",
+            observability_tracing_otlp_headers="authorization=Bearer test",
+            observability_tracing_otlp_timeout_seconds=5,
+        )
+    )
+
+    async with app.router.lifespan_context(app):
+        transport = ASGITransport(app=app, raise_app_exceptions=True)
+        async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+            diagnostics = await client.get("/api/system/diagnostics")
+
+    assert diagnostics.status_code == 200
+    diagnostics_payload = diagnostics.json()["data"]
+    assert diagnostics_payload["observability"]["tracing"]["enabled"] is True
+    assert diagnostics_payload["observability"]["tracing"]["exporter"] == "otlp"
+    assert (
+        diagnostics_payload["observability"]["tracing"]["otlp_endpoint"]
+        == "http://collector.test:4318/v1/traces"
+    )
+
+
+@pytest.mark.asyncio
 async def test_metrics_endpoint_records_http_failures(tmp_path: Path) -> None:
     app = create_app(
         Settings(

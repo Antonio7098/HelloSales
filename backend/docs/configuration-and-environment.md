@@ -60,6 +60,9 @@ Relevant variables include:
 - `HELLO_SALES_OBSERVABILITY_METRICS_WORKERS_ENABLED`
 - `HELLO_SALES_OBSERVABILITY_TRACING_ENABLED`
 - `HELLO_SALES_OBSERVABILITY_TRACING_EXPORTER`
+- `HELLO_SALES_OBSERVABILITY_TRACING_OTLP_ENDPOINT`
+- `HELLO_SALES_OBSERVABILITY_TRACING_OTLP_HEADERS`
+- `HELLO_SALES_OBSERVABILITY_TRACING_OTLP_TIMEOUT_SECONDS`
 - `HELLO_SALES_OBSERVABILITY_TRACING_HTTP_ENABLED`
 - `HELLO_SALES_OBSERVABILITY_TRACING_BACKGROUND_TASKS_ENABLED`
 - `HELLO_SALES_OBSERVABILITY_TRACING_AGENTS_ENABLED`
@@ -69,11 +72,28 @@ Behavior:
 - metrics and tracing can be enabled independently
 - the operational metrics endpoint is disabled by default
 - the metrics endpoint is mounted directly on the app rather than under `HELLO_SALES_API_PREFIX`
-- tracing currently supports `console` export or disabled/no-op operation
+- tracing currently supports `console`, `otlp`, or disabled/no-op operation
 - service metadata falls back to app metadata when observability-specific values are not set
 - metric families can be disabled individually without removing the overall observability runtime
 - agent metrics and tracing are controlled independently so generic-agent monitoring can be enabled without forcing those signals in every environment
 - worker metrics and tracing are controlled independently so sprint-01 observability can be extended without forcing worker-specific signals on every environment
+
+### OTLP Tracing Export
+
+When `HELLO_SALES_OBSERVABILITY_TRACING_EXPORTER=otlp`, the backend exports spans to an OpenTelemetry Collector or other OTLP HTTP-compatible endpoint.
+
+Relevant settings:
+- `HELLO_SALES_OBSERVABILITY_TRACING_OTLP_ENDPOINT`
+- `HELLO_SALES_OBSERVABILITY_TRACING_OTLP_HEADERS`
+- `HELLO_SALES_OBSERVABILITY_TRACING_OTLP_TIMEOUT_SECONDS`
+
+Behavior:
+- the endpoint must start with `http://` or `https://`
+- headers are parsed from a comma-separated `key=value` string
+- OTLP export remains optional and disabled unless explicitly configured
+- `console` and `none` remain valid low-friction modes for local development or tests
+
+For the self-hosted stack introduced in Sprint 3, the intended endpoint is the OpenTelemetry Collector, typically `http://otel-collector:4318/v1/traces` inside the stack network or `http://localhost:4318/v1/traces` from local development.
 
 ## Provider Configuration Model
 

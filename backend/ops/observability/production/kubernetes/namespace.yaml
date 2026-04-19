@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: hello-sales-observability
+  labels:
+    app.kubernetes.io/part-of: hello-sales
+    app.kubernetes.io/component: observability

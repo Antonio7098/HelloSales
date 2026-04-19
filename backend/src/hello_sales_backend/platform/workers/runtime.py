@@ -10,7 +10,12 @@ from typing import Any, Protocol
 
 from pydantic import ValidationError
 
-from hello_sales_backend.platform.llm import LLMCallContext, LLMProviderPort, schema_hint_from_model
+from hello_sales_backend.platform.llm import (
+    EffectivePromptRef,
+    LLMCallContext,
+    LLMProviderPort,
+    schema_hint_from_model,
+)
 from hello_sales_backend.platform.observability.events import OperationalEvent
 from hello_sales_backend.platform.observability.logging import get_logger
 from hello_sales_backend.platform.observability.runtime import ObservabilityRuntime
@@ -59,6 +64,8 @@ class WorkerRuntime:
                 component="worker",
             )
         definition = self.workers.require(run.worker_name)
+        if run.prompt is None:
+            run.prompt = definition.effective_prompt_ref()
         started_at = perf_counter()
         await self._mark_running(run)
         self.observability.on_worker_run_started(
@@ -68,16 +75,21 @@ class WorkerRuntime:
         with self.observability.start_worker_run_span(
             run_id=run.run_id,
             worker_name=run.worker_name,
+            prompt=run.prompt,
             request_id=run.request_id,
             trace_id=run.trace_id,
             execution_mode=run.execution_mode.value,
         ) as span:
             try:
                 validated_input = definition.input_model.model_validate(run.input_payload)
-                schema_hint = schema_hint_from_model(definition.output_model, name=f"{definition.worker_name}_result")
+                schema_hint = schema_hint_from_model(
+                    definition.output_model, name=f"{definition.worker_name}_result"
+                )
                 last_issue: str | None = None
                 for attempt in range(1, run.max_attempts + 1):
-                    provider = self._select_provider(definition=definition, attempt=attempt, run=run)
+                    provider = self._select_provider(
+                        definition=definition, attempt=attempt, run=run
+                    )
                     provider_name = provider.provider_name
                     if attempt > 1:
                         run.status = WorkerRunStatus.RETRYING
@@ -88,7 +100,11 @@ class WorkerRuntime:
                             event_type="worker.attempt.retry_scheduled",
                             severity="warning",
                             code="worker.attempt.retry_scheduled",
-                            payload={"attempt": attempt, "max_attempts": run.max_attempts, "worker_name": run.worker_name},
+                            payload={
+                                "attempt": attempt,
+                                "max_attempts": run.max_attempts,
+                                "worker_name": run.worker_name,
+                            },
                         )
                     run.status = WorkerRunStatus.RUNNING
                     run.attempt_count = attempt
@@ -120,6 +136,7 @@ class WorkerRuntime:
                                     actor_id=run.actor_id,
                                     timeout_seconds=run.timeout_seconds,
                                     operation="worker.llm.generate_json",
+                                    prompt=run.prompt,
                                 ),
                             )
                     except TimeoutError as exc:
@@ -178,12 +195,18 @@ class WorkerRuntime:
                             code="worker.output.invalid_json",
                             category="validation",
                             status_code=502,
-                            details={"run_id": run.run_id, "worker_name": run.worker_name, "attempt": attempt},
+                            details={
+                                "run_id": run.run_id,
+                                "worker_name": run.worker_name,
+                                "attempt": attempt,
+                            },
                             operation="worker.process_run",
                             component="worker",
                         )
                     try:
-                        validated_output = definition.output_model.model_validate(result.output_json)
+                        validated_output = definition.output_model.model_validate(
+                            result.output_json
+                        )
                         if definition.validate_output is not None:
                             definition.validate_output(validated_output)
                     except (ValidationError, ValueError, AppError) as exc:
@@ -270,13 +293,17 @@ class WorkerRuntime:
                 )
                 raise
             except Exception as exc:
-                structured = exc if isinstance(exc, AppError) else internal_error(
-                    "Worker execution failed unexpectedly",
-                    code="worker.run.failed_unexpected",
-                    details={"run_id": run.run_id, "worker_name": run.worker_name},
-                    operation="worker.process_run",
-                    component="worker",
-                    exc=exc,
+                structured = (
+                    exc
+                    if isinstance(exc, AppError)
+                    else internal_error(
+                        "Worker execution failed unexpectedly",
+                        code="worker.run.failed_unexpected",
+                        details={"run_id": run.run_id, "worker_name": run.worker_name},
+                        operation="worker.process_run",
+                        component="worker",
+                        exc=exc,
+                    )
                 )
                 await self._mark_failed(run, structured)
                 await self._append_event(
@@ -389,7 +416,7 @@ class WorkerRuntime:
             event_type=event_type,
             severity=severity,
             code=code,
-            payload=payload,
+            payload={**self._prompt_fields(run.prompt), **payload},
             request_id=run.request_id,
             trace_id=run.trace_id,
             actor_id=run.actor_id,
@@ -407,6 +434,7 @@ class WorkerRuntime:
                 payload={
                     "run_id": run.run_id,
                     "worker_name": run.worker_name,
+                    **self._prompt_fields(run.prompt),
                     "severity": severity,
                     "code": code,
                     "message": event_type,
@@ -421,5 +449,22 @@ class WorkerRuntime:
             event_type=event_type,
             severity=severity,
             code=code,
+            **self._prompt_fields(run.prompt),
             payload=payload,
         )
+
+    @staticmethod
+    def _prompt_fields(prompt: EffectivePromptRef | None) -> dict[str, object]:
+        if prompt is None:
+            return {}
+        payload: dict[str, object] = {
+            "prompt_id": prompt.prompt_id,
+            "prompt_version": prompt.version,
+            "prompt_owner_kind": prompt.owner_kind,
+            "prompt_owner_id": prompt.owner_id,
+            "prompt_purpose": prompt.purpose,
+        }
+        checksum = prompt.checksum
+        if checksum is not None:
+            payload["prompt_checksum"] = checksum
+        return payload

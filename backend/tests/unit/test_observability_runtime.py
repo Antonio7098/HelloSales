@@ -3,6 +3,7 @@ from __future__ import annotations
 from pydantic import ValidationError
 
 from hello_sales_backend.platform.config.settings import Settings
+from hello_sales_backend.platform.llm import EffectivePromptRef
 from hello_sales_backend.platform.observability.metrics import (
     MetricsRuntimeSnapshot,
     NoOpMetricsRuntime,
@@ -50,15 +51,36 @@ def test_observability_settings_validate_metrics_exporter() -> None:
 
 
 def test_observability_settings_validate_tracing_exporter() -> None:
+    settings = Settings(
+        database_url="sqlite+aiosqlite:///test.db",
+        observability_tracing_exporter="otlp",
+    )
+
+    assert settings.observability_tracing_exporter == "otlp"
+
+
+def test_observability_settings_validate_otlp_endpoint() -> None:
     try:
         Settings(
             database_url="sqlite+aiosqlite:///test.db",
-            observability_tracing_exporter="otlp",
+            observability_tracing_otlp_endpoint="collector:4318",
         )
     except ValidationError as exc:
-        assert "observability_tracing_exporter" in str(exc)
+        assert "observability_tracing_otlp_endpoint" in str(exc)
     else:
-        raise AssertionError("expected ValidationError for an invalid tracing exporter")
+        raise AssertionError("expected ValidationError for an invalid OTLP endpoint")
+
+
+def test_observability_settings_parse_otlp_headers() -> None:
+    settings = Settings(
+        database_url="sqlite+aiosqlite:///test.db",
+        observability_tracing_otlp_headers="authorization=Bearer test,x-scope-orgid=dev",
+    )
+
+    assert settings.resolved_observability_tracing_otlp_headers == {
+        "authorization": "Bearer test",
+        "x-scope-orgid": "dev",
+    }
 
 
 def test_noop_metrics_runtime_is_safe_when_disabled() -> None:
@@ -220,6 +242,7 @@ def test_open_telemetry_runtime_reuses_valid_trace_id_for_spans() -> None:
             background_tasks_enabled=True,
             agents_enabled=True,
             workers_enabled=True,
+            otlp_headers={},
         )
     )
 
@@ -245,6 +268,13 @@ def test_open_telemetry_runtime_reuses_valid_trace_id_for_spans() -> None:
         run_id="run-1",
         turn_id="turn-1",
         profile_name="generic",
+        prompt=EffectivePromptRef(
+            prompt_id="agent.generic.response",
+            version="v1",
+            owner_kind="agent",
+            owner_id="generic",
+            purpose="response",
+        ),
         request_id="req-1",
         trace_id=trace_id,
     ) as agent_turn_span:
@@ -266,9 +296,40 @@ def test_open_telemetry_runtime_reuses_valid_trace_id_for_spans() -> None:
     with runtime.start_worker_run_span(
         run_id="worker-run-1",
         worker_name="structured-brief",
+        prompt=EffectivePromptRef(
+            prompt_id="worker.structured-brief.generation",
+            version="v1",
+            owner_kind="worker",
+            owner_id="structured-brief",
+            purpose="generation",
+        ),
         request_id="req-1",
         trace_id=trace_id,
         execution_mode="direct",
     ) as worker_span:
         assert worker_span is not None
         assert f"{worker_span.get_span_context().trace_id:032x}" == trace_id
+
+
+def test_open_telemetry_runtime_supports_otlp_exporter_configuration() -> None:
+    runtime = OpenTelemetryTracingRuntime(
+        TracingRuntimeSnapshot(
+            enabled=True,
+            exporter="otlp",
+            service_name="hello-sales-backend",
+            service_version="0.1.0",
+            environment="test",
+            http_enabled=True,
+            background_tasks_enabled=True,
+            agents_enabled=False,
+            workers_enabled=False,
+            otlp_endpoint="http://collector.test:4318/v1/traces",
+            otlp_headers={"authorization": "Bearer test"},
+            otlp_timeout_seconds=3.5,
+        )
+    )
+
+    assert runtime.snapshot().exporter == "otlp"
+    assert runtime.snapshot().otlp_endpoint == "http://collector.test:4318/v1/traces"
+    assert runtime.snapshot().otlp_headers == {"authorization": "Bearer test"}
+    assert runtime.snapshot().otlp_timeout_seconds == 3.5

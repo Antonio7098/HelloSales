@@ -97,6 +97,7 @@ The observability runtime owns:
 - code/severity-driven alert derivation
 - Prometheus metrics collection and exposition
 - OpenTelemetry tracing hooks for HTTP and background task boundaries
+- collector-oriented tracing export through `console`, `none`, or OTLP HTTP exporters
 
 - `platform/observability/runtime.py`
 
@@ -118,6 +119,11 @@ Tracing is additive rather than replacement behavior:
 - existing `request_id` and `trace_id` metadata remain intact for logs, events, and errors
 - telemetry adds spans for HTTP, background task, and worker execution where enabled
 - structured logs and operational events remain the authoritative failure record
+
+Sprint 03 extends this runtime toward a self-hosted stack:
+- the backend can now export spans to an OTLP HTTP endpoint suitable for an OpenTelemetry Collector
+- repo-owned observability stack config lives under `backend/ops/observability/`
+- the intended deployment path is app -> OpenTelemetry Collector -> Tempo/Loki/Prometheus/Grafana
 
 ### Background Task Runner
 The task runner owns:

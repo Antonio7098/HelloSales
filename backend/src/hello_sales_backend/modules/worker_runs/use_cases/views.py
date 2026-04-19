@@ -3,12 +3,24 @@
 from pydantic import BaseModel
 
 
+class PromptRefView(BaseModel):
+    """Serialized prompt identity used by one worker execution."""
+
+    prompt_id: str
+    version: str
+    owner_kind: str
+    owner_id: str
+    purpose: str
+    checksum: str | None = None
+
+
 class WorkerRunSummaryView(BaseModel):
     """Summary view returned after worker mutations."""
 
     run_id: str
     worker_name: str
     status: str
+    prompt: PromptRefView | None = None
     execution_mode: str
     request_id: str | None = None
     trace_id: str | None = None

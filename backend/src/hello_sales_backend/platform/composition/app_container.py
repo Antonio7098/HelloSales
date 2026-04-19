@@ -175,6 +175,7 @@ def build_app_container(settings: Settings, overrides: AppOverrides | None = Non
         store=agent_store,
         runtime=agent_runtime,
         tasks=tasks,
+        agents=agent_registry,
     )
     worker_runs_module = build_worker_runs_module(
         store=worker_store,

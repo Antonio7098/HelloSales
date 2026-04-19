@@ -42,6 +42,9 @@ These backend docs are implementation-oriented and describe the code as it exist
 - **`testing-and-operations.md`**
   Tests, smoke harness, Postgres checks, and operational developer workflows.
 
+- **`observability-hosting-guide.md`**
+  Step-by-step guide for hosting the self-hosted observability stack, including deployment order, storage, validation, and operational cautions.
+
 ## Relationship To Other Docs
 
 - `backend/README.md` is the quick-start entrypoint for local development and common commands.
