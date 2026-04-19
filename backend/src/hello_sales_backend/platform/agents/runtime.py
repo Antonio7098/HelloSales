@@ -23,6 +23,7 @@ from hello_sales_backend.platform.agents.models import (
 )
 from hello_sales_backend.platform.agents.persistence import AgentStorePort
 from hello_sales_backend.platform.agents.tools import AgentToolExecutionContext
+from hello_sales_backend.platform.llm import EffectivePromptRef
 from hello_sales_backend.platform.llm.contracts import LLMCallContext, LLMProviderPort
 from hello_sales_backend.platform.observability.events import OperationalEvent
 from hello_sales_backend.platform.observability.logging import get_logger
@@ -657,7 +658,7 @@ class GenericAgentRuntime:
         )
 
     @staticmethod
-    def _prompt_fields(prompt: object | None) -> dict[str, object]:
+    def _prompt_fields(prompt: EffectivePromptRef | None) -> dict[str, object]:
         if prompt is None:
             return {}
         payload: dict[str, object] = {

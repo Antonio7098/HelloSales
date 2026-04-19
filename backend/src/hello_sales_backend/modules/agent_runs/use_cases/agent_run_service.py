@@ -32,6 +32,7 @@ from hello_sales_backend.platform.agents.models import (
 )
 from hello_sales_backend.platform.agents.persistence import AgentStorePort
 from hello_sales_backend.platform.agents.runtime import AgentExecutionRuntime
+from hello_sales_backend.platform.llm import EffectivePromptRef
 from hello_sales_backend.platform.tasks.models import TaskMetadata
 from hello_sales_backend.platform.tasks.runner import BackgroundTaskRunner
 from hello_sales_backend.shared.errors import app_error
@@ -141,7 +142,9 @@ class AgentRunService:
         turns = await self._store.list_turns(run_id)
         detailed_turns: list[AgentTurnView] = []
         for turn in turns:
-            detailed_turns.append(self._turn_view(turn, await self._store.list_tool_calls(run_id, turn.turn_id)))
+            detailed_turns.append(
+                self._turn_view(turn, await self._store.list_tool_calls(run_id, turn.turn_id))
+            )
         return AgentRunDetailView(
             **self._run_summary_view(run).model_dump(),
             turns=detailed_turns,
@@ -231,7 +234,9 @@ class AgentRunService:
                 component="agent",
             )
         decided_at = utc_now()
-        tool_call.status = AgentToolCallStatus.APPROVED if command.approved else AgentToolCallStatus.REJECTED
+        tool_call.status = (
+            AgentToolCallStatus.APPROVED if command.approved else AgentToolCallStatus.REJECTED
+        )
         tool_call.completed_at = decided_at if not command.approved else None
         await self._store.update_tool_call(tool_call)
         await self._append_event(
@@ -285,7 +290,11 @@ class AgentRunService:
 
     async def cancel_run(self, run_id: str) -> AgentRunSummaryView:
         run = await self._require_run(run_id)
-        if run.status in {AgentRunStatus.COMPLETED, AgentRunStatus.FAILED, AgentRunStatus.CANCELLED}:
+        if run.status in {
+            AgentRunStatus.COMPLETED,
+            AgentRunStatus.FAILED,
+            AgentRunStatus.CANCELLED,
+        }:
             raise app_error(
                 "Agent run is already terminal and cannot be cancelled",
                 code="agent.run.not_cancellable",
@@ -295,7 +304,11 @@ class AgentRunService:
                 operation="agent_run.cancel_run",
                 component="agent",
             )
-        turn = await self._store.get_turn(run.latest_turn_id) if run.latest_turn_id is not None else None
+        turn = (
+            await self._store.get_turn(run.latest_turn_id)
+            if run.latest_turn_id is not None
+            else None
+        )
         await self._append_event(
             run_id=run.run_id,
             turn_id=turn.turn_id if turn is not None else None,
@@ -315,7 +328,11 @@ class AgentRunService:
             await self._store.update_turn(turn)
             if not task_cancelled:
                 for tool_call in await self._store.list_tool_calls(run.run_id, turn.turn_id):
-                    if tool_call.status not in {AgentToolCallStatus.COMPLETED, AgentToolCallStatus.FAILED, AgentToolCallStatus.REJECTED}:
+                    if tool_call.status not in {
+                        AgentToolCallStatus.COMPLETED,
+                        AgentToolCallStatus.FAILED,
+                        AgentToolCallStatus.REJECTED,
+                    }:
                         tool_call.status = AgentToolCallStatus.CANCELLED
                         tool_call.completed_at = turn.completed_at
                         await self._store.update_tool_call(tool_call)
@@ -450,7 +467,7 @@ class AgentRunService:
         )
 
     @staticmethod
-    def _prompt_view(prompt: object | None) -> PromptRefView | None:
+    def _prompt_view(prompt: EffectivePromptRef | None) -> PromptRefView | None:
         if prompt is None:
             return None
         return PromptRefView(

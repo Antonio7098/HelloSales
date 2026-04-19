@@ -10,6 +10,7 @@ from hello_sales_backend.modules.worker_runs.use_cases.views import (
     WorkerRunDetailView,
     WorkerRunSummaryView,
 )
+from hello_sales_backend.platform.llm import EffectivePromptRef
 from hello_sales_backend.platform.tasks.models import TaskMetadata
 from hello_sales_backend.platform.tasks.runner import BackgroundTaskRunner
 from hello_sales_backend.platform.workers.models import (
@@ -52,7 +53,9 @@ class WorkerRunService:
         command: StartWorkerRunCommand,
     ) -> WorkerRunSummaryView:
         definition = self._workers.require(command.worker_name)
-        validated_input = definition.input_model.model_validate(command.input_payload).model_dump(mode="json")
+        validated_input = definition.input_model.model_validate(command.input_payload).model_dump(
+            mode="json"
+        )
         execution_mode = WorkerExecutionMode(command.execution_mode)
         run = WorkerRun(
             run_id=new_id(),
@@ -119,7 +122,11 @@ class WorkerRunService:
 
     async def cancel_run(self, run_id: str) -> WorkerRunSummaryView:
         run = await self._require_run(run_id)
-        if run.status in {WorkerRunStatus.COMPLETED, WorkerRunStatus.FAILED, WorkerRunStatus.CANCELLED}:
+        if run.status in {
+            WorkerRunStatus.COMPLETED,
+            WorkerRunStatus.FAILED,
+            WorkerRunStatus.CANCELLED,
+        }:
             raise app_error(
                 "Worker run is already terminal and cannot be cancelled",
                 code="worker.run.not_cancellable",
@@ -184,7 +191,7 @@ class WorkerRunService:
         )
 
     @staticmethod
-    def _prompt_view(prompt: object | None) -> PromptRefView | None:
+    def _prompt_view(prompt: EffectivePromptRef | None) -> PromptRefView | None:
         if prompt is None:
             return None
         return PromptRefView(
