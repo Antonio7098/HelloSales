@@ -69,12 +69,11 @@ class BackgroundTaskRunner:
 
     async def shutdown(self) -> None:
         tasks = list(self._tasks.keys())
-        if not tasks:
-            return
-        for task in tasks:
-            task.cancel()
-        await asyncio.gather(*tasks, return_exceptions=True)
-        self._tasks.clear()
+        if tasks:
+            for task in tasks:
+                task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+            self._tasks.clear()
         support_tasks = list(self._support_tasks)
         if support_tasks:
             await asyncio.gather(*support_tasks, return_exceptions=True)

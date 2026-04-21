@@ -321,6 +321,8 @@ Sprint 5 builds on that runtime by adding one governed tool and the module-owned
 | --- | --- | --- | --- | --- | --- |
 | LLM-LIFECYCLE-001 | Dynamic approval policy is deferred; the initial tool should use conservative static approval | Current runtime exposes static `requires_approval` and adding dynamic approval is a second-order runtime change | Aggregate queries may pause unnecessarily, which adds friction | Temporary | Design and implement dynamic approval metadata in the next sprint if operator feedback justifies it |
 | PRE-SCOPE-002 | The first catalog will necessarily encode some relation and column semantics | The model needs semantic guidance to write correct SQL | The initial catalog could drift toward product-specific language if not kept intentionally narrow | Temporary | Keep the v1 catalog small, view-backed, and explicitly scaffold-grade; revisit once the product brief stabilizes |
+| TEST-INT-001 / TEST-SMOKE-001 | Approval-path pytest teardown previously stalled after the session reached `completed` | `BackgroundTaskRunner.shutdown()` returned early when `_tasks` was empty and failed to await orphaned `_support_tasks` | Local verification could hang despite the runtime path succeeding | Resolved | Keep the runner fix in place and retain the approval-path integration and smoke checks in the normal pytest path |
+| TEST-SMOKE-002 | A provider-backed analytics-query smoke was not completed in this workspace | The local environment did not produce review-grade evidence for the analytics-query provider path without the teardown issue | The SQL tool lacks one piece of desired environment-backed evidence | Temporary | Re-run the provider-backed generic-agent smoke for the analytics-query scenario after the teardown stall is fixed or in an environment closer to CI/runtime parity |
 
 ## Cross-Cutting Reasoning
 
@@ -373,13 +375,13 @@ Sprint 5 builds on that runtime by adding one governed tool and the module-owned
 
 ## Phase Exit Criteria
 
-- [ ] Sprint scope is covered
-- [ ] Applicable requirements are mapped
-- [ ] Ambiguous and non-applicable requirements are recorded where relevant
-- [ ] Important decisions are explicitly justified
-- [ ] Non-trivial alternatives are discussed
-- [ ] Deviations, assumptions, risks, and unknowns are documented
-- [ ] Expected evidence is defined
+- [x] Sprint scope is covered
+- [x] Applicable requirements are mapped
+- [x] Ambiguous and non-applicable requirements are recorded where relevant
+- [x] Important decisions are explicitly justified
+- [x] Non-trivial alternatives are discussed
+- [x] Deviations, assumptions, risks, and unknowns are documented
+- [x] Expected evidence is defined
 
 ## Documentation Updates
 

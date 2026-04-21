@@ -52,6 +52,15 @@ The current concrete profiles are:
 - `generic`
 - `observer`
 
+The current generic-agent tool bundle includes:
+- `get_runtime_status`
+- `list_recent_tasks`
+- `run_diagnostic_job`
+- `query_analytics_data`
+
+The governed SQL tool is intentionally generic-agent-only in Sprint 5.
+It is not registered on the observer profile.
+
 ### 3. Operational Exposure Through A Module
 Location:
 - `src/hello_sales_backend/modules/sessions/`
@@ -208,6 +217,15 @@ Tool execution uses:
 - structured arguments
 - execution context containing request / trace / actor metadata
 
+`query_analytics_data` is the first governed SQL tool in this runtime.
+Its current policy is:
+- static approval required before execution
+- one semantic catalog selected by `catalog_id`
+- one read-only SQL statement only
+- approved relations and columns only
+- bounded result rows and truncated cell values
+- structured result metadata persisted with the tool result
+
 On success:
 - tool result payload is persisted
 - `agent.tool.completed` event is appended
@@ -229,6 +247,9 @@ When a tool requires approval:
 - the run and turn move to awaiting-approval state
 
 Approval decisions happen through `AgentRunService.decide_approval()`.
+
+The SQL tool deliberately uses the conservative path in Sprint 5.
+Even safe aggregate queries pause for approval because dynamic approval policy has not been added to the runtime yet.
 
 ### If approved
 - tool-call status becomes approved

@@ -62,6 +62,10 @@ class Settings(BaseSettings):
     generic_agent_model: str = ""
     generic_agent_base_url: str = ""
     generic_agent_timeout_seconds: float = Field(default=30.0, gt=0)
+    analytics_query_catalog_dir: str = "backend/catalogs/analytics"
+    analytics_query_statement_timeout_ms: int = Field(default=5000, ge=100, le=60000)
+    analytics_query_default_max_rows: int = Field(default=25, ge=1, le=200)
+    analytics_query_max_cell_length: int = Field(default=200, ge=32, le=4000)
     session_summary_turn_interval: int = Field(default=8, ge=1)
     groq_api_key: str = ""
     openrouter_api_key: str = ""
@@ -84,6 +88,7 @@ class Settings(BaseSettings):
         "generic_agent_provider",
         "generic_agent_model",
         "generic_agent_base_url",
+        "analytics_query_catalog_dir",
         "groq_api_key",
         "openrouter_api_key",
         "openai_api_key",

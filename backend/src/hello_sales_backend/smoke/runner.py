@@ -14,6 +14,7 @@ class SmokeRunner:
         self._context = context
 
     async def run(self, smoke_name: str | None = None) -> SmokeExecutionResult:
+        await self._context.prepare_runtime()
         smoke = self._registry.default() if smoke_name is None else self._registry.get(smoke_name)
         result = await smoke.run(self._context)
         return SmokeExecutionResult.from_result(smoke, result)
