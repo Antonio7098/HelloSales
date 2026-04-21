@@ -62,7 +62,7 @@ create_app()
 - background task runner
 - workflow runtime and executor
 - health service
-- system, jobs, sessions, agent-runs, and worker-runs modules
+- analytics-query, system, jobs, sessions, agent-runs, and worker-runs modules
 - agent registry and generic agent runtime
 - worker registry and worker runtime
 
@@ -149,7 +149,15 @@ The runtime wrapper:
 
 ## Application Capability Modules
 
-The backend currently exposes four modules:
+The backend currently exposes six modules:
+
+### `modules/analytics_query`
+Purpose:
+- governed analytics-query capability for the conversational runtime
+- semantic catalog loading from YAML manifests
+- `sqlglot`-backed read-only validation against approved relations and columns
+- bounded execution, result truncation, and semantics-aware redaction
+- machine-usable query observability events such as `analytics_query.succeeded` and `analytics_query.failed`
 
 ### `modules/sessions`
 Purpose:
@@ -223,6 +231,7 @@ The combined session/agent runtime currently owns:
 - agent run and turn lifecycle state
 - tool-call lifecycle state
 - approval pause handling
+- governed analytics-query tool execution through the normal persisted tool-call lifecycle
 - summary task lifecycle and materialized summary state
 - completion / failure / cancellation transitions
 

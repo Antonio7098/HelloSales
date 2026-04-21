@@ -1,9 +1,14 @@
 from __future__ import annotations
 
+from typing import cast
+
 import pytest
 
 from hello_sales_backend.application.agents.bootstrap import build_agent_registry
 from hello_sales_backend.application.agents.registry import AgentRegistry
+from hello_sales_backend.modules.analytics_query.use_cases.analytics_query_service import (
+    AnalyticsQueryService,
+)
 from hello_sales_backend.modules.jobs.bootstrap import build_jobs_module
 from hello_sales_backend.modules.system.bootstrap import build_system_module
 from hello_sales_backend.platform.config.settings import Settings
@@ -40,7 +45,12 @@ def _build_registry() -> AgentRegistry:
         agent_registry=type("Registry", (), {"list_profiles": lambda self: []})(),
         clock=None,
     )
-    return build_agent_registry(system_service=system_module.service, jobs_service=jobs_module.service)
+    analytics_query_service = cast(AnalyticsQueryService, type("AnalyticsQueryStub", (), {"query_data": None})())
+    return build_agent_registry(
+        system_service=system_module.service,
+        jobs_service=jobs_module.service,
+        analytics_query_service=analytics_query_service,
+    )
 
 
 def test_agent_registry_exposes_generic_and_observer_profiles() -> None:
@@ -51,6 +61,7 @@ def test_agent_registry_exposes_generic_and_observer_profiles() -> None:
 
     assert generic.agent_id == "generic"
     assert observer.agent_id == "observer"
+    assert generic.tools.has("query_analytics_data")
     assert observer.tools.has("get_runtime_status")
     assert not observer.tools.has("run_diagnostic_job")
 

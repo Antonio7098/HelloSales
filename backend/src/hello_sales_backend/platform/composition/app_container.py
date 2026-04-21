@@ -9,14 +9,13 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 from hello_sales_backend.application.agents.bootstrap import build_agent_registry
 from hello_sales_backend.application.workers.bootstrap import build_worker_registry
 from hello_sales_backend.modules.agent_runs.bootstrap import build_agent_runs_module
+from hello_sales_backend.modules.analytics_query.bootstrap import build_analytics_query_module
 from hello_sales_backend.modules.jobs.bootstrap import build_jobs_module
 from hello_sales_backend.modules.sessions.bootstrap import build_sessions_module
 from hello_sales_backend.modules.system.bootstrap import build_system_module
 from hello_sales_backend.modules.worker_runs.bootstrap import build_worker_runs_module
 from hello_sales_backend.platform.agents.config import AgentRuntimeConfig
-from hello_sales_backend.platform.agents.contracts import (
-    AgentProfileCatalogPort,
-)
+from hello_sales_backend.platform.agents.contracts import AgentProfileCatalogPort
 from hello_sales_backend.platform.agents.memory import InMemoryAgentStore
 from hello_sales_backend.platform.agents.persistence import AgentStorePort
 from hello_sales_backend.platform.agents.runtime import GenericAgentRuntime
@@ -47,7 +46,11 @@ from hello_sales_backend.platform.sessions.attachment import SessionAttachmentSt
 from hello_sales_backend.platform.sessions.memory import InMemorySessionStore
 from hello_sales_backend.platform.sessions.persistence import SessionStorePort
 from hello_sales_backend.platform.tasks.runner import BackgroundTaskRunner
-from hello_sales_backend.platform.workers import InMemoryWorkerStore, WorkerRuntime, WorkerStorePort
+from hello_sales_backend.platform.workers import (
+    InMemoryWorkerStore,
+    WorkerRuntime,
+    WorkerStorePort,
+)
 from hello_sales_backend.platform.workflows.executor import WorkflowExecutor
 from hello_sales_backend.platform.workflows.registry import WorkflowRegistry
 from hello_sales_backend.platform.workflows.runtime import WorkflowRuntime, build_workflow_runtime
@@ -169,9 +172,15 @@ def build_app_container(settings: Settings, overrides: AppOverrides | None = Non
         agent_registry=agent_registry_diagnostics,
         clock=resolved_overrides.system_clock,
     )
+    analytics_query_module = build_analytics_query_module(
+        settings=settings,
+        engine=db.engine,
+        observability=observability,
+    )
     agent_registry = build_agent_registry(
         system_service=system_module.service,
         jobs_service=jobs_module.service,
+        analytics_query_service=analytics_query_module.service,
     )
     agent_registry_diagnostics.registry = agent_registry
     agent_runtime = GenericAgentRuntime(
@@ -206,6 +215,7 @@ def build_app_container(settings: Settings, overrides: AppOverrides | None = Non
         workers=worker_registry,
     )
     modules = ModuleRegistry(
+        analytics_query=analytics_query_module,
         agent_runs=agent_runs_module,
         jobs=jobs_module,
         sessions=sessions_module,

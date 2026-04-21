@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import asyncio
+import sqlite3
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
+import asyncpg
 import httpx
 from pydantic import BaseModel
 
@@ -235,10 +239,98 @@ class ProviderSmokeHarness:
             payload,
         )
 
+    async def scenario_analytics_query_completion(
+        self,
+        client: httpx.AsyncClient,
+    ) -> tuple[SmokeScenarioResult, dict[str, object]]:
+        prompts = [
+            (
+                "Use the query_analytics_data tool with catalog_id scaffold_stage to show total meetings by source "
+                "from analytics. Return the results only after the approval step completes."
+            ),
+            (
+                "Call query_analytics_data now. Use catalog_id=scaffold_stage, "
+                "sql=SELECT lead_source, SUM(meetings_booked) AS total_meetings FROM analytics_daily_pipeline "
+                "GROUP BY lead_source ORDER BY total_meetings DESC, "
+                "reason='Summarize meetings booked by source', max_rows=5. "
+                "Do not answer without the tool."
+            ),
+            (
+                "Call query_analytics_data with exactly these arguments and do not change the SQL. "
+                "catalog_id: scaffold_stage. "
+                "sql: SELECT lead_source, SUM(meetings_booked) AS total_meetings FROM analytics_daily_pipeline "
+                "GROUP BY lead_source ORDER BY total_meetings DESC. "
+                "reason: Summarize meetings booked by source. "
+                "max_rows: 5. "
+                "Do not use SELECT *. Wait for approval."
+            ),
+        ]
+        session_id: str | None = None
+        payload: dict[str, object] | None = None
+        for prompt in prompts:
+            session_id = await self.start_run(client, input_text=prompt, profile_name="generic")
+            payload = await wait_for_terminal_run_state(
+                client,
+                path=f"{self.settings.api_prefix}/sessions/{session_id}",
+                terminal_statuses={"awaiting_approval", "failed", "cancelled", "completed"},
+            )
+            if payload["status"] != "awaiting_approval":
+                continue
+
+            tool_call = next(item for item in self.extract_items(payload) if item.get("item_type") == "tool_call")
+            approval_id = None
+            if isinstance(tool_call.get("payload"), dict):
+                approval_id = tool_call["payload"].get("approval_id")
+            if not isinstance(approval_id, str):
+                continue
+
+            approval_response = await client.post(
+                f"{self.settings.api_prefix}/sessions/approvals/{approval_id}",
+                json={"approved": True},
+            )
+            approval_response.raise_for_status()
+            payload = await wait_for_terminal_run_state(
+                client,
+                path=f"{self.settings.api_prefix}/sessions/{session_id}",
+                terminal_statuses={"completed", "failed", "cancelled"},
+            )
+            if payload["status"] == "completed":
+                break
+        if session_id is None or payload is None or payload["status"] != "completed":
+            raise app_error(
+                "Analytics-query provider smoke scenario did not complete successfully",
+                code="smoke.generic_agent_provider.analytics_query.failed",
+                category="runtime",
+                status_code=500,
+                details={"session_id": session_id, "status": None if payload is None else payload["status"]},
+                operation="smoke.generic_agent_provider.analytics_query",
+                component="smoke",
+            )
+        tool_result = next(item for item in self.extract_items(payload) if item.get("item_type") == "tool_result")
+        result_payload = tool_result.get("payload", {})
+        result_body = result_payload.get("result") if isinstance(result_payload, dict) else {}
+        rows = result_body.get("rows") if isinstance(result_body, dict) else []
+        return (
+            SmokeScenarioResult(
+                name="analytics_query_completion",
+                status="completed",
+                session_id=session_id,
+                details={
+                    "tool_name": result_payload.get("tool_name") if isinstance(result_payload, dict) else None,
+                    "row_count": len(rows) if isinstance(rows, list) else 0,
+                    "truncated": result_body.get("truncated") if isinstance(result_body, dict) else None,
+                },
+            ),
+            payload,
+        )
+
     async def scenario_approval_boundary(self, client: httpx.AsyncClient) -> tuple[SmokeScenarioResult, dict[str, object]]:
         session_id = await self.start_run(
             client,
-            input_text="please run diagnostic job now",
+            input_text=(
+                "Use the run_diagnostic_job tool now with a prompt to verify scheduler health. "
+                "Do not answer from memory."
+            ),
             profile_name="generic",
         )
         payload = await wait_for_terminal_run_state(
@@ -330,8 +422,12 @@ class _ProviderSmokeBase(SmokeCase):
     async def run(self, context: SmokeContext) -> BaseModel:
         harness = ProviderSmokeHarness(context)
         harness.validate_provider_configuration()
-        app = context.build_app()
         try:
+            await _seed_test_analytics_data(
+                environment=str(context.settings.environment),
+                database_url=str(context.settings.database_url),
+            )
+            app = context.build_app()
             async with app_client(app) as client:
                 return await self.execute(client, harness)
         except Exception as exc:
@@ -400,7 +496,89 @@ class GenericAgentProviderSmoke(_ProviderSmokeBase):
         scenarios.append(approval)
         replay, _replay_payload = await harness.scenario_event_stream_replay(client, existing_session_id=session_id)
         scenarios.append(replay)
+        analytics, payload = await harness.scenario_analytics_query_completion(client)
+        scenarios.append(analytics)
         return self._result(harness, payload, scenarios, session_id=session_id)
+
+
+async def _seed_test_analytics_data(*, environment: str, database_url: str) -> None:
+    if environment not in {"test", "development"}:
+        return
+    prefix = "sqlite+aiosqlite:///"
+    if database_url.startswith(prefix):
+        database_path = Path(database_url.removeprefix(prefix))
+        await asyncio.to_thread(_seed_sqlite_analytics_data, database_path)
+        return
+
+    postgres_prefix = "postgresql+asyncpg://"
+    if database_url.startswith(postgres_prefix):
+        connection = await asyncpg.connect(database_url.replace("+asyncpg", "", 1))
+        try:
+            await connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS analytics_daily_pipeline (
+                    metric_date DATE NOT NULL,
+                    lead_source TEXT NOT NULL,
+                    leads_created INTEGER NOT NULL,
+                    meetings_booked INTEGER NOT NULL,
+                    pipeline_amount NUMERIC NOT NULL
+                )
+                """
+            )
+            await connection.execute("TRUNCATE TABLE analytics_daily_pipeline")
+            await connection.execute(
+                """
+                INSERT INTO analytics_daily_pipeline (
+                    metric_date,
+                    lead_source,
+                    leads_created,
+                    meetings_booked,
+                    pipeline_amount
+                ) VALUES
+                    ('2026-04-20', 'web', 10, 4, 12500),
+                    ('2026-04-20', 'partner', 6, 2, 8000),
+                    ('2026-04-21', 'web', 8, 3, 10000)
+                """
+            )
+        finally:
+            await connection.close()
+        return
+
+    raise ValueError(f"Unsupported smoke database url: {database_url}")
+
+
+def _seed_sqlite_analytics_data(database_path: Path) -> None:
+    connection = sqlite3.connect(database_path)
+    try:
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS analytics_daily_pipeline (
+                metric_date TEXT NOT NULL,
+                lead_source TEXT NOT NULL,
+                leads_created INTEGER NOT NULL,
+                meetings_booked INTEGER NOT NULL,
+                pipeline_amount NUMERIC NOT NULL
+            )
+            """
+        )
+        connection.execute("DELETE FROM analytics_daily_pipeline")
+        connection.execute(
+            """
+            INSERT INTO analytics_daily_pipeline (
+                metric_date,
+                lead_source,
+                leads_created,
+                meetings_booked,
+                pipeline_amount
+            ) VALUES
+                ('2026-04-20', 'web', 10, 4, 12500),
+                ('2026-04-20', 'partner', 6, 2, 8000),
+                ('2026-04-21', 'web', 8, 3, 10000)
+            """
+        )
+        connection.commit()
+    finally:
+        connection.close()
 
 
 class GenericAgentProviderBaselineSmoke(_ProviderSmokeBase):

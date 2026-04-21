@@ -1,0 +1,63 @@
+catalog_id: scaffold_stage
+catalog_version: "2026-04-21"
+dialect: postgres
+description: >
+  Scaffold-stage analytics catalog for governed read-only agent queries over curated
+  aggregate-friendly PostgreSQL curated views.
+relations:
+  - name: analytics_daily_pipeline
+    description: Daily aggregate pipeline metrics by lead source.
+    columns:
+      - name: metric_date
+        data_type: date
+        semantic_type: date
+        sensitivity: public
+        description: Calendar date for the aggregate bucket.
+      - name: lead_source
+        data_type: text
+        semantic_type: dimension
+        sensitivity: public
+        description: Generic lead source classification.
+      - name: leads_created
+        data_type: integer
+        semantic_type: metric
+        sensitivity: public
+        description: Number of leads created in the bucket.
+      - name: meetings_booked
+        data_type: integer
+        semantic_type: metric
+        sensitivity: public
+        description: Number of meetings booked in the bucket.
+      - name: pipeline_amount
+        data_type: numeric
+        semantic_type: currency
+        sensitivity: internal
+        description: Total pipeline amount associated with the bucket.
+  - name: analytics_rep_performance
+    description: Seller performance aggregates by reporting period.
+    columns:
+      - name: report_period
+        data_type: text
+        semantic_type: dimension
+        sensitivity: public
+        description: Reporting period identifier.
+      - name: rep_name
+        data_type: text
+        semantic_type: dimension
+        sensitivity: internal
+        description: Human-readable seller identifier.
+      - name: owner_email
+        data_type: text
+        semantic_type: pii
+        sensitivity: restricted
+        description: Seller email address.
+      - name: meetings_completed
+        data_type: integer
+        semantic_type: metric
+        sensitivity: public
+        description: Count of completed meetings.
+      - name: closed_won_amount
+        data_type: numeric
+        semantic_type: currency
+        sensitivity: internal
+        description: Closed-won revenue for the reporting bucket.

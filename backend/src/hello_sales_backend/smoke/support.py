@@ -42,6 +42,23 @@ async def wait_for_terminal_run_state(
     return {"status": "timeout"}
 
 
+async def wait_for_background_tasks_to_settle(
+    app: FastAPI,
+    *,
+    attempts: int = 200,
+    delay_seconds: float = 0.02,
+) -> None:
+    """Wait until the app container has no active background tasks."""
+
+    container = getattr(app.state, "container", None)
+    if container is None:
+        return
+    for _ in range(attempts):
+        if container.tasks.active_count() == 0:
+            return
+        await asyncio.sleep(delay_seconds)
+
+
 def parse_sse_events(body: str) -> list[dict[str, object]]:
     """Parse a text/event-stream payload into structured entries."""
 

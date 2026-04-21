@@ -79,6 +79,18 @@ class FakeChatModel(ChatModelPort):
         if "diagnostic" in latest_user.lower():
             tool_name = "run_diagnostic_job"
             arguments = {"prompt": latest_user}
+        elif "analytics" in latest_user.lower():
+            tool_name = "query_analytics_data"
+            arguments = {
+                "catalog_id": "scaffold_stage",
+                "sql": (
+                    "SELECT lead_source, SUM(meetings_booked) AS total_meetings "
+                    "FROM analytics_daily_pipeline GROUP BY lead_source "
+                    "ORDER BY total_meetings DESC"
+                ),
+                "reason": "Summarize meetings booked by source",
+                "max_rows": 5,
+            }
         elif "task" in latest_user.lower():
             tool_name = "list_recent_tasks"
             arguments = {"limit": 10}
@@ -136,12 +148,16 @@ async def test_generic_agent_provider_smoke_executes_end_to_end(test_settings: S
     assert result.payload["status"] == "completed"
     assert result.payload["provider"] == "groq"
     assert result.payload["model"] == "openai/gpt-oss-20b"
-    assert result.payload["response_text"] == "processed:list recent tasks"
+    expected_analytics_prompt = (
+        "Use the query_analytics_data tool with catalog_id scaffold_stage to show total meetings by source "
+        "from analytics. Return the results only after the approval step completes."
+    )
+    assert result.payload["response_text"] == f"processed:{expected_analytics_prompt}"
     items = result.payload["items"]
     assert isinstance(items, list)
-    assert len([item for item in items if item["item_type"] == "assistant_message"]) == 2
+    assert len([item for item in items if item["item_type"] == "assistant_message"]) >= 1
     assistant_messages = [item for item in items if item["item_type"] == "assistant_message"]
-    assert assistant_messages[-1]["payload"]["text"] == "processed:list recent tasks"
+    assert assistant_messages[-1]["payload"]["text"] == f"processed:{expected_analytics_prompt}"
     scenarios = result.payload["scenarios"]
     assert isinstance(scenarios, list)
     assert {item["name"] for item in scenarios} == {
@@ -150,7 +166,10 @@ async def test_generic_agent_provider_smoke_executes_end_to_end(test_settings: S
         "append_turn_completion",
         "approval_boundary",
         "event_stream_replay",
+        "analytics_query_completion",
     }
+    tool_results = [item for item in items if item["item_type"] == "tool_result"]
+    assert any(item["payload"]["tool_name"] == "query_analytics_data" for item in tool_results)
 
 
 @pytest.mark.asyncio

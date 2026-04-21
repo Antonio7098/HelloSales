@@ -9,7 +9,7 @@ from hello_sales_backend.platform.providers.llm.contracts import ChatMessage
 GENERIC_AGENT_RESPONSE_PROMPT = AgentPromptDefinition(
     metadata=PromptMetadata(
         prompt_id="agent.generic.response",
-        version="v1",
+        version="v2",
         owner_kind="agent",
         owner_id="generic",
         purpose="response",
@@ -25,6 +25,7 @@ def build_messages_v1(user_input: str) -> list[ChatMessage]:
     system_prompt = (
         "You are the HelloSales generic operational agent. "
         "Use the provided native tools whenever you need live runtime state, "
+        "use the governed analytics SQL tool for approved analytics questions, "
         "do not invent tool results, and answer concisely once you have enough evidence. "
         "Tool schemas are supplied separately through native tool calling."
     )

@@ -12,6 +12,7 @@ Owns fast unit verification for:
 - generic agent runtime behavior
 - worker runtime behavior
 - provider adapters and provider registry
+- analytics-query manifest, validator, risk, and redaction behavior
 - task runner behavior
 - smoke runner behavior
 - module scaffold generator behavior
@@ -21,6 +22,7 @@ Owns integration verification for:
 - app factory and app assembly
 - composition overrides
 - agent event stream behavior
+- analytics-query wiring and failure translation
 - error contract behavior
 - worker-runs operational behavior and metrics visibility
 
@@ -31,7 +33,7 @@ Owns high-signal smoke verification for:
 - worker-runs surface
 - jobs diagnostic flow
 - system diagnostics and system status
-- provider-backed smoke behavior
+- provider-backed smoke behavior, including the governed analytics-query path in the generic-agent provider suite
 
 ### `tests/postgres/`
 Owns optional Postgres-backed verification for:
@@ -57,6 +59,7 @@ Current provider-backed suites include:
 - `generic-agent-provider-append-turn`
 - `generic-agent-provider-approval-boundary`
 - `generic-agent-provider-event-stream`
+- `generic-agent-provider` scenario `analytics_query_completion`
 - `worker-provider-baseline`
 
 ## Development Operations
@@ -91,6 +94,9 @@ Examples:
 - `make smoke-provider-events`
 - `make smoke-provider-worker`
 
+The governed analytics-query smoke path uses the existing `generic-agent-provider` suite rather than a separate SQL-specific harness.
+In test mode it seeds a bounded SQLite fixture before app startup so the conversational tool path can be exercised deterministically.
+
 ## Environment Model
 
 The backend reads runtime settings from `HELLO_SALES_*` environment variables.
@@ -113,6 +119,7 @@ The scaffold currently provides:
 - background task runner
 - health endpoints
 - diagnostics endpoint
+- a governed analytics-query module and semantic YAML catalog path
 - a system module
 - an operational jobs module with a diagnostic workflow
 - an agent-runs module exposing the generic agent runtime
