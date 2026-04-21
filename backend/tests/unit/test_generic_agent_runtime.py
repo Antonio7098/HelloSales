@@ -5,7 +5,6 @@ import pytest
 from hello_sales_backend.application.agents.contracts import (
     AgentDefinition,
     AgentPromptDefinition,
-    ToolSelectionPolicy,
 )
 from hello_sales_backend.application.agents.registry import AgentRegistry
 from hello_sales_backend.platform.agents.config import AgentRuntimeConfig
@@ -22,7 +21,7 @@ from hello_sales_backend.platform.agents.tools import (
     AgentToolCatalog,
     AgentToolDefinition,
     AgentToolExecutionContext,
-    AgentToolRequest,
+    EmptyToolArguments,
 )
 from hello_sales_backend.platform.config.settings import Settings
 from hello_sales_backend.platform.llm import (
@@ -31,7 +30,10 @@ from hello_sales_backend.platform.llm import (
     LLMMessage,
     LLMProviderPort,
     PromptMetadata,
+    ProviderToolCall,
+    ProviderToolDefinition,
     TextGenerationResult,
+    ToolCallCompletionResult,
 )
 from hello_sales_backend.platform.observability.metrics import (
     MetricsRuntimeSnapshot,
@@ -47,19 +49,23 @@ from hello_sales_backend.platform.workflows.runtime import build_workflow_runtim
 from hello_sales_backend.shared.errors import AppError, app_error
 
 
-class FakeChatModel(LLMProviderPort):
+class ScriptedToolProvider(LLMProviderPort):
     provider_name = "fake-runtime"
 
-    def __init__(self, *, configured: bool = True, output_text: str = "provider-output") -> None:
+    def __init__(
+        self,
+        *,
+        completions: list[ToolCallCompletionResult],
+        configured: bool = True,
+        output_text: str = "provider-output",
+    ) -> None:
         self._configured = configured
         self._output_text = output_text
+        self._completions = list(completions)
+        self.tool_requests: list[dict[str, object]] = []
 
     async def generate(self, messages: list[LLMMessage]) -> TextGenerationResult:
-        return TextGenerationResult(
-            provider=self.provider_name,
-            model="fake-model",
-            output_text=f"{self._output_text}:{messages[-1].content}",
-        )
+        return await self.generate_text(messages)
 
     async def generate_text(
         self,
@@ -67,6 +73,7 @@ class FakeChatModel(LLMProviderPort):
         *,
         context: LLMCallContext | None = None,
     ) -> TextGenerationResult:
+        del context
         return TextGenerationResult(
             provider=self.provider_name,
             model="fake-model",
@@ -80,6 +87,7 @@ class FakeChatModel(LLMProviderPort):
         schema_hint=None,
         context: LLMCallContext | None = None,
     ) -> JSONGenerationResult:
+        del messages, schema_hint, context
         return JSONGenerationResult(
             provider=self.provider_name,
             model="fake-model",
@@ -87,16 +95,43 @@ class FakeChatModel(LLMProviderPort):
             output_json={},
         )
 
+    async def complete_with_tools(
+        self,
+        messages: list[dict[str, object]],
+        *,
+        tools: list[ProviderToolDefinition],
+        context: LLMCallContext | None = None,
+        tool_choice: str | None = None,
+    ) -> ToolCallCompletionResult:
+        del context, tool_choice
+        self.tool_requests.append(
+            {
+                "messages": messages,
+                "tool_names": [tool.name for tool in tools],
+            }
+        )
+        if not self._completions:
+            raise AssertionError("provider completion script exhausted")
+        return self._completions.pop(0)
+
     def is_configured(self) -> bool:
         return self._configured
 
 
-class FixedSelectionPolicy:
-    def __init__(self, requests: list[AgentToolRequest]) -> None:
-        self._requests = requests
+class FailingToolCallStore(InMemoryAgentStore):
+    def __init__(self, *, fail_on: str) -> None:
+        super().__init__()
+        self._fail_on = fail_on
 
-    def select(self, user_input: str, catalog: AgentToolCatalog) -> list[AgentToolRequest]:
-        return list(self._requests)
+    async def create_tool_call(self, tool_call) -> None:
+        if self._fail_on == "create":
+            raise RuntimeError("create failed")
+        await super().create_tool_call(tool_call)
+
+    async def update_tool_call(self, tool_call) -> None:
+        if self._fail_on == "update":
+            raise RuntimeError("update failed")
+        await super().update_tool_call(tool_call)
 
 
 def _build_runtime(
@@ -104,7 +139,6 @@ def _build_runtime(
     store: InMemoryAgentStore,
     tools: AgentToolCatalog,
     llm_provider: LLMProviderPort | None = None,
-    selection_policy: ToolSelectionPolicy | None = None,
 ) -> GenericAgentRuntime:
     observability = ObservabilityRuntime(
         store=InMemoryOperationalStore(),
@@ -116,7 +150,7 @@ def _build_runtime(
     return GenericAgentRuntime(
         config=AgentRuntimeConfig(),
         workflow_runtime=workflow_runtime,
-        llm_provider=llm_provider or FakeChatModel(),
+        llm_provider=llm_provider or ScriptedToolProvider(completions=[]),
         store=store,
         agents=AgentRegistry(
             [
@@ -124,7 +158,6 @@ def _build_runtime(
                     agent_id="generic",
                     display_name="Test Generic Agent",
                     tools=tools,
-                    selection_policy=selection_policy or FixedSelectionPolicy([]),
                     prompt=AgentPromptDefinition(
                         metadata=PromptMetadata(
                             prompt_id="agent.generic.test",
@@ -133,12 +166,10 @@ def _build_runtime(
                             owner_id="generic",
                             purpose="response",
                         ),
-                        build_messages=lambda user_input, _tool_context: [
+                        build_messages=lambda user_input: [
                             ChatMessage(role="user", content=user_input)
                         ],
-                        build_fallback_response=lambda user_input, tool_context: (
-                            f"fallback:{user_input}:{tool_context}"
-                        ),
+                        build_fallback_response=lambda user_input: f"fallback:{user_input}",
                     ),
                 )
             ],
@@ -153,7 +184,6 @@ def _build_runtime_with_observability(
     store: InMemoryAgentStore,
     tools: AgentToolCatalog,
     llm_provider: LLMProviderPort | None = None,
-    selection_policy: ToolSelectionPolicy | None = None,
     observability: ObservabilityRuntime | None = None,
 ) -> tuple[GenericAgentRuntime, ObservabilityRuntime]:
     observability = observability or ObservabilityRuntime(
@@ -166,7 +196,7 @@ def _build_runtime_with_observability(
     runtime = GenericAgentRuntime(
         config=AgentRuntimeConfig(),
         workflow_runtime=workflow_runtime,
-        llm_provider=llm_provider or FakeChatModel(),
+        llm_provider=llm_provider or ScriptedToolProvider(completions=[]),
         store=store,
         agents=AgentRegistry(
             [
@@ -174,7 +204,6 @@ def _build_runtime_with_observability(
                     agent_id="generic",
                     display_name="Test Generic Agent",
                     tools=tools,
-                    selection_policy=selection_policy or FixedSelectionPolicy([]),
                     prompt=AgentPromptDefinition(
                         metadata=PromptMetadata(
                             prompt_id="agent.generic.test",
@@ -183,12 +212,10 @@ def _build_runtime_with_observability(
                             owner_id="generic",
                             purpose="response",
                         ),
-                        build_messages=lambda user_input, _tool_context: [
+                        build_messages=lambda user_input: [
                             ChatMessage(role="user", content=user_input)
                         ],
-                        build_fallback_response=lambda user_input, tool_context: (
-                            f"fallback:{user_input}:{tool_context}"
-                        ),
+                        build_fallback_response=lambda user_input: f"fallback:{user_input}",
                     ),
                 )
             ],
@@ -222,22 +249,41 @@ async def _seed_run(store: InMemoryAgentStore, *, input_text: str) -> tuple[Agen
 
 
 @pytest.mark.asyncio
-async def test_generic_agent_runtime_completes_turn_with_tool_and_provider_response() -> None:
+async def test_generic_agent_runtime_completes_turn_with_native_tool_calling() -> None:
     store = InMemoryAgentStore()
     await _seed_run(store, input_text="show runtime status")
+    provider = ScriptedToolProvider(
+        completions=[
+            ToolCallCompletionResult(
+                provider="fake-runtime",
+                model="fake-model",
+                tool_calls=[
+                    ProviderToolCall(
+                        call_id="call-1",
+                        tool_name="get_runtime_status",
+                        arguments={},
+                    )
+                ],
+            ),
+            ToolCallCompletionResult(
+                provider="fake-runtime",
+                model="fake-model",
+                content="provider-output:show runtime status",
+            ),
+        ]
+    )
     runtime = _build_runtime(
         store=store,
+        llm_provider=provider,
         tools=AgentToolCatalog(
             [
                 AgentToolDefinition(
                     name="get_runtime_status",
                     description="status",
+                    arguments_model=EmptyToolArguments,
                     execute=lambda _arguments, _context: {"status": "ok"},
                 )
             ]
-        ),
-        selection_policy=FixedSelectionPolicy(
-            [AgentToolRequest(name="get_runtime_status", arguments={})]
         ),
     )
 
@@ -252,28 +298,189 @@ async def test_generic_agent_runtime_completes_turn_with_tool_and_provider_respo
     assert turn is not None and turn.status == AgentTurnStatus.COMPLETED
     assert turn.response_text == "provider-output:show runtime status"
     assert len(tool_calls) == 1
+    assert tool_calls[0].tool_call_id == "call-1"
     assert tool_calls[0].status == AgentToolCallStatus.COMPLETED
     assert any(event.event_type == "agent.tool.completed" for event in events)
+    assert provider.tool_requests[0]["tool_names"] == ["get_runtime_status"]
+    tool_messages = [
+        item for item in provider.tool_requests[1]["messages"] if item.get("role") == "tool"
+    ]
+    assert len(tool_messages) == 1
+    assert tool_messages[0]["tool_call_id"] == "call-1"
+
+
+@pytest.mark.asyncio
+async def test_generic_agent_runtime_reclassifies_unknown_provider_tool_as_provider_error() -> None:
+    store = InMemoryAgentStore()
+    await _seed_run(store, input_text="show runtime status")
+    provider = ScriptedToolProvider(
+        completions=[
+            ToolCallCompletionResult(
+                provider="fake-runtime",
+                model="fake-model",
+                tool_calls=[
+                    ProviderToolCall(
+                        call_id="call-missing",
+                        tool_name="missing_tool",
+                        arguments={"query": "status"},
+                    )
+                ],
+            )
+        ]
+    )
+    runtime = _build_runtime(
+        store=store,
+        llm_provider=provider,
+        tools=AgentToolCatalog(
+            [
+                AgentToolDefinition(
+                    name="get_runtime_status",
+                    description="status",
+                    arguments_model=EmptyToolArguments,
+                    execute=lambda _arguments, _context: {"status": "ok"},
+                )
+            ]
+        ),
+    )
+
+    with pytest.raises(AppError) as exc_info:
+        await runtime.process_turn(run_id="run-1", turn_id="turn-1")
+
+    assert exc_info.value.code == "provider.invalid_tool_name"
+    assert exc_info.value.category == "provider"
+    assert exc_info.value.status_code == 502
+
+    run = await store.get_run("run-1")
+    turn = await store.get_turn("turn-1")
+    assert run is not None and run.error_code == "provider.invalid_tool_name"
+    assert turn is not None and turn.error_code == "provider.invalid_tool_name"
+
+
+@pytest.mark.asyncio
+async def test_generic_agent_runtime_reclassifies_provider_tool_argument_schema_failure() -> None:
+    store = InMemoryAgentStore()
+    await _seed_run(store, input_text="show runtime status")
+    provider = ScriptedToolProvider(
+        completions=[
+            ToolCallCompletionResult(
+                provider="fake-runtime",
+                model="fake-model",
+                tool_calls=[
+                    ProviderToolCall(
+                        call_id="call-bad-args",
+                        tool_name="get_runtime_status",
+                        arguments={"unexpected": "value"},
+                    )
+                ],
+            )
+        ]
+    )
+    runtime = _build_runtime(
+        store=store,
+        llm_provider=provider,
+        tools=AgentToolCatalog(
+            [
+                AgentToolDefinition(
+                    name="get_runtime_status",
+                    description="status",
+                    arguments_model=EmptyToolArguments,
+                    execute=lambda _arguments, _context: {"status": "ok"},
+                )
+            ]
+        ),
+    )
+
+    with pytest.raises(AppError) as exc_info:
+        await runtime.process_turn(run_id="run-1", turn_id="turn-1")
+
+    assert exc_info.value.code == "provider.invalid_tool_arguments"
+    assert exc_info.value.category == "provider"
+    assert exc_info.value.status_code == 502
+
+    run = await store.get_run("run-1")
+    turn = await store.get_turn("turn-1")
+    assert run is not None and run.error_code == "provider.invalid_tool_arguments"
+    assert turn is not None and turn.error_code == "provider.invalid_tool_arguments"
+
+
+@pytest.mark.asyncio
+async def test_generic_agent_runtime_preserves_data_error_when_tool_call_create_fails() -> None:
+    store = FailingToolCallStore(fail_on="create")
+    await _seed_run(store, input_text="show runtime status")
+    provider = ScriptedToolProvider(
+        completions=[
+            ToolCallCompletionResult(
+                provider="fake-runtime",
+                model="fake-model",
+                tool_calls=[
+                    ProviderToolCall(
+                        call_id="call-create-fail",
+                        tool_name="get_runtime_status",
+                        arguments={},
+                    )
+                ],
+            )
+        ]
+    )
+    runtime = _build_runtime(
+        store=store,
+        llm_provider=provider,
+        tools=AgentToolCatalog(
+            [
+                AgentToolDefinition(
+                    name="get_runtime_status",
+                    description="status",
+                    arguments_model=EmptyToolArguments,
+                    execute=lambda _arguments, _context: {"status": "ok"},
+                )
+            ]
+        ),
+    )
+
+    with pytest.raises(AppError) as exc_info:
+        await runtime.process_turn(run_id="run-1", turn_id="turn-1")
+
+    assert exc_info.value.code == "data.agent_tool_call.create_failed"
+    assert exc_info.value.category == "data"
+
+    run = await store.get_run("run-1")
+    turn = await store.get_turn("turn-1")
+    assert run is not None and run.error_code == "data.agent_tool_call.create_failed"
+    assert turn is not None and turn.error_code == "data.agent_tool_call.create_failed"
 
 
 @pytest.mark.asyncio
 async def test_generic_agent_runtime_pauses_for_approval() -> None:
     store = InMemoryAgentStore()
     await _seed_run(store, input_text="run diagnostic job")
+    provider = ScriptedToolProvider(
+        completions=[
+            ToolCallCompletionResult(
+                provider="fake-runtime",
+                model="fake-model",
+                tool_calls=[
+                    ProviderToolCall(
+                        call_id="call-approval",
+                        tool_name="run_diagnostic_job",
+                        arguments={},
+                    )
+                ],
+            )
+        ]
+    )
     runtime = _build_runtime(
         store=store,
+        llm_provider=provider,
         tools=AgentToolCatalog(
             [
                 AgentToolDefinition(
                     name="run_diagnostic_job",
                     description="diagnostic",
+                    arguments_model=EmptyToolArguments,
                     execute=lambda _arguments, _context: {"task_id": "task-1"},
                     requires_approval=True,
                 )
             ]
-        ),
-        selection_policy=FixedSelectionPolicy(
-            [AgentToolRequest(name="run_diagnostic_job", arguments={})]
         ),
     )
 
@@ -286,6 +493,7 @@ async def test_generic_agent_runtime_pauses_for_approval() -> None:
     assert run is not None and run.status == AgentRunStatus.AWAITING_APPROVAL
     assert turn is not None and turn.status == AgentTurnStatus.AWAITING_APPROVAL
     assert len(tool_calls) == 1
+    assert tool_calls[0].tool_call_id == "call-approval"
     assert tool_calls[0].status == AgentToolCallStatus.PENDING_APPROVAL
     assert tool_calls[0].approval_id is not None
 
@@ -307,20 +515,33 @@ async def test_generic_agent_runtime_records_tool_failures() -> None:
             component="agent",
         )
 
+    provider = ScriptedToolProvider(
+        completions=[
+            ToolCallCompletionResult(
+                provider="fake-runtime",
+                model="fake-model",
+                tool_calls=[
+                    ProviderToolCall(
+                        call_id="call-fail",
+                        tool_name="get_runtime_status",
+                        arguments={},
+                    )
+                ],
+            )
+        ]
+    )
     runtime = _build_runtime(
         store=store,
+        llm_provider=provider,
         tools=AgentToolCatalog(
             [
                 AgentToolDefinition(
                     name="get_runtime_status",
                     description="status",
+                    arguments_model=EmptyToolArguments,
                     execute=failing_tool,
                 )
             ]
-        ),
-        llm_provider=FakeChatModel(),
-        selection_policy=FixedSelectionPolicy(
-            [AgentToolRequest(name="get_runtime_status", arguments={})]
         ),
     )
 
@@ -357,20 +578,33 @@ async def test_generic_agent_runtime_failure_emits_operational_event_with_correl
             component="agent",
         )
 
+    provider = ScriptedToolProvider(
+        completions=[
+            ToolCallCompletionResult(
+                provider="fake-runtime",
+                model="fake-model",
+                tool_calls=[
+                    ProviderToolCall(
+                        call_id="call-fail",
+                        tool_name="get_runtime_status",
+                        arguments={},
+                    )
+                ],
+            )
+        ]
+    )
     runtime, observability = _build_runtime_with_observability(
         store=store,
+        llm_provider=provider,
         tools=AgentToolCatalog(
             [
                 AgentToolDefinition(
                     name="get_runtime_status",
                     description="status",
+                    arguments_model=EmptyToolArguments,
                     execute=failing_tool,
                 )
             ]
-        ),
-        llm_provider=FakeChatModel(),
-        selection_policy=FixedSelectionPolicy(
-            [AgentToolRequest(name="get_runtime_status", arguments={})]
         ),
     )
 
@@ -390,19 +624,38 @@ async def test_generic_agent_runtime_failure_emits_operational_event_with_correl
 async def test_generic_agent_runtime_persists_correlation_on_agent_events() -> None:
     store = InMemoryAgentStore()
     await _seed_run(store, input_text="show runtime status")
+    provider = ScriptedToolProvider(
+        completions=[
+            ToolCallCompletionResult(
+                provider="fake-runtime",
+                model="fake-model",
+                tool_calls=[
+                    ProviderToolCall(
+                        call_id="call-1",
+                        tool_name="get_runtime_status",
+                        arguments={},
+                    )
+                ],
+            ),
+            ToolCallCompletionResult(
+                provider="fake-runtime",
+                model="fake-model",
+                content="provider-output:show runtime status",
+            ),
+        ]
+    )
     runtime = _build_runtime(
         store=store,
+        llm_provider=provider,
         tools=AgentToolCatalog(
             [
                 AgentToolDefinition(
                     name="get_runtime_status",
                     description="status",
+                    arguments_model=EmptyToolArguments,
                     execute=lambda _arguments, _context: {"status": "ok"},
                 )
             ]
-        ),
-        selection_policy=FixedSelectionPolicy(
-            [AgentToolRequest(name="get_runtime_status", arguments={})]
         ),
     )
 
@@ -435,19 +688,38 @@ async def test_generic_agent_runtime_emits_agent_metrics_for_execution_and_tools
             )
         ),
     )
+    provider = ScriptedToolProvider(
+        completions=[
+            ToolCallCompletionResult(
+                provider="fake-runtime",
+                model="fake-model",
+                tool_calls=[
+                    ProviderToolCall(
+                        call_id="call-1",
+                        tool_name="get_runtime_status",
+                        arguments={},
+                    )
+                ],
+            ),
+            ToolCallCompletionResult(
+                provider="fake-runtime",
+                model="fake-model",
+                content="provider-output:show runtime status",
+            ),
+        ]
+    )
     runtime, _ = _build_runtime_with_observability(
         store=store,
+        llm_provider=provider,
         tools=AgentToolCatalog(
             [
                 AgentToolDefinition(
                     name="get_runtime_status",
                     description="status",
+                    arguments_model=EmptyToolArguments,
                     execute=lambda _arguments, _context: {"status": "ok"},
                 )
             ]
-        ),
-        selection_policy=FixedSelectionPolicy(
-            [AgentToolRequest(name="get_runtime_status", arguments={})]
         ),
         observability=observability,
     )

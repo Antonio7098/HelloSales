@@ -12,3 +12,4 @@ class AgentRuntimeConfig:
     default_profile: str = "generic"
     approval_timeout_seconds: int = 3600
     max_event_replay: int = 200
+    max_tool_iterations: int = 8

@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Protocol
 
-from hello_sales_backend.platform.agents.tools import AgentToolCatalog, AgentToolRequest
+from hello_sales_backend.platform.agents.tools import AgentToolCatalog
 from hello_sales_backend.platform.llm import (
     ChatMessage,
     EffectivePromptRef,
@@ -14,15 +13,8 @@ from hello_sales_backend.platform.llm import (
     effective_prompt_ref,
 )
 
-
-class ToolSelectionPolicy(Protocol):
-    """Select tools for one agent turn."""
-
-    def select(self, user_input: str, catalog: AgentToolCatalog) -> list[AgentToolRequest]: ...
-
-
-PromptMessageBuilder = Callable[[str, list[str]], list[ChatMessage]]
-FallbackResponseBuilder = Callable[[str, list[str]], str]
+PromptMessageBuilder = Callable[[str], list[ChatMessage]]
+FallbackResponseBuilder = Callable[[str], str]
 
 
 @dataclass(slots=True, frozen=True)
@@ -45,14 +37,13 @@ class AgentDefinition:
     agent_id: str
     display_name: str
     tools: AgentToolCatalog
-    selection_policy: ToolSelectionPolicy
     prompt: AgentPromptDefinition
 
-    def build_messages(self, user_input: str, tool_results: list[str]) -> list[ChatMessage]:
-        return self.prompt.build_messages(user_input, tool_results)
+    def build_messages(self, user_input: str) -> list[ChatMessage]:
+        return self.prompt.build_messages(user_input)
 
-    def build_fallback_response(self, user_input: str, tool_results: list[str]) -> str:
-        return self.prompt.build_fallback_response(user_input, tool_results)
+    def build_fallback_response(self, user_input: str) -> str:
+        return self.prompt.build_fallback_response(user_input)
 
     def effective_prompt_ref(self) -> EffectivePromptRef:
         return self.prompt.effective_prompt

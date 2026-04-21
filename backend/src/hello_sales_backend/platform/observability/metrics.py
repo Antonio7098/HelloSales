@@ -5,14 +5,127 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol
 
-from prometheus_client import (
-    CONTENT_TYPE_LATEST,
-    CollectorRegistry,
-    Counter,
-    Gauge,
-    Histogram,
-    generate_latest,
-)
+try:
+    from prometheus_client import (
+        CONTENT_TYPE_LATEST,
+        CollectorRegistry,
+        Counter,
+        Gauge,
+        Histogram,
+        generate_latest,
+    )
+except ImportError:  # pragma: no cover - exercised only in dependency-light environments
+    CONTENT_TYPE_LATEST = "text/plain; version=0.0.4; charset=utf-8"
+
+    class CollectorRegistry:  # type: ignore[no-redef]
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
+            self.metrics: list[_MetricBase] = []
+
+        def register(self, metric: _MetricBase) -> None:
+            self.metrics.append(metric)
+
+    class _MetricHandle:
+        def __init__(self, metric: _MetricBase, values: tuple[str, ...]) -> None:
+            self._metric = metric
+            self._values = values
+
+        def inc(self, amount: float = 1) -> None:
+            self._metric.inc(amount, label_values=self._values)
+
+        def dec(self, amount: float = 1) -> None:
+            self._metric.dec(amount, label_values=self._values)
+
+        def observe(self, value: float) -> None:
+            self._metric.observe(value, label_values=self._values)
+
+        def set(self, value: float) -> None:
+            self._metric.set(value, label_values=self._values)
+
+    class _MetricBase:
+        metric_type = "gauge"
+
+        def __init__(
+            self,
+            name: str,
+            documentation: str,
+            labelnames: list[str] | tuple[str, ...] | None = None,
+            *,
+            registry: CollectorRegistry,
+        ) -> None:
+            self._name = name
+            self._documentation = documentation
+            self._labelnames = tuple(labelnames or ())
+            self._samples: dict[tuple[str, ...], float] = {}
+            registry.register(self)
+
+        def labels(self, **labels: object) -> _MetricHandle:
+            label_values = tuple(str(labels[name]) for name in self._labelnames)
+            return _MetricHandle(self, label_values)
+
+        def inc(self, amount: float = 1, *, label_values: tuple[str, ...] = ()) -> None:
+            self._samples[label_values] = self._samples.get(label_values, 0.0) + float(amount)
+
+        def dec(self, amount: float = 1, *, label_values: tuple[str, ...] = ()) -> None:
+            self._samples[label_values] = self._samples.get(label_values, 0.0) - float(amount)
+
+        def observe(self, value: float, *, label_values: tuple[str, ...] = ()) -> None:
+            self.inc(value, label_values=label_values)
+
+        def set(self, value: float, *, label_values: tuple[str, ...] = ()) -> None:
+            self._samples[label_values] = float(value)
+
+        def render(self) -> list[str]:
+            lines = [f"# HELP {self._name} {self._documentation}", f"# TYPE {self._name} {self.metric_type}"]
+            for label_values, value in sorted(self._samples.items()):
+                lines.append(f"{self._name}{self._format_labels(label_values)} {value}")
+            return lines
+
+        def _format_labels(self, label_values: tuple[str, ...]) -> str:
+            if not self._labelnames:
+                return ""
+            pairs = sorted(zip(self._labelnames, label_values, strict=False), key=lambda item: item[0])
+            rendered = ",".join(f'{name}="{value}"' for name, value in pairs)
+            return f"{{{rendered}}}"
+
+    class Counter(_MetricBase):  # type: ignore[no-redef]
+        metric_type = "counter"
+
+    class Gauge(_MetricBase):  # type: ignore[no-redef]
+        metric_type = "gauge"
+
+    class Histogram(_MetricBase):  # type: ignore[no-redef]
+        metric_type = "histogram"
+
+        def __init__(
+            self,
+            name: str,
+            documentation: str,
+            labelnames: list[str] | tuple[str, ...] | None = None,
+            *,
+            registry: CollectorRegistry,
+        ) -> None:
+            super().__init__(name, documentation, labelnames, registry=registry)
+            self._counts: dict[tuple[str, ...], float] = {}
+
+        def observe(self, value: float, *, label_values: tuple[str, ...] = ()) -> None:
+            self._samples[label_values] = self._samples.get(label_values, 0.0) + float(value)
+            self._counts[label_values] = self._counts.get(label_values, 0.0) + 1.0
+
+        def render(self) -> list[str]:
+            lines = [f"# HELP {self._name} {self._documentation}", f"# TYPE {self._name} {self.metric_type}"]
+            for label_values in sorted(self._samples):
+                label_suffix = self._format_labels(label_values)
+                lines.append(f"{self._name}_sum{label_suffix} {self._samples[label_values]}")
+                lines.append(f"{self._name}_count{label_suffix} {self._counts.get(label_values, 0.0)}")
+            return lines
+
+    def generate_latest(registry: CollectorRegistry) -> bytes:
+        rendered_lines: list[str] = []
+        for metric in registry.metrics:
+            rendered_lines.extend(metric.render())
+        if rendered_lines:
+            rendered_lines.append("")
+        return "\n".join(rendered_lines).encode("utf-8")
 
 from hello_sales_backend.platform.tasks.models import TaskStatus
 

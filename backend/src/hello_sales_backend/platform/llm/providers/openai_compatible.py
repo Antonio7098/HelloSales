@@ -12,7 +12,10 @@ from hello_sales_backend.platform.llm.contracts import (
     JSONSchemaHint,
     LLMCallContext,
     LLMMessage,
+    ProviderToolCall,
+    ProviderToolDefinition,
     TextGenerationResult,
+    ToolCallCompletionResult,
 )
 from hello_sales_backend.platform.observability.logging import get_logger
 from hello_sales_backend.platform.observability.redaction import redact_mapping
@@ -23,6 +26,24 @@ def _coerce_message_content(choice: object) -> str:
     if isinstance(choice, list):
         return "".join(item.get("text", "") for item in choice if isinstance(item, dict))
     return str(choice)
+
+
+def _extract_tool_calls(message: dict[str, object]) -> list[ProviderToolCall]:
+    tool_calls: list[ProviderToolCall] = []
+    raw_calls = message.get("tool_calls", [])
+    if isinstance(raw_calls, list):
+        for idx, raw_call in enumerate(raw_calls):
+            if isinstance(raw_call, dict):
+                func = raw_call.get("function", {})
+                tool_calls.append(
+                    ProviderToolCall(
+                        call_id=raw_call.get("id", f"call_{idx}"),
+                        tool_name=func.get("name", "") if isinstance(func, dict) else "",
+                        arguments=json.loads(func.get("arguments", "{}")) if isinstance(func, dict) else {},
+                        raw_tool_call=raw_call,
+                    )
+                )
+    return tool_calls
 
 
 def _supports_strict_json_schema(provider_name: str) -> bool:
@@ -122,13 +143,23 @@ class OpenAICompatibleLLMProvider:
         messages: list[LLMMessage],
         response_format: dict[str, object] | None,
         operation: str,
+        tools: list[dict[str, object]] | None = None,
+        tool_choice: str | None = None,
     ) -> dict[str, Any]:
         request_payload: dict[str, object] = {
             "model": self._model,
-            "messages": [message.model_dump(mode="json") for message in messages],
+            "messages": [
+                message.model_dump(mode="json") if hasattr(message, "model_dump") else message
+                for message in messages
+            ],
         }
         if response_format is not None:
             request_payload["response_format"] = response_format
+        if tools is not None:
+            request_payload["tools"] = tools
+            request_payload["parallel_tool_calls"] = False
+        if tool_choice is not None:
+            request_payload["tool_choice"] = {"type": "function", "function": {"name": tool_choice}}
         self._logger.info(
             "provider.call.started",
             provider=self.provider_name,
@@ -200,6 +231,52 @@ class OpenAICompatibleLLMProvider:
 
     def is_configured(self) -> bool:
         return bool(self._api_key and self._model and self._base_url)
+
+    async def complete_with_tools(
+        self,
+        messages: list[dict[str, object]],
+        *,
+        tools: list[ProviderToolDefinition],
+        context: LLMCallContext | None = None,
+        tool_choice: str | None = None,
+    ) -> ToolCallCompletionResult:
+        provider_tools: list[dict[str, object]] = [
+            {
+                "type": "function",
+                "function": {
+                    "name": tool.name,
+                    "description": tool.description,
+                    "parameters": tool.parameters,
+                },
+            }
+            for tool in tools
+        ]
+        payload = await self._post_chat_completion(
+            messages=messages,  # type: ignore[arg-type]
+            response_format=None,
+            operation=(context.operation if context is not None else None) or "provider.llm.complete_with_tools",
+            tools=provider_tools,
+            tool_choice=tool_choice,
+        )
+        message = payload["choices"][0]["message"]
+        if not isinstance(message, dict):
+            raise app_error(
+                "Provider returned an invalid assistant message payload",
+                code="provider.invalid_message",
+                category="provider",
+                status_code=502,
+                details={"message_type": type(message).__name__},
+                operation="provider.llm.complete_with_tools",
+                component="provider",
+            )
+        content = message.get("content")
+        extracted_calls = _extract_tool_calls(message)
+        return ToolCallCompletionResult(
+            provider=self.provider_name,
+            model=payload.get("model", self._model),
+            content=None if extracted_calls else _coerce_message_content(content),
+            tool_calls=extracted_calls,
+        )
 
     async def aclose(self) -> None:
         if self._owns_client:

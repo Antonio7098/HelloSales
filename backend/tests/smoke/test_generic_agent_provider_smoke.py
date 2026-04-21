@@ -11,6 +11,9 @@ from hello_sales_backend.platform.providers.llm.contracts import (
     ChatMessage,
     ChatModelPort,
     JSONGenerationResult,
+    ProviderToolCall,
+    ProviderToolDefinition,
+    ToolCallCompletionResult,
 )
 from hello_sales_backend.smoke.__main__ import build_registry
 from hello_sales_backend.smoke.contracts import SmokeContext
@@ -51,6 +54,47 @@ class FakeChatModel(ChatModelPort):
             model="fake-model",
             raw_text="{}",
             output_json={},
+        )
+
+    async def complete_with_tools(
+        self,
+        messages: list[dict[str, object]],
+        *,
+        tools: list[ProviderToolDefinition],
+        context=None,
+        tool_choice: str | None = None,
+    ) -> ToolCallCompletionResult:
+        del tools, context, tool_choice
+        latest_user = next(
+            str(item.get("content"))
+            for item in reversed(messages)
+            if item.get("role") == "user"
+        )
+        if any(item.get("role") == "tool" for item in messages):
+            return ToolCallCompletionResult(
+                provider=self.provider_name,
+                model="fake-model",
+                content=f"processed:{latest_user}",
+            )
+        if "diagnostic" in latest_user.lower():
+            tool_name = "run_diagnostic_job"
+            arguments = {"prompt": latest_user}
+        elif "task" in latest_user.lower():
+            tool_name = "list_recent_tasks"
+            arguments = {"limit": 10}
+        else:
+            tool_name = "get_runtime_status"
+            arguments = {}
+        return ToolCallCompletionResult(
+            provider=self.provider_name,
+            model="fake-model",
+            tool_calls=[
+                ProviderToolCall(
+                    call_id=f"call-{tool_name}",
+                    tool_name=tool_name,
+                    arguments=arguments,
+                )
+            ],
         )
 
     def is_configured(self) -> bool:
@@ -114,7 +158,7 @@ async def test_generic_agent_provider_smoke_executes_end_to_end(test_settings: S
     not _provider_env_available(),
     reason="real provider smoke requires HELLO_SALES_GENERIC_AGENT_* and provider API key env vars",
 )
-async def test_worker_provider_baseline_smoke_executes_end_to_end(test_settings: Settings) -> None:
+async def test_generic_agent_provider_baseline_smoke_executes_end_to_end(test_settings: Settings) -> None:
     settings = Settings(
         environment="test",
         database_url=test_settings.database_url,
@@ -125,20 +169,22 @@ async def test_worker_provider_baseline_smoke_executes_end_to_end(test_settings:
         SmokeContext.create(settings=settings),
     )
 
-    result = await runner.run("worker-provider-baseline")
+    result = await runner.run("generic-agent-provider-baseline")
 
-    assert result.smoke_name == "worker-provider-baseline"
+    assert result.smoke_name == "generic-agent-provider-baseline"
     assert result.payload["status"] == "completed"
     assert result.payload["provider"] == settings.resolved_generic_agent_provider
     assert result.payload["model"] == settings.resolved_generic_agent_model
-    assert result.payload["worker_name"] == "structured-brief"
-    assert result.payload["attempt_count"] >= 1
-    assert result.payload["diagnostics_total_workers"] == 1
-    output_payload = result.payload["output_payload"]
-    assert isinstance(output_payload, dict)
-    assert isinstance(output_payload.get("brief"), str)
-    assert isinstance(output_payload.get("key_points"), list)
-    assert output_payload.get("priority") in {"low", "medium", "high"}
-    event_types = result.payload["event_types"]
-    assert isinstance(event_types, list)
-    assert "worker.run.completed" in event_types
+    assert isinstance(result.payload["session_id"], str)
+    response_text = result.payload["response_text"]
+    assert response_text is None or isinstance(response_text, str)
+    scenarios = result.payload["scenarios"]
+    assert isinstance(scenarios, list)
+    assert len(scenarios) == 1
+    assert scenarios[0]["name"] == "generic_status_completion"
+    assert scenarios[0]["status"] == "completed"
+    items = result.payload["items"]
+    assert isinstance(items, list)
+    assert any(item["item_type"] == "tool_call" for item in items)
+    assert any(item["item_type"] == "tool_result" for item in items)
+    assert any(item["item_type"] == "assistant_message" for item in items)

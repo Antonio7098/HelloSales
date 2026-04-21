@@ -8,7 +8,11 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Protocol, cast
 
-from opentelemetry.trace import Span
+try:
+    from opentelemetry.trace import Span
+except ImportError:  # pragma: no cover - local fallback when OpenTelemetry extras are absent
+    class Span:  # type: ignore[no-redef]
+        pass
 
 from hello_sales_backend.platform.config.settings import Settings
 from hello_sales_backend.platform.llm import EffectivePromptRef

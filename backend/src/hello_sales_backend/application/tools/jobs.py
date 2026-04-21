@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pydantic import BaseModel
+
 from hello_sales_backend.modules.jobs.use_cases.commands import StartDiagnosticJobCommand
 from hello_sales_backend.modules.jobs.use_cases.jobs_service import JobsService
 from hello_sales_backend.platform.agents.tools import (
@@ -9,6 +11,18 @@ from hello_sales_backend.platform.agents.tools import (
     AgentToolExecutionContext,
 )
 from hello_sales_backend.shared.errors import app_error
+
+
+class ListRecentTasksToolArgs(BaseModel):
+    limit: int = 10
+
+
+class GetTaskToolArgs(BaseModel):
+    task_id: str
+
+
+class RunDiagnosticJobToolArgs(BaseModel):
+    prompt: str = "Run a diagnostic check."
 
 
 def build_list_recent_tasks_tool(*, jobs_service: JobsService) -> AgentToolDefinition:
@@ -26,6 +40,7 @@ def build_list_recent_tasks_tool(*, jobs_service: JobsService) -> AgentToolDefin
     return AgentToolDefinition(
         name="list_recent_tasks",
         description="List recent operational background tasks.",
+        arguments_model=ListRecentTasksToolArgs,
         execute=list_recent_tasks,
     )
 
@@ -54,6 +69,7 @@ def build_get_task_tool(*, jobs_service: JobsService) -> AgentToolDefinition:
     return AgentToolDefinition(
         name="get_task",
         description="Fetch one operational background task by id.",
+        arguments_model=GetTaskToolArgs,
         execute=get_task,
     )
 
@@ -77,6 +93,7 @@ def build_run_diagnostic_job_tool(*, jobs_service: JobsService) -> AgentToolDefi
     return AgentToolDefinition(
         name="run_diagnostic_job",
         description="Start the diagnostic workflow job.",
+        arguments_model=RunDiagnosticJobToolArgs,
         execute=run_diagnostic_job,
         requires_approval=True,
     )

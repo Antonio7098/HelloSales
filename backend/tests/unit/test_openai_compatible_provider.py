@@ -1,9 +1,14 @@
 from __future__ import annotations
 
+import json
+
 import httpx
 import pytest
 
-from hello_sales_backend.platform.llm import JSONSchemaHint
+from hello_sales_backend.platform.llm import (
+    JSONSchemaHint,
+    ProviderToolDefinition,
+)
 from hello_sales_backend.platform.providers.llm import ChatMessage, OpenAICompatibleChatModel
 from hello_sales_backend.shared.errors import AppError
 
@@ -200,4 +205,80 @@ async def test_openai_compatible_provider_uses_non_strict_json_schema_for_non_op
     )
 
     assert result.output_json == {"brief": "ok", "key_points": ["one"], "priority": "medium"}
+    await client.aclose()
+
+
+@pytest.mark.asyncio
+async def test_openai_compatible_provider_sends_native_tools_and_parses_tool_calls() -> None:
+    async def handler(request: httpx.Request) -> httpx.Response:
+        payload = json.loads(request.read().decode())
+        assert payload["tools"] == [
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_runtime_status",
+                    "description": "Return runtime status.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {},
+                        "additionalProperties": False,
+                    },
+                },
+            }
+        ]
+        assert payload["parallel_tool_calls"] is False
+        return httpx.Response(
+            200,
+            json={
+                "model": "test-model",
+                "choices": [
+                    {
+                        "message": {
+                            "content": "",
+                            "tool_calls": [
+                                {
+                                    "id": "call-1",
+                                    "type": "function",
+                                    "function": {
+                                        "name": "get_runtime_status",
+                                        "arguments": "{}",
+                                    },
+                                }
+                            ],
+                        }
+                    }
+                ],
+            },
+        )
+
+    client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    provider = OpenAICompatibleChatModel(
+        provider_name="test-provider",
+        base_url="https://example.test/v1",
+        api_key="secret",
+        model="test-model",
+        timeout_seconds=5.0,
+        http_client=client,
+    )
+
+    result = await provider.complete_with_tools(
+        [{"role": "user", "content": "show runtime status"}],
+        tools=[
+            ProviderToolDefinition(
+                name="get_runtime_status",
+                description="Return runtime status.",
+                parameters={
+                    "type": "object",
+                    "properties": {},
+                    "additionalProperties": False,
+                },
+            )
+        ],
+    )
+
+    assert result.content is None
+    assert len(result.tool_calls) == 1
+    assert result.tool_calls[0].call_id == "call-1"
+    assert result.tool_calls[0].tool_name == "get_runtime_status"
+    assert result.tool_calls[0].arguments == {}
     await client.aclose()

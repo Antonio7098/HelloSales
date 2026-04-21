@@ -9,7 +9,10 @@ from hello_sales_backend.platform.llm.contracts import (
     LLMCallContext,
     LLMMessage,
     LLMProviderPort,
+    ProviderToolCall,
+    ProviderToolDefinition,
     TextGenerationResult,
+    ToolCallCompletionResult,
 )
 
 __all__ = [
@@ -21,5 +24,8 @@ __all__ = [
     "LLMCallContext",
     "LLMMessage",
     "LLMProviderPort",
+    "ProviderToolCall",
+    "ProviderToolDefinition",
     "TextGenerationResult",
+    "ToolCallCompletionResult",
 ]

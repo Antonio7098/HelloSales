@@ -9,7 +9,10 @@ from hello_sales_backend.platform.llm.contracts import (
     LLMCallContext,
     LLMMessage,
     LLMProviderPort,
+    ProviderToolCall,
+    ProviderToolDefinition,
     TextGenerationResult,
+    ToolCallCompletionResult,
 )
 from hello_sales_backend.platform.llm.prompts import (
     EffectivePromptRef,
@@ -31,10 +34,13 @@ __all__ = [
     "LLMProviderPort",
     "NoopLLMProvider",
     "OpenAICompatibleLLMProvider",
+    "ProviderToolCall",
+    "ProviderToolDefinition",
     "EffectivePromptRef",
     "PromptMetadata",
     "PromptOwnerKind",
     "TextGenerationResult",
+    "ToolCallCompletionResult",
     "effective_prompt_ref",
     "schema_hint_from_model",
 ]

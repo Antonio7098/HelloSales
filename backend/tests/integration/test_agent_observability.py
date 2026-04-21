@@ -15,6 +15,9 @@ from hello_sales_backend.platform.providers.llm.contracts import (
     ChatMessage,
     ChatModelPort,
     JSONGenerationResult,
+    ProviderToolCall,
+    ProviderToolDefinition,
+    ToolCallCompletionResult,
 )
 
 
@@ -52,6 +55,44 @@ class FakeChatModel(ChatModelPort):
             model="fake-model",
             raw_text="{}",
             output_json={},
+        )
+
+    async def complete_with_tools(
+        self,
+        messages: list[dict[str, object]],
+        *,
+        tools: list[ProviderToolDefinition],
+        context=None,
+        tool_choice: str | None = None,
+    ) -> ToolCallCompletionResult:
+        del tools, context, tool_choice
+        latest_user = next(
+            str(item.get("content"))
+            for item in reversed(messages)
+            if item.get("role") == "user"
+        )
+        if any(item.get("role") == "tool" for item in messages):
+            return ToolCallCompletionResult(
+                provider=self.provider_name,
+                model="fake-model",
+                content=f"processed:{latest_user}",
+            )
+        tool_name = (
+            "run_diagnostic_job"
+            if "diagnostic" in latest_user.lower()
+            else "get_runtime_status"
+        )
+        arguments = {"prompt": latest_user} if tool_name == "run_diagnostic_job" else {}
+        return ToolCallCompletionResult(
+            provider=self.provider_name,
+            model="fake-model",
+            tool_calls=[
+                ProviderToolCall(
+                    call_id=f"call-{tool_name}",
+                    tool_name=tool_name,
+                    arguments=arguments,
+                )
+            ],
         )
 
     def is_configured(self) -> bool:

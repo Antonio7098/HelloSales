@@ -1,8 +1,9 @@
-"""Stageflow-backed agent runtime."""
+"""Native-tool-calling agent runtime."""
 
 from __future__ import annotations
 
 import asyncio
+import json
 from dataclasses import dataclass, field
 from time import perf_counter
 from typing import Any, Protocol
@@ -23,7 +24,7 @@ from hello_sales_backend.platform.agents.models import (
 )
 from hello_sales_backend.platform.agents.persistence import AgentStorePort
 from hello_sales_backend.platform.agents.tools import AgentToolExecutionContext
-from hello_sales_backend.platform.llm import EffectivePromptRef
+from hello_sales_backend.platform.llm import EffectivePromptRef, ProviderToolCall
 from hello_sales_backend.platform.llm.contracts import LLMCallContext, LLMProviderPort
 from hello_sales_backend.platform.observability.events import OperationalEvent
 from hello_sales_backend.platform.observability.logging import get_logger
@@ -153,9 +154,7 @@ class GenericAgentRuntime:
                 duration_seconds=perf_counter() - started_at,
             )
 
-    async def _run_pipeline(
-        self, *, run: AgentRun, turn: AgentTurn, definition: Any
-    ) -> dict[str, object]:
+    async def _run_pipeline(self, *, run: AgentRun, turn: AgentTurn, definition: Any) -> dict[str, object]:
         if not self.workflow_runtime.installed:
             raise app_error(
                 "Workflow runtime is not available for generic-agent execution",
@@ -177,171 +176,17 @@ class GenericAgentRuntime:
                 component="agent",
             )
 
-        async def prepare_turn(_ctx: Any) -> dict[str, object]:
-            existing_calls = await self.store.list_tool_calls(run.run_id, turn.turn_id)
-            if existing_calls:
-                awaiting = any(
-                    item.status == AgentToolCallStatus.PENDING_APPROVAL for item in existing_calls
-                )
-                return {
-                    "awaiting_approval": awaiting,
-                    "tool_call_ids": [item.tool_call_id for item in existing_calls],
-                }
-
-            selected_tools = definition.selection_policy.select(turn.input_text, definition.tools)
-            for request in selected_tools:
-                tool_definition = definition.tools.require(request.name)
-                tool_call = AgentToolCall(
-                    tool_call_id=new_id(),
-                    run_id=run.run_id,
-                    turn_id=turn.turn_id,
-                    sequence_no=await self.store.next_tool_sequence(run.run_id, turn.turn_id),
-                    tool_name=request.name,
-                    status=(
-                        AgentToolCallStatus.PENDING_APPROVAL
-                        if tool_definition.requires_approval
-                        else AgentToolCallStatus.QUEUED
-                    ),
-                    arguments=request.arguments,
-                    requires_approval=tool_definition.requires_approval,
-                    approval_id=new_id() if tool_definition.requires_approval else None,
-                )
-                await self.store.create_tool_call(tool_call)
-                if self.sessions is not None:
-                    await self.sessions.append_tool_call(run=run, turn=turn, tool_call=tool_call)
-                await self._append_event(
-                    run_id=run.run_id,
-                    turn_id=turn.turn_id,
-                    event_type="agent.tool.queued",
-                    severity="info",
-                    code="agent.tool.queued",
-                    payload={
-                        "tool_call_id": tool_call.tool_call_id,
-                        "tool_name": tool_call.tool_name,
-                        "requires_approval": tool_call.requires_approval,
-                        "approval_id": tool_call.approval_id,
-                    },
-                )
-                if tool_call.status == AgentToolCallStatus.PENDING_APPROVAL:
-                    self.observability.on_agent_tool_approval_requested(
-                        profile_name=run.profile_name,
-                        tool_name=tool_call.tool_name,
-                    )
-                    await self._append_event(
-                        run_id=run.run_id,
-                        turn_id=turn.turn_id,
-                        event_type="agent.approval.requested",
-                        severity="warning",
-                        code="agent.approval.requested",
-                        payload={
-                            "tool_call_id": tool_call.tool_call_id,
-                            "tool_name": tool_call.tool_name,
-                            "approval_id": tool_call.approval_id,
-                        },
-                    )
-            return {
-                "awaiting_approval": any(
-                    definition.tools.require(item.name).requires_approval for item in selected_tools
-                ),
-            }
-
-        async def execute_tools(_ctx: Any) -> dict[str, object]:
-            tool_calls = await self.store.list_tool_calls(run.run_id, turn.turn_id)
-            pending_approval = next(
-                (
-                    item
-                    for item in tool_calls
-                    if item.status == AgentToolCallStatus.PENDING_APPROVAL
-                ),
-                None,
-            )
-            if pending_approval is not None:
-                return {
-                    "awaiting_approval": True,
-                    "approval_id": pending_approval.approval_id,
-                    "tool_results": [],
-                }
-            tool_results: list[str] = []
-            for tool_call in tool_calls:
-                if (
-                    tool_call.status == AgentToolCallStatus.COMPLETED
-                    and tool_call.result_payload is not None
-                ):
-                    tool_results.append(self._tool_result_summary(tool_call))
-                    continue
-                if tool_call.status == AgentToolCallStatus.REJECTED:
-                    tool_results.append(f"{tool_call.tool_name}: approval rejected")
-                    continue
-                await self._execute_tool_call(
-                    run=run, turn=turn, tool_call=tool_call, definition=definition
-                )
-                refreshed = await self._require_tool_call(
-                    tool_call.tool_call_id, turn_id=turn.turn_id, run_id=run.run_id
-                )
-                if refreshed.result_payload is not None:
-                    tool_results.append(self._tool_result_summary(refreshed))
-            return {"awaiting_approval": False, "tool_results": tool_results}
-
-        async def generate_response(ctx: Any) -> dict[str, object]:
-            executed = ctx.inputs.get_output("execute_tools")
-            if executed is None:
-                raise RuntimeError("Generic-agent execute_tools output is missing")
-            result: dict[str, object] = executed.data
-            if result.get("awaiting_approval") is True:
-                return result
-            tool_results_raw = result.get("tool_results", [])
-            tool_results = (
-                [str(item) for item in tool_results_raw]
-                if isinstance(tool_results_raw, list)
-                else []
-            )
-            if self.llm_provider.is_configured():
-                messages = definition.build_messages(turn.input_text, tool_results)
-                generate_text = getattr(self.llm_provider, "generate_text", None)
-                if callable(generate_text):
-                    completion = await generate_text(
-                        messages,
-                        context=LLMCallContext(
-                            request_id=run.request_id,
-                            trace_id=run.trace_id,
-                            actor_id=run.actor_id,
-                            operation="agent.llm.generate_text",
-                            prompt=turn.prompt,
-                        ),
-                    )
-                else:
-                    completion = await self.llm_provider.generate(messages)
-                return {
-                    "awaiting_approval": False,
-                    "response_text": completion.output_text,
-                    "provider": completion.provider,
-                    "model": completion.model,
-                }
-            return {
-                "awaiting_approval": False,
-                "response_text": definition.build_fallback_response(turn.input_text, tool_results),
-                "provider": "fallback",
-                "model": "deterministic-summary",
-            }
+        async def run_agent_loop(_ctx: Any) -> dict[str, object]:
+            return await self._run_agent_loop(run=run, turn=turn, definition=definition)
 
         pipeline = self.workflow_runtime.pipeline_factory.create_pipeline(
             name="generic_agent_turn",
             stages=[
                 WorkflowStageSpec(
-                    name="prepare_turn", handler=prepare_turn, kind=WorkflowStageKind.GUARD
-                ),
-                WorkflowStageSpec(
-                    name="execute_tools",
-                    handler=execute_tools,
+                    name="run_agent_loop",
+                    handler=run_agent_loop,
                     kind=WorkflowStageKind.WORK,
-                    dependencies=("prepare_turn",),
-                ),
-                WorkflowStageSpec(
-                    name="generate_response",
-                    handler=generate_response,
-                    kind=WorkflowStageKind.TRANSFORM,
-                    dependencies=("execute_tools",),
-                ),
+                )
             ],
         )
         self._logger.info(
@@ -357,7 +202,7 @@ class GenericAgentRuntime:
             if isinstance(exc.original, AppError):
                 raise exc.original from exc
             raise
-        output = results["generate_response"].data
+        output = results["run_agent_loop"].data
         self._logger.info(
             "agent.turn.pipeline.completed",
             run_id=run.run_id,
@@ -367,13 +212,255 @@ class GenericAgentRuntime:
         )
         return dict(output)
 
+    async def _run_agent_loop(self, *, run: AgentRun, turn: AgentTurn, definition: Any) -> dict[str, object]:
+        if not self.llm_provider.is_configured():
+            return {
+                "awaiting_approval": False,
+                "response_text": definition.build_fallback_response(turn.input_text),
+                "provider": "fallback",
+                "model": "deterministic-noop",
+            }
+
+        messages = [item.model_dump(mode="json") for item in definition.build_messages(turn.input_text)]
+        existing_tool_calls = await self.store.list_tool_calls(run.run_id, turn.turn_id)
+        messages.extend(self._replay_tool_messages(existing_tool_calls))
+
+        resumed = await self._continue_existing_tool_calls(
+            run=run,
+            turn=turn,
+            definition=definition,
+            messages=messages,
+            tool_calls=existing_tool_calls,
+        )
+        if resumed.get("awaiting_approval") is True:
+            return resumed
+
+        for _ in range(self.config.max_tool_iterations):
+            completion = await self.llm_provider.complete_with_tools(
+                messages,
+                tools=definition.tools.provider_definitions(),
+                context=LLMCallContext(
+                    request_id=run.request_id,
+                    trace_id=run.trace_id,
+                    actor_id=run.actor_id,
+                    operation="agent.llm.complete_with_tools",
+                    prompt=turn.prompt,
+                ),
+            )
+            if not completion.tool_calls:
+                final_response = (completion.content or "").strip()
+                if not final_response:
+                    raise app_error(
+                        "Agent provider returned neither tool calls nor a final response",
+                        code="agent.provider.empty_completion",
+                        category="provider",
+                        status_code=502,
+                        details={"run_id": run.run_id, "turn_id": turn.turn_id},
+                        operation="agent.llm.complete_with_tools",
+                        component="agent",
+                    )
+                return {
+                    "awaiting_approval": False,
+                    "response_text": final_response,
+                    "provider": completion.provider,
+                    "model": completion.model,
+                }
+
+            persisted_tool_calls = await self._queue_provider_tool_calls(
+                run=run,
+                turn=turn,
+                definition=definition,
+                tool_calls=completion.tool_calls,
+            )
+            messages.append(
+                self._assistant_tool_call_message(
+                    tool_calls=completion.tool_calls,
+                    content=completion.content,
+                )
+            )
+
+            execution_result = await self._continue_existing_tool_calls(
+                run=run,
+                turn=turn,
+                definition=definition,
+                messages=messages,
+                tool_calls=persisted_tool_calls,
+            )
+            if execution_result.get("awaiting_approval") is True:
+                return execution_result
+
+        raise app_error(
+            "Agent exceeded the maximum native tool-calling iterations",
+            code="agent.tool.max_iterations_exceeded",
+            category="workflow",
+            status_code=502,
+            details={
+                "run_id": run.run_id,
+                "turn_id": turn.turn_id,
+                "max_tool_iterations": self.config.max_tool_iterations,
+            },
+            operation="agent.loop",
+            component="agent",
+        )
+
+    async def _queue_provider_tool_calls(
+        self,
+        *,
+        run: AgentRun,
+        turn: AgentTurn,
+        definition: Any,
+        tool_calls: list[ProviderToolCall],
+    ) -> list[AgentToolCall]:
+        persisted: list[AgentToolCall] = []
+        for provider_tool_call in tool_calls:
+            try:
+                tool_definition = definition.tools.require(provider_tool_call.tool_name)
+            except AppError as exc:
+                if exc.code != "agent.tool.not_found":
+                    raise
+                raise app_error(
+                    "Provider requested an unregistered agent tool",
+                    code="provider.invalid_tool_name",
+                    category="provider",
+                    status_code=502,
+                    details={
+                        "run_id": run.run_id,
+                        "turn_id": turn.turn_id,
+                        "tool_call_id": provider_tool_call.call_id,
+                        "tool_name": provider_tool_call.tool_name,
+                        "arguments": provider_tool_call.arguments,
+                    },
+                    operation="agent.tool.queue_provider_call",
+                    component="agent",
+                    exc=exc,
+                ) from exc
+            tool_call = AgentToolCall(
+                tool_call_id=provider_tool_call.call_id,
+                run_id=run.run_id,
+                turn_id=turn.turn_id,
+                sequence_no=await self.store.next_tool_sequence(run.run_id, turn.turn_id),
+                tool_name=provider_tool_call.tool_name,
+                status=(
+                    AgentToolCallStatus.PENDING_APPROVAL
+                    if tool_definition.requires_approval
+                    else AgentToolCallStatus.QUEUED
+                ),
+                arguments=provider_tool_call.arguments,
+                requires_approval=tool_definition.requires_approval,
+                approval_id=new_id() if tool_definition.requires_approval else None,
+            )
+            await self._create_tool_call(tool_call)
+            if self.sessions is not None:
+                await self.sessions.append_tool_call(run=run, turn=turn, tool_call=tool_call)
+            await self._append_event(
+                run_id=run.run_id,
+                turn_id=turn.turn_id,
+                event_type="agent.tool.queued",
+                severity="info",
+                code="agent.tool.queued",
+                payload={
+                    "tool_call_id": tool_call.tool_call_id,
+                    "tool_name": tool_call.tool_name,
+                    "requires_approval": tool_call.requires_approval,
+                    "approval_id": tool_call.approval_id,
+                },
+            )
+            if tool_call.status == AgentToolCallStatus.PENDING_APPROVAL:
+                self.observability.on_agent_tool_approval_requested(
+                    profile_name=run.profile_name,
+                    tool_name=tool_call.tool_name,
+                )
+                await self._append_event(
+                    run_id=run.run_id,
+                    turn_id=turn.turn_id,
+                    event_type="agent.approval.requested",
+                    severity="warning",
+                    code="agent.approval.requested",
+                    payload={
+                        "tool_call_id": tool_call.tool_call_id,
+                        "tool_name": tool_call.tool_name,
+                        "approval_id": tool_call.approval_id,
+                    },
+                )
+            persisted.append(tool_call)
+        return persisted
+
+    async def _continue_existing_tool_calls(
+        self,
+        *,
+        run: AgentRun,
+        turn: AgentTurn,
+        definition: Any,
+        messages: list[dict[str, object]],
+        tool_calls: list[AgentToolCall],
+    ) -> dict[str, object]:
+        for tool_call in tool_calls:
+            if tool_call.status == AgentToolCallStatus.PENDING_APPROVAL:
+                return {
+                    "awaiting_approval": True,
+                    "approval_id": tool_call.approval_id,
+                    "tool_call_id": tool_call.tool_call_id,
+                }
+            if tool_call.status == AgentToolCallStatus.REJECTED:
+                messages.append(
+                    self._tool_result_message(
+                        tool_call_id=tool_call.tool_call_id,
+                        payload={"status": "rejected", "message": "Approval was rejected."},
+                    )
+                )
+                continue
+            if (
+                tool_call.status == AgentToolCallStatus.COMPLETED
+                and tool_call.result_payload is not None
+            ):
+                messages.append(
+                    self._tool_result_message(
+                        tool_call_id=tool_call.tool_call_id,
+                        payload=tool_call.result_payload,
+                    )
+                )
+                continue
+            if tool_call.status not in {
+                AgentToolCallStatus.QUEUED,
+                AgentToolCallStatus.APPROVED,
+            }:
+                continue
+            validated_arguments = definition.tools.require(tool_call.tool_name).validate_provider_arguments(
+                arguments=tool_call.arguments,
+                tool_call_id=tool_call.tool_call_id,
+                run_id=run.run_id,
+                turn_id=turn.turn_id,
+            )
+            if validated_arguments != tool_call.arguments:
+                tool_call.arguments = validated_arguments
+                await self._update_tool_call(tool_call)
+            await self._execute_tool_call(
+                run=run,
+                turn=turn,
+                tool_call=tool_call,
+                definition=definition,
+            )
+            refreshed = await self._require_tool_call(
+                tool_call.tool_call_id,
+                run_id=run.run_id,
+                turn_id=turn.turn_id,
+            )
+            if refreshed.result_payload is not None:
+                messages.append(
+                    self._tool_result_message(
+                        tool_call_id=refreshed.tool_call_id,
+                        payload=refreshed.result_payload,
+                    )
+                )
+        return {"awaiting_approval": False}
+
     async def _execute_tool_call(
         self, *, run: AgentRun, turn: AgentTurn, tool_call: AgentToolCall, definition: Any
     ) -> None:
         started_at = perf_counter()
         tool_call.status = AgentToolCallStatus.RUNNING
         tool_call.started_at = utc_now()
-        await self.store.update_tool_call(tool_call)
+        await self._update_tool_call(tool_call)
         self.observability.on_agent_tool_call_started(
             profile_name=run.profile_name,
             tool_name=tool_call.tool_name,
@@ -429,7 +516,7 @@ class GenericAgentRuntime:
                     tool_call.error_category = structured.category
                     tool_call.error_message = structured.message
                     tool_call.error_details = structured.to_dict()
-                    await self.store.update_tool_call(tool_call)
+                    await self._update_tool_call(tool_call)
                     if self.sessions is not None:
                         await self.sessions.append_tool_result(run=run, turn=turn, tool_call=tool_call)
                     await self._append_event(
@@ -458,7 +545,7 @@ class GenericAgentRuntime:
                 tool_call.status = AgentToolCallStatus.COMPLETED
                 tool_call.completed_at = utc_now()
                 tool_call.result_payload = result
-                await self.store.update_tool_call(tool_call)
+                await self._update_tool_call(tool_call)
                 if self.sessions is not None:
                     await self.sessions.append_tool_result(run=run, turn=turn, tool_call=tool_call)
                 await self._append_event(
@@ -509,6 +596,52 @@ class GenericAgentRuntime:
             code="agent.turn.started",
             payload={"turn_id": turn.turn_id, "sequence_no": turn.sequence_no},
         )
+
+    async def _create_tool_call(self, tool_call: AgentToolCall) -> None:
+        try:
+            await self.store.create_tool_call(tool_call)
+        except AppError:
+            raise
+        except Exception as exc:
+            raise app_error(
+                "Failed to persist agent tool call state",
+                code="data.agent_tool_call.create_failed",
+                category="data",
+                status_code=500,
+                details={
+                    "run_id": tool_call.run_id,
+                    "turn_id": tool_call.turn_id,
+                    "tool_call_id": tool_call.tool_call_id,
+                    "tool_name": tool_call.tool_name,
+                    "status": tool_call.status.value,
+                },
+                operation="agent.tool.create_state",
+                component="agent",
+                exc=exc,
+            ) from exc
+
+    async def _update_tool_call(self, tool_call: AgentToolCall) -> None:
+        try:
+            await self.store.update_tool_call(tool_call)
+        except AppError:
+            raise
+        except Exception as exc:
+            raise app_error(
+                "Failed to update agent tool call state",
+                code="data.agent_tool_call.update_failed",
+                category="data",
+                status_code=500,
+                details={
+                    "run_id": tool_call.run_id,
+                    "turn_id": tool_call.turn_id,
+                    "tool_call_id": tool_call.tool_call_id,
+                    "tool_name": tool_call.tool_name,
+                    "status": tool_call.status.value,
+                },
+                operation="agent.tool.update_state",
+                component="agent",
+                exc=exc,
+            ) from exc
 
     async def _mark_awaiting_approval(self, *, run: AgentRun, turn: AgentTurn) -> None:
         now = utc_now()
@@ -680,6 +813,53 @@ class GenericAgentRuntime:
         )
 
     @staticmethod
+    def _assistant_tool_call_message(
+        *, tool_calls: list[ProviderToolCall], content: str | None
+    ) -> dict[str, object]:
+        return {
+            "role": "assistant",
+            "content": content or "",
+            "tool_calls": [
+                {
+                    "id": tool_call.call_id,
+                    "type": "function",
+                    "function": {
+                        "name": tool_call.tool_name,
+                        "arguments": json.dumps(tool_call.arguments, separators=(",", ":"), sort_keys=True),
+                    },
+                }
+                for tool_call in tool_calls
+            ],
+        }
+
+    @staticmethod
+    def _tool_result_message(
+        *, tool_call_id: str, payload: dict[str, object]
+    ) -> dict[str, object]:
+        return {
+            "role": "tool",
+            "tool_call_id": tool_call_id,
+            "content": json.dumps(payload, separators=(",", ":"), sort_keys=True),
+        }
+
+    def _replay_tool_messages(self, tool_calls: list[AgentToolCall]) -> list[dict[str, object]]:
+        replay: list[dict[str, object]] = []
+        for tool_call in tool_calls:
+            replay.append(
+                self._assistant_tool_call_message(
+                    tool_calls=[
+                        ProviderToolCall(
+                            call_id=tool_call.tool_call_id,
+                            tool_name=tool_call.tool_name,
+                            arguments=tool_call.arguments,
+                        )
+                    ],
+                    content=None,
+                )
+            )
+        return replay
+
+    @staticmethod
     def _prompt_fields(prompt: EffectivePromptRef | None) -> dict[str, object]:
         if prompt is None:
             return {}
@@ -710,7 +890,3 @@ class GenericAgentRuntime:
             operation="agent.tool.require_state",
             component="agent",
         )
-
-    @staticmethod
-    def _tool_result_summary(tool_call: AgentToolCall) -> str:
-        return f"{tool_call.tool_name}: {tool_call.result_payload}"
