@@ -8,24 +8,144 @@ from dataclasses import dataclass
 from random import getrandbits
 from typing import Any, Protocol
 
-from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
-from opentelemetry.sdk.resources import Resource
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import (
-    BatchSpanProcessor,
-    ConsoleSpanExporter,
-    SimpleSpanProcessor,
-)
-from opentelemetry.trace import (
-    NonRecordingSpan,
-    Span,
-    SpanContext,
-    Status,
-    StatusCode,
-    TraceFlags,
-    TraceState,
-    set_span_in_context,
-)
+try:
+    from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+    from opentelemetry.sdk.resources import Resource
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import (
+        BatchSpanProcessor,
+        ConsoleSpanExporter,
+        SimpleSpanProcessor,
+    )
+    from opentelemetry.trace import (
+        NonRecordingSpan,
+        Span,
+        SpanContext,
+        Status,
+        StatusCode,
+        TraceFlags,
+        TraceState,
+        set_span_in_context,
+    )
+    OTEL_AVAILABLE = True
+except ImportError:  # pragma: no cover - local fallback when OpenTelemetry extras are absent
+    OTEL_AVAILABLE = False
+
+    class Span:  # type: ignore[no-redef]
+        def __init__(self, context: SpanContext | None = None) -> None:
+            self._context = context or SpanContext(
+                trace_id=getrandbits(128),
+                span_id=getrandbits(64),
+                is_remote=False,
+                trace_flags=None,
+                trace_state=None,
+            )
+            self.attributes: dict[str, object] = {}
+            self.status: object | None = None
+
+        def set_attribute(self, _key: str, _value: object) -> None:
+            self.attributes[_key] = _value
+
+        def set_status(self, _status: object) -> None:
+            self.status = _status
+
+        def get_span_context(self) -> SpanContext:
+            return self._context
+
+    class NonRecordingSpan(Span):  # type: ignore[no-redef]
+        def __init__(self, context: SpanContext) -> None:
+            super().__init__(context)
+
+    class SpanContext:  # type: ignore[no-redef]
+        def __init__(
+            self,
+            *,
+            trace_id: int,
+            span_id: int,
+            is_remote: bool,
+            trace_flags: object,
+            trace_state: object,
+        ) -> None:
+            self.trace_id = trace_id
+            self.span_id = span_id
+            self.is_remote = is_remote
+            self.trace_flags = trace_flags
+            self.trace_state = trace_state
+
+    class StatusCode:  # type: ignore[no-redef]
+        OK = "ok"
+        ERROR = "error"
+
+    class Status:  # type: ignore[no-redef]
+        def __init__(self, *, status_code: object, description: str | None = None) -> None:
+            self.status_code = status_code
+            self.description = description
+
+    class TraceFlags(int):  # type: ignore[no-redef]
+        pass
+
+    class TraceState(dict[str, str]):  # type: ignore[no-redef]
+        pass
+
+    def set_span_in_context(span: object) -> object:  # type: ignore[no-redef]
+        return span
+
+    class _DummyTracer:
+        @contextmanager
+        def start_as_current_span(self, _name: str, **kwargs: object) -> Iterator[Span | None]:
+            parent_span = kwargs.get("context")
+            if isinstance(parent_span, Span):
+                trace_id = parent_span.get_span_context().trace_id
+            else:
+                trace_id = getrandbits(128)
+            span = Span(
+                SpanContext(
+                    trace_id=trace_id,
+                    span_id=getrandbits(64),
+                    is_remote=False,
+                    trace_flags=TraceFlags(0x01),
+                    trace_state=TraceState(),
+                )
+            )
+            attributes = kwargs.get("attributes")
+            if isinstance(attributes, dict):
+                for key, value in attributes.items():
+                    span.set_attribute(str(key), value)
+            with nullcontext(span) as current_span:
+                yield current_span
+
+    class Resource:  # type: ignore[no-redef]
+        @staticmethod
+        def create(_attributes: dict[str, str]) -> dict[str, str]:
+            return _attributes
+
+    class TracerProvider:  # type: ignore[no-redef]
+        def __init__(self, resource: object | None = None) -> None:
+            self._resource = resource
+
+        def add_span_processor(self, _processor: object) -> None:
+            return None
+
+        def get_tracer(self, _name: str) -> _DummyTracer:
+            return _DummyTracer()
+
+        def shutdown(self) -> None:
+            return None
+
+    class BatchSpanProcessor:  # type: ignore[no-redef]
+        def __init__(self, _exporter: object) -> None:
+            return None
+
+    class ConsoleSpanExporter:  # type: ignore[no-redef]
+        pass
+
+    class SimpleSpanProcessor:  # type: ignore[no-redef]
+        def __init__(self, _exporter: object) -> None:
+            return None
+
+    class OTLPSpanExporter:  # type: ignore[no-redef]
+        def __init__(self, **_kwargs: object) -> None:
+            return None
 
 from hello_sales_backend.platform.llm import EffectivePromptRef
 

@@ -6,6 +6,7 @@ from hello_sales_backend.modules.system.use_cases.system_service import SystemSe
 from hello_sales_backend.platform.agents.tools import (
     AgentToolDefinition,
     AgentToolExecutionContext,
+    EmptyToolArguments,
 )
 
 
@@ -21,5 +22,6 @@ def build_get_runtime_status_tool(*, system_service: SystemService) -> AgentTool
     return AgentToolDefinition(
         name="get_runtime_status",
         description="Return top-level runtime status information.",
+        arguments_model=EmptyToolArguments,
         execute=get_runtime_status,
     )

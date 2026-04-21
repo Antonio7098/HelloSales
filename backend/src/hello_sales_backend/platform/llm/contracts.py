@@ -37,6 +37,24 @@ class JSONSchemaHint:
     strict: bool = True
 
 
+@dataclass(slots=True, frozen=True)
+class ProviderToolDefinition:
+    """Provider-native function tool definition."""
+
+    name: str
+    description: str
+    parameters: dict[str, object]
+
+
+class ProviderToolCall(BaseModel):
+    """Normalized provider-native tool call."""
+
+    call_id: str
+    tool_name: str
+    arguments: dict[str, object] = Field(default_factory=dict)
+    raw_tool_call: dict[str, object] = Field(default_factory=dict)
+
+
 class TextGenerationResult(BaseModel):
     """Normalized text-generation result."""
 
@@ -53,6 +71,17 @@ class JSONGenerationResult(BaseModel):
     model: str
     raw_text: str
     output_json: Any = None
+    timeout_seconds: float | None = None
+
+
+class ToolCallCompletionResult(BaseModel):
+    """Normalized provider response for native tool calling."""
+
+    provider: str
+    model: str
+    content: str | None = None
+    tool_calls: list[ProviderToolCall] = Field(default_factory=list)
+    raw_response: dict[str, object] = Field(default_factory=dict)
     timeout_seconds: float | None = None
 
 
@@ -77,6 +106,15 @@ class LLMProviderPort(Protocol):
         schema_hint: JSONSchemaHint | None = None,
         context: LLMCallContext | None = None,
     ) -> JSONGenerationResult: ...
+
+    async def complete_with_tools(
+        self,
+        messages: list[dict[str, object]],
+        *,
+        tools: list[ProviderToolDefinition],
+        context: LLMCallContext | None = None,
+        tool_choice: str | None = None,
+    ) -> ToolCallCompletionResult: ...
 
     def is_configured(self) -> bool: ...
 

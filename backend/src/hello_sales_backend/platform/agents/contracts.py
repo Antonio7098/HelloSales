@@ -4,14 +4,8 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from hello_sales_backend.platform.agents.tools import AgentToolCatalog, AgentToolRequest
+from hello_sales_backend.platform.agents.tools import AgentToolCatalog
 from hello_sales_backend.platform.llm import ChatMessage, EffectivePromptRef
-
-
-class AgentSelectionPolicyPort(Protocol):
-    """Select tools for one agent turn."""
-
-    def select(self, user_input: str, catalog: AgentToolCatalog) -> list[AgentToolRequest]: ...
 
 
 class AgentDefinitionPort(Protocol):
@@ -27,14 +21,11 @@ class AgentDefinitionPort(Protocol):
     def tools(self) -> AgentToolCatalog: ...
 
     @property
-    def selection_policy(self) -> AgentSelectionPolicyPort: ...
-
-    @property
     def prompt(self) -> object: ...
 
-    def build_messages(self, user_input: str, tool_results: list[str]) -> list[ChatMessage]: ...
+    def build_messages(self, user_input: str) -> list[ChatMessage]: ...
 
-    def build_fallback_response(self, user_input: str, tool_results: list[str]) -> str: ...
+    def build_fallback_response(self, user_input: str) -> str: ...
 
     def effective_prompt_ref(self) -> EffectivePromptRef: ...
 

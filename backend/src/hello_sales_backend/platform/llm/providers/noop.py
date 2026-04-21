@@ -7,7 +7,9 @@ from hello_sales_backend.platform.llm.contracts import (
     JSONSchemaHint,
     LLMCallContext,
     LLMMessage,
+    ProviderToolDefinition,
     TextGenerationResult,
+    ToolCallCompletionResult,
 )
 from hello_sales_backend.shared.errors import app_error
 
@@ -63,6 +65,29 @@ class NoopLLMProvider:
         """Backward-compatible chat-only entrypoint."""
 
         return await self.generate_text(messages)
+
+    async def complete_with_tools(
+        self,
+        messages: list[dict[str, object]],
+        *,
+        tools: list[ProviderToolDefinition],
+        context: LLMCallContext | None = None,
+        tool_choice: str | None = None,
+    ) -> ToolCallCompletionResult:
+        del tools, tool_choice
+        raise app_error(
+            message="No LLM provider is configured for this environment",
+            code="provider.llm.not_configured",
+            category="provider",
+            status_code=503,
+            details={
+                "provider": self.provider_name,
+                "message_count": len(messages),
+                "operation": context.operation if context else None,
+            },
+            operation="provider.llm.complete_with_tools",
+            component="provider",
+        )
 
     def is_configured(self) -> bool:
         return False

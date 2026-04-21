@@ -8,7 +8,10 @@ from hello_sales_backend.platform.llm.contracts import (
     JSONSchemaHint,
     LLMCallContext,
     LLMProviderPort,
+    ProviderToolCall,
+    ProviderToolDefinition,
     TextGenerationResult,
+    ToolCallCompletionResult,
 )
 from hello_sales_backend.platform.providers.llm.noop import NoopChatModel
 from hello_sales_backend.platform.providers.llm.openai_compatible import OpenAICompatibleChatModel
@@ -23,5 +26,8 @@ __all__ = [
     "LLMProviderPort",
     "NoopChatModel",
     "OpenAICompatibleChatModel",
+    "ProviderToolCall",
+    "ProviderToolDefinition",
     "TextGenerationResult",
+    "ToolCallCompletionResult",
 ]

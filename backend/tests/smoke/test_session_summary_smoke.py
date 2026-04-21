@@ -13,6 +13,7 @@ from hello_sales_backend.platform.providers.llm.contracts import (
     ChatMessage,
     ChatModelPort,
     JSONGenerationResult,
+    ToolCallCompletionResult,
 )
 
 
@@ -50,6 +51,21 @@ class FakeChatModel(ChatModelPort):
             model="fake-model",
             raw_text="{}",
             output_json={},
+        )
+
+    async def complete_with_tools(
+        self,
+        messages: list[dict[str, object]],
+        *,
+        tools: list,
+        context=None,
+        tool_choice=None,
+    ) -> ToolCallCompletionResult:
+        return ToolCallCompletionResult(
+            provider=self.provider_name,
+            model="fake-model",
+            content="tool processed",
+            tool_calls=[],
         )
 
     def is_configured(self) -> bool:

@@ -14,40 +14,30 @@ GENERIC_AGENT_RESPONSE_PROMPT = AgentPromptDefinition(
         owner_id="generic",
         purpose="response",
     ),
-    build_messages=lambda user_input, tool_context: build_messages_v1(user_input, tool_context),
-    build_fallback_response=lambda user_input, tool_context: build_fallback_response_v1(
-        user_input, tool_context
-    ),
+    build_messages=lambda user_input: build_messages_v1(user_input),
+    build_fallback_response=lambda user_input: build_fallback_response_v1(user_input),
 )
 
 
-def build_messages_v1(user_input: str, tool_context: list[str]) -> list[ChatMessage]:
-    """Build the normalized prompt for generic-agent response generation."""
+def build_messages_v1(user_input: str) -> list[ChatMessage]:
+    """Build the normalized prompt for generic-agent decision making."""
 
-    tool_block = "\n".join(f"- {item}" for item in tool_context) if tool_context else "- no tools were executed"
     system_prompt = (
         "You are the HelloSales generic operational agent. "
-        "Answer concisely, rely on the provided tool context when available, "
-        "and do not invent runtime state that was not supplied."
+        "Use the provided native tools whenever you need live runtime state, "
+        "do not invent tool results, and answer concisely once you have enough evidence. "
+        "Tool schemas are supplied separately through native tool calling."
     )
     return [
         ChatMessage(role="system", content=system_prompt),
-        ChatMessage(role="system", content=f"Operational tool context:\n{tool_block}"),
         ChatMessage(role="user", content=user_input),
     ]
 
 
-def build_fallback_response_v1(user_input: str, tool_context: list[str]) -> str:
+def build_fallback_response_v1(user_input: str) -> str:
     """Return a deterministic response when no LLM provider is configured."""
 
-    if tool_context:
-        context_text = "\n".join(f"- {item}" for item in tool_context)
-        return (
-            "LLM provider is not configured, so this response was generated from tool results only.\n"
-            f"User input: {user_input}\n"
-            f"Tool context:\n{context_text}"
-        )
     return (
-        "LLM provider is not configured and no tools matched this request. "
-        "The generic agent recorded the turn but could not produce a richer answer."
+        "LLM provider is not configured, so the generic agent recorded the turn but could not "
+        f"use native tool calling for: {user_input}"
     )

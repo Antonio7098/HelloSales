@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from hello_sales_backend.platform.agents.models import (
@@ -39,6 +40,7 @@ from hello_sales_backend.platform.sessions.models import (
     SessionSummaryStatus,
 )
 from hello_sales_backend.platform.tasks.models import TaskSnapshot
+from hello_sales_backend.shared.errors import app_error
 
 
 class SqlAlchemyTaskRunStore:
@@ -139,6 +141,32 @@ class SqlAlchemyAgentStore:
 
     def __init__(self, session_factory: async_sessionmaker[AsyncSession]) -> None:
         self._session_factory = session_factory
+
+    @staticmethod
+    def _tool_call_data_error(
+        *,
+        action: str,
+        tool_call_id: str,
+        run_id: str,
+        turn_id: str,
+        tool_name: str,
+        exc: SQLAlchemyError,
+    ) -> Exception:
+        return app_error(
+            "Failed to persist agent tool call state",
+            code=f"data.agent_tool_call.{action}_failed",
+            category="data",
+            status_code=500,
+            details={
+                "tool_call_id": tool_call_id,
+                "run_id": run_id,
+                "turn_id": turn_id,
+                "tool_name": tool_name,
+            },
+            operation=f"agent.tool.{action}_state",
+            component="data",
+            exc=exc,
+        )
 
     async def create_run(self, run: AgentRun) -> None:
         async with self._session_factory() as session:
@@ -253,28 +281,38 @@ class SqlAlchemyAgentStore:
             await session.commit()
 
     async def create_tool_call(self, tool_call: AgentToolCall) -> None:
-        async with self._session_factory() as session:
-            record = AgentToolCallRecord(
+        try:
+            async with self._session_factory() as session:
+                record = AgentToolCallRecord(
+                    tool_call_id=tool_call.tool_call_id,
+                    run_id=tool_call.run_id,
+                    turn_id=tool_call.turn_id,
+                    sequence_no=tool_call.sequence_no,
+                    tool_name=tool_call.tool_name,
+                    status=tool_call.status.value,
+                    requires_approval=tool_call.requires_approval,
+                    approval_id=tool_call.approval_id,
+                    error_code=tool_call.error_code,
+                    error_category=tool_call.error_category,
+                    error_message=tool_call.error_message,
+                    created_at=tool_call.created_at,
+                    started_at=tool_call.started_at,
+                    completed_at=tool_call.completed_at,
+                )
+                record.set_arguments(tool_call.arguments)
+                record.set_result_payload(tool_call.result_payload)
+                record.set_error_details(tool_call.error_details)
+                session.add(record)
+                await session.commit()
+        except SQLAlchemyError as exc:
+            raise self._tool_call_data_error(
+                action="create",
                 tool_call_id=tool_call.tool_call_id,
                 run_id=tool_call.run_id,
                 turn_id=tool_call.turn_id,
-                sequence_no=tool_call.sequence_no,
                 tool_name=tool_call.tool_name,
-                status=tool_call.status.value,
-                requires_approval=tool_call.requires_approval,
-                approval_id=tool_call.approval_id,
-                error_code=tool_call.error_code,
-                error_category=tool_call.error_category,
-                error_message=tool_call.error_message,
-                created_at=tool_call.created_at,
-                started_at=tool_call.started_at,
-                completed_at=tool_call.completed_at,
-            )
-            record.set_arguments(tool_call.arguments)
-            record.set_result_payload(tool_call.result_payload)
-            record.set_error_details(tool_call.error_details)
-            session.add(record)
-            await session.commit()
+                exc=exc,
+            ) from exc
 
     async def list_tool_calls(self, run_id: str, turn_id: str) -> list[AgentToolCall]:
         async with self._session_factory() as session:
@@ -294,22 +332,32 @@ class SqlAlchemyAgentStore:
             return None if record is None else self._map_tool_call(record)
 
     async def update_tool_call(self, tool_call: AgentToolCall) -> None:
-        async with self._session_factory() as session:
-            record = await session.get(AgentToolCallRecord, tool_call.tool_call_id)
-            if record is None:
-                return
-            record.status = tool_call.status.value
-            record.requires_approval = tool_call.requires_approval
-            record.approval_id = tool_call.approval_id
-            record.error_code = tool_call.error_code
-            record.error_category = tool_call.error_category
-            record.error_message = tool_call.error_message
-            record.started_at = tool_call.started_at
-            record.completed_at = tool_call.completed_at
-            record.set_arguments(tool_call.arguments)
-            record.set_result_payload(tool_call.result_payload)
-            record.set_error_details(tool_call.error_details)
-            await session.commit()
+        try:
+            async with self._session_factory() as session:
+                record = await session.get(AgentToolCallRecord, tool_call.tool_call_id)
+                if record is None:
+                    return
+                record.status = tool_call.status.value
+                record.requires_approval = tool_call.requires_approval
+                record.approval_id = tool_call.approval_id
+                record.error_code = tool_call.error_code
+                record.error_category = tool_call.error_category
+                record.error_message = tool_call.error_message
+                record.started_at = tool_call.started_at
+                record.completed_at = tool_call.completed_at
+                record.set_arguments(tool_call.arguments)
+                record.set_result_payload(tool_call.result_payload)
+                record.set_error_details(tool_call.error_details)
+                await session.commit()
+        except SQLAlchemyError as exc:
+            raise self._tool_call_data_error(
+                action="update",
+                tool_call_id=tool_call.tool_call_id,
+                run_id=tool_call.run_id,
+                turn_id=tool_call.turn_id,
+                tool_name=tool_call.tool_name,
+                exc=exc,
+            ) from exc
 
     async def create_artifact(self, artifact: AgentArtifact) -> None:
         async with self._session_factory() as session:
