@@ -6,7 +6,7 @@ import asyncio
 import json
 from dataclasses import dataclass, field
 from time import perf_counter
-from typing import Any, Protocol, cast
+from typing import Any, Protocol
 
 from stageflow.pipeline.dag import UnifiedStageExecutionError
 
@@ -33,17 +33,6 @@ from hello_sales_backend.platform.llm import (
     provider_error_issue,
 )
 from hello_sales_backend.platform.llm.contracts import LLMCallContext, LLMProviderPort
-
-
-def _safe_int(value: object, default: int) -> int:
-    if isinstance(value, int):
-        return value
-    if isinstance(value, str):
-        try:
-            return int(value)
-        except ValueError:
-            return default
-    return default
 from hello_sales_backend.platform.observability.events import OperationalEvent
 from hello_sales_backend.platform.observability.logging import get_logger
 from hello_sales_backend.platform.observability.runtime import ObservabilityRuntime
@@ -55,6 +44,17 @@ from hello_sales_backend.platform.workflows.pipeline import WorkflowStageKind, W
 from hello_sales_backend.platform.workflows.runtime import WorkflowRuntime
 from hello_sales_backend.shared.errors import AppError, app_error, internal_error
 from hello_sales_backend.shared.ids import new_id
+
+
+def _safe_int(value: object, default: int) -> int:
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str):
+        try:
+            return int(value)
+        except ValueError:
+            return default
+    return default
 
 
 class AgentExecutionRuntime(Protocol):

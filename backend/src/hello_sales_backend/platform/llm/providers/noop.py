@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Awaitable, Callable
+from collections.abc import Awaitable, Callable
 
 from hello_sales_backend.platform.llm.contracts import (
     JSONGenerationResult,
