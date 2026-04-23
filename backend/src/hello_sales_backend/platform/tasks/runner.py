@@ -99,6 +99,9 @@ class BackgroundTaskRunner:
         )
         return snapshots if limit is None else snapshots[:limit]
 
+    def get_snapshot(self, task_id: str) -> TaskSnapshot | None:
+        return self._snapshots.get(task_id)
+
     def active_count(self) -> int:
         return sum(1 for snapshot in self._snapshots.values() if snapshot.status == TaskStatus.RUNNING)
 

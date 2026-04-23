@@ -20,7 +20,11 @@ export function ChatWorkspace() {
     approvalDecisionById,
     error,
   } = chat;
-  const busy = isConnecting || isSending;
+  const busy =
+    isConnecting ||
+    isSending ||
+    session?.status === "active" ||
+    session?.status === "awaiting_approval";
 
   async function handleSubmit(text: string) {
     await chat.sendMessage(text);
@@ -41,7 +45,19 @@ export function ChatWorkspace() {
         actions={
           <Badge tone={tone}>
             <StatusDot tone={tone} pulse={busy} />
-            {error ? "Error" : busy ? (isSending ? "Replying" : "Connecting") : session ? "Ready" : "Idle"}
+            {error
+              ? "Error"
+              : busy
+                ? isSending
+                  ? "Replying"
+                  : session?.status === "awaiting_approval"
+                    ? "Awaiting approval"
+                    : session?.status === "active"
+                      ? "Working"
+                      : "Connecting"
+                : session
+                  ? "Ready"
+                  : "Idle"}
           </Badge>
         }
       />

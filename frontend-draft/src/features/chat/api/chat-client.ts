@@ -67,6 +67,13 @@ export async function getSessionItems(sessionId: string): Promise<SessionItem[]>
   return response.data;
 }
 
+export async function getSessionEvents(sessionId: string): Promise<SessionEvent[]> {
+  const response = await requestJson<ApiEnvelope<SessionEvent[]>>({
+    path: `/sessions/${sessionId}/events`,
+  });
+  return response.data;
+}
+
 export async function decideSessionApproval(
   approvalId: string,
   input: ApprovalDecisionInput,

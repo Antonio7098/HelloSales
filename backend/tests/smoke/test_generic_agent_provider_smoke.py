@@ -219,6 +219,83 @@ async def test_generic_agent_web_search_smoke_executes_real_tool_lifecycle(test_
 
 
 @pytest.mark.asyncio
+async def test_generic_agent_semantic_catalog_read_smoke_executes_real_tool_lifecycle(
+    test_settings: Settings,
+) -> None:
+    settings = _real_provider_settings_or_skip(test_settings)
+    runner = SmokeRunner(
+        build_registry(),
+        SmokeContext.create(settings=settings),
+    )
+
+    result = await runner.run("generic-agent-provider-semantic-catalog-read")
+
+    assert result.smoke_name == "generic-agent-provider-semantic-catalog-read"
+    assert result.payload["status"] == "completed"
+    assert result.payload["provider"] == settings.resolved_generic_agent_provider
+    assert result.payload["model"] == settings.resolved_generic_agent_model
+    scenarios = result.payload["scenarios"]
+    assert isinstance(scenarios, list)
+    assert len(scenarios) == 1
+    assert scenarios[0]["name"] == "analytics_query_completion"
+    assert scenarios[0]["status"] == "completed"
+    assert scenarios[0]["details"]["tool_name"] == "query_analytics_data"
+    assert scenarios[0]["details"]["catalog_id"] == "scaffold_stage"
+    assert scenarios[0]["details"]["catalog_version"] == "2026-04-23"
+    assert scenarios[0]["details"]["row_count"] >= 1
+    items = result.payload["items"]
+    assert isinstance(items, list)
+    tool_results = [item for item in items if item["item_type"] == "tool_result"]
+    analytics_result = next(item for item in tool_results if item["payload"]["tool_name"] == "query_analytics_data")
+    assert analytics_result["payload"]["status"] == "completed"
+    assert analytics_result["payload"]["result"]["catalog_id"] == "scaffold_stage"
+    assert analytics_result["payload"]["result"]["catalog_version"] == "2026-04-23"
+    assert len(analytics_result["payload"]["result"]["rows"]) >= 1
+
+
+@pytest.mark.asyncio
+async def test_generic_agent_entity_mutation_smoke_executes_real_tool_lifecycle(
+    test_settings: Settings,
+) -> None:
+    settings = _real_provider_settings_or_skip(test_settings)
+    runner = SmokeRunner(
+        build_registry(),
+        SmokeContext.create(settings=settings),
+    )
+
+    result = await runner.run("generic-agent-provider-entity-mutation")
+
+    assert result.smoke_name == "generic-agent-provider-entity-mutation"
+    assert result.payload["status"] == "completed"
+    assert result.payload["provider"] == settings.resolved_generic_agent_provider
+    assert result.payload["model"] == settings.resolved_generic_agent_model
+    scenarios = result.payload["scenarios"]
+    assert isinstance(scenarios, list)
+    assert len(scenarios) == 1
+    assert scenarios[0]["name"] == "entity_mutation_completion"
+    assert scenarios[0]["status"] == "completed"
+    assert scenarios[0]["details"]["create_tool_name"] == "create_entity"
+    assert scenarios[0]["details"]["edit_tool_name"] == "edit_entity"
+    assert scenarios[0]["details"]["catalog_id"] == "scaffold_stage"
+    assert scenarios[0]["details"]["catalog_version"] == "2026-04-23"
+    assert scenarios[0]["details"]["entity_type"] == "company_profile"
+    assert scenarios[0]["details"]["undo_status"] == "available"
+    assert scenarios[0]["details"]["changed_fields"] == ["quarterly_sales_focus"]
+    assert scenarios[0]["details"]["company_name"] == "HelloSales"
+    assert scenarios[0]["details"]["quarterly_sales_focus"] == "Improve close rate"
+    items = result.payload["items"]
+    assert isinstance(items, list)
+    tool_results = [item for item in items if item["item_type"] == "tool_result"]
+    create_result = next(item for item in tool_results if item["payload"]["tool_name"] == "create_entity")
+    edit_result = next(item for item in tool_results if item["payload"]["tool_name"] == "edit_entity")
+    assert create_result["payload"]["status"] == "completed"
+    assert edit_result["payload"]["status"] == "completed"
+    assert create_result["payload"]["result"]["catalog_version"] == "2026-04-23"
+    assert edit_result["payload"]["result"]["catalog_version"] == "2026-04-23"
+    assert edit_result["payload"]["result"]["undo_status"] == "available"
+
+
+@pytest.mark.asyncio
 @pytest.mark.skipif(
     not _provider_env_available(),
     reason="real provider smoke requires HELLO_SALES_GENERIC_AGENT_* and provider API key env vars",

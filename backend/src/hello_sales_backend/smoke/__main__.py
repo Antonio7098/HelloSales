@@ -14,9 +14,11 @@ from .runner import SmokeRunner
 from .suites.generic_agent_provider import (
     GenericAgentAppendTurnSmoke,
     GenericAgentApprovalBoundarySmoke,
+    GenericAgentEntityMutationSmoke,
     GenericAgentEventStreamSmoke,
     GenericAgentProviderBaselineSmoke,
     GenericAgentProviderSmoke,
+    GenericAgentSemanticCatalogReadSmoke,
     GenericAgentWebSearchSmoke,
     ObserverAgentProviderSmoke,
 )
@@ -35,6 +37,8 @@ def build_registry() -> SmokeRegistry:
             GenericAgentApprovalBoundarySmoke(),
             GenericAgentEventStreamSmoke(),
             GenericAgentWebSearchSmoke(),
+            GenericAgentSemanticCatalogReadSmoke(),
+            GenericAgentEntityMutationSmoke(),
             WorkerProviderBaselineSmoke(),
         ]
     )

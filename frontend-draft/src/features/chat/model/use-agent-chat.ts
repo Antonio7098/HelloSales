@@ -3,10 +3,12 @@ import {
   appendChatMessage,
   createChatSession,
   decideSessionApproval,
+  getSessionEvents,
   getSession,
   getSessionItems,
   subscribeToSessionEvents,
 } from "@/features/chat/api/chat-client";
+import { ApiRequestError } from "@/shared/api/http-client";
 import type {
   SessionEvent,
   SessionItem,
@@ -21,6 +23,7 @@ type AgentChatState = {
   streamedAssistantDraft: StreamedAssistantDraft;
   isConnecting: boolean;
   isSending: boolean;
+  subscriptionNonce: number;
   approvalDecisionById: Record<string, boolean>;
   error: Error | null;
 };
@@ -35,6 +38,7 @@ const initialState: AgentChatState = {
   },
   isConnecting: false,
   isSending: false,
+  subscriptionNonce: 0,
   approvalDecisionById: {},
   error: null,
 };
@@ -46,12 +50,61 @@ const terminalEventTypes = new Set([
   "agent.turn.cancelled",
   "agent.run.cancelled",
 ]);
+const pollIntervalMs = 2_000;
+const stalledTurnWarningMs = 15_000;
 
 function shouldClearDraft(items: SessionItem[], draft: StreamedAssistantDraft): boolean {
   return (
     draft.turnId != null &&
     items.some((item) => item.turn_id === draft.turnId && item.item_type === "assistant_message")
   );
+}
+
+function latestProgressAt(
+  session: SessionSummary,
+  items: SessionItem[],
+  events: SessionEvent[],
+): number {
+  const timestamps = [Date.parse(session.updated_at)]
+    .concat(items.map((item) => Date.parse(item.created_at)))
+    .concat(events.map((event) => Date.parse(event.created_at)))
+    .filter((value) => Number.isFinite(value));
+  return timestamps.length > 0 ? Math.max(...timestamps) : Date.now();
+}
+
+function activeSessionWarning(
+  session: SessionSummary,
+  items: SessionItem[],
+  events: SessionEvent[],
+): Error | null {
+  if (session.status !== "active") {
+    return null;
+  }
+  if (Date.now() - latestProgressAt(session, items, events) < stalledTurnWarningMs) {
+    return null;
+  }
+  return new Error(
+    "The analyst is still marked active, but no new activity has arrived. This turn may be stalled.",
+  );
+}
+
+function resolveSessionError(
+  session: SessionSummary,
+  items: SessionItem[],
+  events: SessionEvent[],
+  currentError: Error | null,
+): Error | null {
+  if (session.status === "failed") {
+    return new Error(session.error_message ?? "The analyst failed to complete the turn.");
+  }
+  const warning = activeSessionWarning(session, items, events);
+  if (warning !== null) {
+    return warning;
+  }
+  if (currentError instanceof ApiRequestError) {
+    return currentError;
+  }
+  return null;
 }
 
 export function useAgentChat() {
@@ -71,7 +124,11 @@ export function useAgentChat() {
 
     async function refreshSessionState() {
       try {
-        const [session, items] = await Promise.all([getSession(sessionId), getSessionItems(sessionId)]);
+        const [session, items, events] = await Promise.all([
+          getSession(sessionId),
+          getSessionItems(sessionId),
+          getSessionEvents(sessionId),
+        ]);
         if (isClosed) {
           return;
         }
@@ -83,13 +140,11 @@ export function useAgentChat() {
             ...current,
             session,
             items,
+            events,
             streamedAssistantDraft: shouldClearDraft(items, current.streamedAssistantDraft)
               ? { turnId: null, text: "" }
               : current.streamedAssistantDraft,
-            error:
-              session.status === "failed"
-                ? new Error(session.error_message ?? "The analyst failed to complete the turn.")
-                : current.error,
+            error: resolveSessionError(session, items, events, current.error),
           };
         });
       } catch {
@@ -147,7 +202,7 @@ export function useAgentChat() {
                     ? ((event.payload.error as { message: string }).message)
                     : "The analyst failed to complete the turn.",
                 )
-              : current.error,
+              : null,
         };
       });
 
@@ -170,11 +225,16 @@ export function useAgentChat() {
       }
     });
 
+    const pollHandle = window.setInterval(() => {
+      void refreshSessionState();
+    }, pollIntervalMs);
+
     return () => {
       isClosed = true;
+      window.clearInterval(pollHandle);
       unsubscribe();
     };
-  }, [state.session?.session_id, state.session?.status]);
+  }, [state.session?.session_id, state.session?.status, state.subscriptionNonce]);
 
   async function startSession(inputText: string) {
     setState((current) => ({
@@ -198,6 +258,7 @@ export function useAgentChat() {
               },
         isConnecting: false,
         isSending: false,
+        subscriptionNonce: current.subscriptionNonce + 1,
         approvalDecisionById: {},
         error: null,
       }));
@@ -230,6 +291,7 @@ export function useAgentChat() {
         ...current,
         session,
         items,
+        subscriptionNonce: current.subscriptionNonce + 1,
         streamedAssistantDraft: shouldClearDraft(items, current.streamedAssistantDraft)
           ? { turnId: null, text: "" }
           : current.streamedAssistantDraft,
@@ -238,6 +300,27 @@ export function useAgentChat() {
       }));
       return session;
     } catch (error) {
+      if (state.session) {
+        try {
+          const [session, items, events] = await Promise.all([
+            getSession(state.session.session_id),
+            getSessionItems(state.session.session_id),
+            getSessionEvents(state.session.session_id),
+          ]);
+          const resolvedError = error instanceof Error ? error : new Error("Failed to send chat message");
+          setState((current) => ({
+            ...current,
+            session,
+            items,
+            events,
+            isSending: false,
+            error: resolveSessionError(session, items, events, resolvedError),
+          }));
+          throw resolvedError;
+        } catch {
+          // Fall through to the original transport error if the recovery refresh fails.
+        }
+      }
       const resolvedError = error instanceof Error ? error : new Error("Failed to send chat message");
       setState((current) => ({
         ...current,
@@ -267,11 +350,9 @@ export function useAgentChat() {
           ...current,
           session,
           items,
+          subscriptionNonce: current.subscriptionNonce + 1,
           approvalDecisionById: nextDecisionState,
-          error:
-            session.status === "failed"
-              ? new Error(session.error_message ?? "The analyst failed to complete the turn.")
-              : null,
+          error: resolveSessionError(session, items, current.events, null),
         };
       });
       return session;
