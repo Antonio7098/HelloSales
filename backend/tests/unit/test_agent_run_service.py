@@ -7,7 +7,12 @@ import pytest
 from hello_sales_backend.modules.agent_runs.use_cases.agent_run_service import AgentRunService
 from hello_sales_backend.modules.agent_runs.use_cases.commands import AppendAgentTurnCommand
 from hello_sales_backend.platform.agents.memory import InMemoryAgentStore
-from hello_sales_backend.platform.agents.models import AgentRun, AgentRunStatus, AgentTurn, AgentTurnStatus
+from hello_sales_backend.platform.agents.models import (
+    AgentRun,
+    AgentRunStatus,
+    AgentTurn,
+    AgentTurnStatus,
+)
 from hello_sales_backend.platform.tasks.runner import BackgroundTaskRunner
 from hello_sales_backend.shared.errors import AppError
 

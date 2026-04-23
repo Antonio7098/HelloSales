@@ -91,8 +91,9 @@ class CompanyProfileEntityMutationExecutor(EntityMutationExecutorPort):
             request = CompanyProfileUpsertRequest.model_validate(values)
             return _company_profile_snapshot(await self._company_profiles.upsert_company_profile(request))
         if entity.entity_type == "product":
-            request = ProductCreateRequest.model_validate(values)
-            return _product_snapshot(await self._company_profiles.create_product(request))
+            product_request = ProductCreateRequest.model_validate(values)
+            product = await self._company_profiles.create_product(product_request)
+            return _product_snapshot(product)
         raise app_error(
             "Entity type is not supported by the current mutation executor",
             code="entity_operations.executor.unsupported_entity",
@@ -132,8 +133,9 @@ class CompanyProfileEntityMutationExecutor(EntityMutationExecutorPort):
             request = CompanyProfileUpsertRequest.model_validate(merged)
             return _company_profile_snapshot(await self._company_profiles.upsert_company_profile(request))
         if entity.entity_type == "product":
-            request = ProductUpdateRequest.model_validate(changes)
-            return _product_snapshot(await self._company_profiles.update_product(entity_id, request))
+            product_request = ProductUpdateRequest.model_validate(changes)
+            product = await self._company_profiles.update_product(entity_id, product_request)
+            return _product_snapshot(product)
         raise app_error(
             "Entity type is not supported by the current mutation executor",
             code="entity_operations.executor.unsupported_entity",

@@ -13,8 +13,8 @@ from hello_sales_backend.modules.analytics_query.bootstrap import build_analytic
 from hello_sales_backend.modules.company_profile.bootstrap import build_company_profile_module
 from hello_sales_backend.modules.entity_operations.bootstrap import build_entity_operations_module
 from hello_sales_backend.modules.jobs.bootstrap import build_jobs_module
-from hello_sales_backend.modules.sessions.bootstrap import build_sessions_module
 from hello_sales_backend.modules.semantic_catalog.bootstrap import build_semantic_catalog_module
+from hello_sales_backend.modules.sessions.bootstrap import build_sessions_module
 from hello_sales_backend.modules.system.bootstrap import build_system_module
 from hello_sales_backend.modules.web_search.bootstrap import build_web_search_module
 from hello_sales_backend.modules.worker_runs.bootstrap import build_worker_runs_module

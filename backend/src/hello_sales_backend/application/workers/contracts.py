@@ -48,6 +48,7 @@ class WorkerDefinition:
     output_model: type[BaseModel]
     prompt: WorkerPromptDefinition
     validate_output: WorkerSemanticValidator | None = None
+    supports_direct_execution: bool = True
     max_attempts: int = 2
     timeout_seconds: float = 30.0
     use_backup_on_final_attempt: bool = True

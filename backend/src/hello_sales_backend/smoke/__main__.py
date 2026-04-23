@@ -22,7 +22,7 @@ from .suites.generic_agent_provider import (
     GenericAgentWebSearchSmoke,
     ObserverAgentProviderSmoke,
 )
-from .suites.worker_provider import WorkerProviderBaselineSmoke
+from .suites.worker_provider import WorkerCampaignWorkflowSmoke, WorkerProviderBaselineSmoke
 
 
 def build_registry() -> SmokeRegistry:
@@ -40,6 +40,7 @@ def build_registry() -> SmokeRegistry:
             GenericAgentSemanticCatalogReadSmoke(),
             GenericAgentEntityMutationSmoke(),
             WorkerProviderBaselineSmoke(),
+            WorkerCampaignWorkflowSmoke(),
         ]
     )
 

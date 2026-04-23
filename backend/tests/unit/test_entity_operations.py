@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -22,7 +21,6 @@ from hello_sales_backend.modules.entity_operations.use_cases.entity_operations_s
 )
 from hello_sales_backend.modules.entity_operations.use_cases.ports import (
     EntitySnapshot,
-    MutationRecord,
 )
 from hello_sales_backend.modules.entity_operations.use_cases.views import (
     EntityOperationContext,

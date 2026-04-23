@@ -33,8 +33,7 @@ from hello_sales_backend.platform.agents.models import (
 from hello_sales_backend.platform.agents.persistence import AgentStorePort
 from hello_sales_backend.platform.agents.runtime import AgentExecutionRuntime
 from hello_sales_backend.platform.llm import EffectivePromptRef
-from hello_sales_backend.platform.tasks.models import TaskMetadata
-from hello_sales_backend.platform.tasks.models import TaskStatus
+from hello_sales_backend.platform.tasks.models import TaskMetadata, TaskStatus
 from hello_sales_backend.platform.tasks.runner import BackgroundTaskRunner
 from hello_sales_backend.shared.errors import app_error
 from hello_sales_backend.shared.ids import new_id

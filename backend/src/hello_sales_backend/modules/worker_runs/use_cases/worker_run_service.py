@@ -57,6 +57,16 @@ class WorkerRunService:
             mode="json"
         )
         execution_mode = WorkerExecutionMode(command.execution_mode)
+        if not definition.supports_direct_execution and execution_mode is WorkerExecutionMode.DIRECT:
+            raise app_error(
+                "This worker must be executed through the Stageflow workflow path",
+                code="worker.run.execution_mode_invalid",
+                category="validation",
+                status_code=409,
+                details={"worker_name": command.worker_name, "required_execution_mode": "stageflow"},
+                operation="worker_run.start_run",
+                component="worker",
+            )
         run = WorkerRun(
             run_id=new_id(),
             worker_name=command.worker_name,
