@@ -7,6 +7,7 @@ from hello_sales_backend.modules.analytics_query.use_cases.analytics_query_servi
     AnalyticsQueryService,
 )
 from hello_sales_backend.modules.analytics_query.use_cases.ports import AnalyticsCatalog
+
 from .prompts import build_generic_agent_prompt
 from .tools import build_tool_catalog
 

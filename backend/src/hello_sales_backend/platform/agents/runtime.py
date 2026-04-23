@@ -36,10 +36,10 @@ from hello_sales_backend.platform.llm.contracts import LLMCallContext, LLMProvid
 from hello_sales_backend.platform.observability.events import OperationalEvent
 from hello_sales_backend.platform.observability.logging import get_logger
 from hello_sales_backend.platform.observability.runtime import ObservabilityRuntime
+from hello_sales_backend.platform.providers.llm.contracts import ChatMessage
 from hello_sales_backend.platform.sessions.attachment import SessionAttachmentStore
 from hello_sales_backend.platform.sessions.models import SessionItem, SessionItemType
 from hello_sales_backend.platform.sessions.persistence import SessionStorePort
-from hello_sales_backend.platform.providers.llm.contracts import ChatMessage
 from hello_sales_backend.platform.workflows.pipeline import WorkflowStageKind, WorkflowStageSpec
 from hello_sales_backend.platform.workflows.runtime import WorkflowRuntime
 from hello_sales_backend.shared.errors import AppError, app_error, internal_error

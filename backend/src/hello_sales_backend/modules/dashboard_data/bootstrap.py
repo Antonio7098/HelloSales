@@ -5,11 +5,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from hello_sales_backend.modules.dashboard_data.infra.csv_seed_loader import CsvDashboardSeedLoader
 from hello_sales_backend.modules.dashboard_data.infra.memory import InMemoryDashboardDataRepository
-from hello_sales_backend.modules.dashboard_data.infra.repository import SqlAlchemyDashboardDataRepository
+from hello_sales_backend.modules.dashboard_data.infra.repository import (
+    SqlAlchemyDashboardDataRepository,
+)
 from hello_sales_backend.modules.dashboard_data.use_cases.dashboard_data_service import (
     DashboardDataService,
 )

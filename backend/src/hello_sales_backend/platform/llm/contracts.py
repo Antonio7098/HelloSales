@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 from typing import Any, Protocol
 
 from pydantic import BaseModel, Field
 
 from hello_sales_backend.platform.llm.prompts import EffectivePromptRef
-
 
 TextDeltaCallback = Callable[[str], Awaitable[None]]
 
