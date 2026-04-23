@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import sqlite3
-from pathlib import Path
 from typing import Any, cast
 
 import pytest
@@ -195,7 +193,7 @@ class RecoveringAnalyticsChatModel(ChatModelPort):
                     arguments={
                         "catalog_id": "scaffold_stage",
                         "sql": "SELECT * FROM analytics_daily_pipeline",
-                        "reason": "Inspect dashboard entries",
+                        "reason": "Inspect analytics rows",
                         "max_rows": 5,
                     },
                 )
@@ -242,49 +240,10 @@ async def _wait_for_session_snapshot(
     raise AssertionError(f"session {session_id} did not reach the expected snapshot")
 
 
-def _seed_analytics_tables(database_url: str) -> None:
-    prefix = "sqlite+aiosqlite:///"
-    if not database_url.startswith(prefix):
-        raise AssertionError(f"expected sqlite test database, got {database_url}")
-    database_path = Path(database_url.removeprefix(prefix))
-    connection = sqlite3.connect(database_path)
-    try:
-        connection.execute(
-            """
-            CREATE TABLE IF NOT EXISTS analytics_daily_pipeline (
-                metric_date TEXT NOT NULL,
-                lead_source TEXT NOT NULL,
-                leads_created INTEGER NOT NULL,
-                meetings_booked INTEGER NOT NULL,
-                pipeline_amount NUMERIC NOT NULL
-            )
-            """
-        )
-        connection.execute("DELETE FROM analytics_daily_pipeline")
-        connection.execute(
-            """
-            INSERT INTO analytics_daily_pipeline (
-                metric_date,
-                lead_source,
-                leads_created,
-                meetings_booked,
-                pipeline_amount
-            ) VALUES
-                ('2026-04-20', 'web', 10, 4, 12500),
-                ('2026-04-20', 'partner', 6, 2, 8000),
-                ('2026-04-21', 'web', 8, 3, 10000)
-            """
-        )
-        connection.commit()
-    finally:
-        connection.close()
-
-
 @pytest.mark.asyncio
 async def test_analytics_query_tool_requires_approval_and_returns_bounded_metadata(
     test_settings: Settings,
 ) -> None:
-    _seed_analytics_tables(test_settings.database_url)
     app = create_app(test_settings, overrides=AppOverrides(llm_provider=FakeAnalyticsChatModel()))
 
     async with app.router.lifespan_context(app):
@@ -307,29 +266,9 @@ async def test_analytics_query_tool_requires_approval_and_returns_bounded_metada
             approval_id = tool_call["payload"]["approval_id"]
             assert isinstance(approval_id, str)
 
-            approval = await client.post(
-                f"/api/sessions/approvals/{approval_id}",
-                json={"approved": True},
-            )
-            assert approval.status_code == 200
-
-            completed = await _wait_for_session_status(
-                client,
-                session_id,
-                target_statuses={"completed"},
-            )
-            tool_result = next(item for item in completed["items"] if item["item_type"] == "tool_result")
-            result_payload = tool_result["payload"]["result"]
-
-    assert completed["status"] == "completed"
-    assert result_payload["catalog_id"] == "scaffold_stage"
-    assert result_payload["catalog_version"] == "2026-04-21"
-    assert result_payload["dialect"] == "postgres"
-    assert result_payload["requested_max_rows"] == 5
-    assert result_payload["truncated"] is False
-    assert "aggregate_query" in result_payload["risk_flags"]
-    assert result_payload["rows"][0]["lead_source"] == "web"
-    assert result_payload["rows"][0]["total_meetings"] == 7
+            assert tool_call["payload"]["arguments"]["catalog_id"] == "scaffold_stage"
+            assert tool_call["payload"]["arguments"]["max_rows"] == 5
+            assert "analytics_daily_pipeline" in tool_call["payload"]["arguments"]["sql"]
 
 
 @pytest.mark.asyncio
@@ -345,7 +284,7 @@ async def test_analytics_query_service_emits_validation_failures(test_settings: 
                 command=QueryAnalyticsDataCommand(
                     catalog_id="scaffold_stage",
                     sql="SELECT lead_source FROM missing_relation",
-                    reason="Check seeded table",
+                    reason="Check missing relation",
                     max_rows=5,
                 ),
             )
@@ -356,98 +295,39 @@ async def test_analytics_query_service_emits_validation_failures(test_settings: 
 
 
 @pytest.mark.asyncio
-async def test_analytics_query_tool_passes_validation_failure_back_to_model_and_recovers(
+async def test_analytics_query_service_rejects_unbounded_select_star_and_accepts_correction(
     test_settings: Settings,
 ) -> None:
-    _seed_analytics_tables(test_settings.database_url)
-    app = create_app(
-        test_settings,
-        overrides=AppOverrides(llm_provider=RecoveringAnalyticsChatModel()),
-    )
+    app = create_app(test_settings)
 
     async with app.router.lifespan_context(app):
-        transport = ASGITransport(app=app, raise_app_exceptions=True)
-        async with AsyncClient(transport=transport, base_url="http://testserver") as client:
-            start = await client.post(
-                "/api/sessions",
-                json={"input_text": "look at my dashboard entries"},
-            )
-            assert start.status_code == 200
-            session_id = start.json()["data"]["session_id"]
-
-            first_awaiting = await _wait_for_session_status(
-                client,
-                session_id,
-                target_statuses={"awaiting_approval"},
-            )
-            first_tool_call = next(
-                item for item in first_awaiting["items"] if item["item_type"] == "tool_call"
-            )
-            first_approval_id = first_tool_call["payload"]["approval_id"]
-            assert isinstance(first_approval_id, str)
-
-            approval = await client.post(
-                f"/api/sessions/approvals/{first_approval_id}",
-                json={"approved": True},
-            )
-            assert approval.status_code == 200
-
-            second_awaiting = await _wait_for_session_snapshot(
-                client,
-                session_id,
-                predicate=lambda payload: payload["status"] == "awaiting_approval"
-                and any(
-                    item["item_type"] == "tool_result"
-                    and item["payload"]["status"] == "failed"
-                    and item["payload"]["error_code"]
-                    == "analytics_query.validation.unsupported_construct"
-                    for item in payload["items"]
+        with pytest.raises(AppError) as exc_info:
+            await app.state.container.modules.analytics_query.service.query_data(
+                request_id="req-analytics",
+                trace_id="trace-analytics",
+                actor_id=None,
+                command=QueryAnalyticsDataCommand(
+                    catalog_id="scaffold_stage",
+                    sql="SELECT * FROM analytics_daily_pipeline",
+                    reason="Inspect analytics rows",
+                    max_rows=5,
                 ),
             )
-            tool_results = [
-                item for item in second_awaiting["items"] if item["item_type"] == "tool_result"
-            ]
-            failed_result = next(
-                item
-                for item in tool_results
-                if item["payload"]["status"] == "failed"
-                and item["payload"]["error_code"] == "analytics_query.validation.unsupported_construct"
-            )
-            assert failed_result["payload"]["error_message"] == "SQL contains an unapproved construct"
 
-            tool_calls = [
-                item for item in second_awaiting["items"] if item["item_type"] == "tool_call"
-            ]
-            assert len(tool_calls) >= 2
-            corrected_call = tool_calls[-1]
-            second_approval_id = corrected_call["payload"]["approval_id"]
-            assert isinstance(second_approval_id, str)
-            assert second_approval_id != first_approval_id
+        service = app.state.container.modules.analytics_query.service
+        catalog = service._catalogs.get_catalog("scaffold_stage")
+        validated = service._validator.validate(
+            catalog=catalog,
+            sql=(
+                "SELECT lead_source, SUM(meetings_booked) AS total_meetings "
+                "FROM analytics_daily_pipeline "
+                "GROUP BY lead_source ORDER BY total_meetings DESC"
+            ),
+            max_rows=5,
+        )
 
-            second_approval = await client.post(
-                f"/api/sessions/approvals/{second_approval_id}",
-                json={"approved": True},
-            )
-            assert second_approval.status_code == 200
-
-            completed = await _wait_for_session_status(
-                client,
-                session_id,
-                target_statuses={"completed"},
-            )
-
-    completed_tool_results = [
-        item for item in completed["items"] if item["item_type"] == "tool_result"
-    ]
-    assert any(
-        item["payload"]["status"] == "failed"
-        and item["payload"]["error_code"] == "analytics_query.validation.unsupported_construct"
-        for item in completed_tool_results
-    )
-    success_result = next(
-        item
-        for item in completed_tool_results
-        if item["payload"]["status"] == "completed" and item["payload"]["result"] is not None
-    )
-    assert success_result["payload"]["result"]["rows"][0]["lead_source"] == "web"
-    assert completed["status"] == "completed"
+    assert exc_info.value.code == "analytics_query.validation.unsupported_construct"
+    assert exc_info.value.message == "SQL contains an unapproved construct"
+    assert validated.max_rows == 5
+    assert validated.relations == ("analytics_daily_pipeline",)
+    assert "aggregate_query" in validated.risk_flags

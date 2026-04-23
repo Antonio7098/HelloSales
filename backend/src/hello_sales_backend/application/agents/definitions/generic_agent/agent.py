@@ -33,7 +33,7 @@ def _build_schema_text(catalog: AnalyticsCatalog) -> str:
 def _fallback_schema_text() -> str:
     return (
         "Approved analytics schema context: catalog_id=scaffold_stage; dialect=postgres. "
-        "Approved relations include dashboard_data_entries, analytics_daily_pipeline, and analytics_rep_performance. "
+        "Approved relations include company_profiles, products, analytics_daily_pipeline, and analytics_rep_performance. "
         "Use the closest matching approved relation rather than asking the user to name the schema."
     )
 
@@ -42,7 +42,7 @@ def build_generic_agent_definition(
     *,
     analytics_query_service: AnalyticsQueryService,
 ) -> AgentDefinition:
-    """Build the dashboard analyst agent definition."""
+    """Build the company analyst agent definition."""
 
     catalog_store = getattr(analytics_query_service, "_catalogs", None)
     schema_text = _fallback_schema_text()
@@ -51,7 +51,7 @@ def build_generic_agent_definition(
         schema_text = _build_schema_text(catalog)
     return AgentDefinition(
         agent_id="generic",
-        display_name="Dashboard Analyst",
+        display_name="Company Analyst",
         tools=build_tool_catalog(analytics_query_service=analytics_query_service),
         prompt=build_generic_agent_prompt(schema_text=schema_text),
     )

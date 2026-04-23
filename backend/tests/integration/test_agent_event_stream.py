@@ -96,10 +96,10 @@ class FakeChatModel(ChatModelPort):
                     arguments={
                         "catalog_id": "scaffold_stage",
                         "sql": (
-                            "SELECT entry_id, dataset_key, sequence_no "
-                            "FROM dashboard_data_entries ORDER BY sequence_no ASC LIMIT 5"
+                            "SELECT product_id, product_name, is_primary "
+                            "FROM products ORDER BY created_at ASC LIMIT 5"
                         ),
-                        "reason": "Read the seeded dashboard entries",
+                        "reason": "Read product data",
                         "max_rows": 5,
                     },
                 )
@@ -163,7 +163,7 @@ async def test_agent_event_stream_replays_and_tails_run_events(test_settings: Se
         async with AsyncClient(transport=transport, base_url="http://testserver") as client:
             start_response = await client.post(
                 "/api/sessions",
-                json={"input_text": "stream the seeded dashboard entries"},
+                json={"input_text": "stream the company profile"},
             )
             session_id = start_response.json()["data"]["session_id"]
 
@@ -200,7 +200,7 @@ async def test_agent_event_log_records_rejection_and_cancellation(test_settings:
         async with AsyncClient(transport=transport, base_url="http://testserver") as client:
             reject_response = await client.post(
                 "/api/sessions",
-                json={"input_text": "query the seeded dashboard entries"},
+                json={"input_text": "query the products"},
             )
             reject_session_id = reject_response.json()["data"]["session_id"]
             reject_detail = await _wait_for_session_status(
@@ -227,7 +227,7 @@ async def test_agent_event_log_records_rejection_and_cancellation(test_settings:
 
             cancel_response = await client.post(
                 "/api/sessions",
-                json={"input_text": "query the seeded dashboard entries"},
+                json={"input_text": "query the products"},
             )
             cancel_session_id = cancel_response.json()["data"]["session_id"]
             cancel_detail = await _wait_for_session_status(

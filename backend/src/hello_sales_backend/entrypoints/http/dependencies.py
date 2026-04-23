@@ -7,7 +7,7 @@ from typing import cast
 from fastapi import Request
 
 from hello_sales_backend.modules.agent_runs import AgentRunService
-from hello_sales_backend.modules.dashboard_data import DashboardDataService
+from hello_sales_backend.modules.company_profile import CompanyProfileService
 from hello_sales_backend.modules.jobs import JobsService
 from hello_sales_backend.modules.sessions import SessionService
 from hello_sales_backend.modules.system import SystemService
@@ -40,10 +40,10 @@ async def get_system_service(request: Request) -> SystemService:
     return (await get_container(request)).modules.system.service
 
 
-async def get_dashboard_data_service(request: Request) -> DashboardDataService:
-    """Resolve the dashboard-data service from the container."""
+async def get_company_profile_service(request: Request) -> CompanyProfileService:
+    """Resolve the company profile service from the container."""
 
-    return (await get_container(request)).modules.dashboard_data.service
+    return (await get_container(request)).modules.company_profile.service
 
 
 async def get_session_service(request: Request) -> SessionService:

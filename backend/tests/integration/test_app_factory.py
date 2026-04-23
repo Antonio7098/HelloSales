@@ -9,7 +9,7 @@ def test_container_builds_runtime_graph(test_settings: Settings) -> None:
 
     assert container.settings.environment == "test"
     assert container.modules.analytics_query.service is not None
-    assert container.modules.dashboard_data.service is not None
+    assert container.modules.company_profile.service is not None
     assert container.modules.system.service is not None
     assert container.health_service is not None
     assert container.tasks.pop_failures() == []

@@ -74,7 +74,6 @@ async def bootstrap_container(container: AppContainer) -> None:
         _validate_settings(container)
         if not container.settings.database_url.startswith("sqlite+aiosqlite"):
             await ping_database(container.db.session_factory)
-        await container.modules.dashboard_data.service.ensure_seeded()
         logger.info(
             "application.startup.completed",
             environment=container.settings.environment,
