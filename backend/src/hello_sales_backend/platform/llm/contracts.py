@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from collections.abc import Awaitable, Callable
 from typing import Any, Protocol
 
 from pydantic import BaseModel, Field
 
 from hello_sales_backend.platform.llm.prompts import EffectivePromptRef
+
+
+TextDeltaCallback = Callable[[str], Awaitable[None]]
 
 
 class LLMMessage(BaseModel):
@@ -114,6 +118,7 @@ class LLMProviderPort(Protocol):
         tools: list[ProviderToolDefinition],
         context: LLMCallContext | None = None,
         tool_choice: str | None = None,
+        on_text_delta: TextDeltaCallback | None = None,
     ) -> ToolCallCompletionResult: ...
 
     def is_configured(self) -> bool: ...

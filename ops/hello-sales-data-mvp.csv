@@ -1,0 +1,25 @@
+,#,Dashboard Section,VP Question,Answer Type,Example Answer,Dashboard Entry Name
+,1,Company Overview,Complete: "We sell ___ to ___ so they can ___.",Text,We sell AI sales agents to B2B companies so they can increase close rates,product_truth_anchor
+,2,Company Overview,What industry do you operate in?,Options,B2B SaaS,industry
+,3,Company Overview,What is your main pricing model?,Options,Subscription,pricing_model
+,4,Sales Team,How many sales reps do you currently have?,Numeric,6,sales_team_size
+,5,Customers,Which customer segment generates most revenue?,Options,SMB,primary_customer_segment
+,6,Sales Process,What is the average customer value? (typical deal size),Options,$3k–$10k,deal_size_range
+,7,Sales Process,Average sales cycle length (lead → close)?,Options,30–45 days,avg_sales_cycle
+,8,Tools,What CRM do you use?,Text,HubSpot,crm_tool
+,9,Management Signals,What is your biggest sales constraint right now?,Text,Inconsistent messaging,primary_sales_constraint
+,10,Management Signals,What is your main focus this quarter?,Text,Improve close rate,quarterly_sales_focus
+,11,Company Overview,Which product is your current executive priority?,Text,Hello Sales Core,executive_focus_product
+,,,,,,
+,,,,,,
+,,#,Product Field,VP Question,Answer Type,Example Answer,Dashboard Entry Name
+,12,Product ID,Internal product code,Text,HS-CORE-001,product_id
+,13,Product Name,Product names,Text,Hello Sales Core,product_name
+,14,Product Description,Describe this product in 2–3 sentences,Text,AI sales enablement platform capturing VP sales knowledge,product_description
+,15,Target Customer,Who is this product for?,Options + text,SMB B2B companies,product_target_customer
+,16,Primary Use Case,Main problem this product solves,Text,Improve rep consistency and close rate,product_use_case
+,17,Pricing Model,How is this product priced?,Options,Subscription,product_pricing_model
+,18,List Price,Standard list price,Numeric,$299 / month,product_list_price
+,19,Product Sales Cycle,Typical sales cycle for this product,Options,30–45 days,product_sales_cycle
+,20,Deal Size,Typical contract value,Options,$3k–$6k,product_deal_size
+,21,Revenue Contribution,% of total revenue,Numeric,65%,product_revenue_share

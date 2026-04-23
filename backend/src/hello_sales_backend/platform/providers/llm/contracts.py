@@ -11,6 +11,7 @@ from hello_sales_backend.platform.llm.contracts import (
     LLMProviderPort,
     ProviderToolCall,
     ProviderToolDefinition,
+    TextDeltaCallback,
     TextGenerationResult,
     ToolCallCompletionResult,
 )
@@ -27,5 +28,6 @@ __all__ = [
     "ProviderToolCall",
     "ProviderToolDefinition",
     "TextGenerationResult",
+    "TextDeltaCallback",
     "ToolCallCompletionResult",
 ]

@@ -5,6 +5,44 @@ description: >
   Scaffold-stage analytics catalog for governed read-only agent queries over curated
   aggregate-friendly PostgreSQL curated views.
 relations:
+  - name: dashboard_data_entries
+    description: Governed dashboard seed entries used by the MVP dashboard and analyst agent.
+    columns:
+      - name: entry_id
+        data_type: text
+        semantic_type: identifier
+        sensitivity: public
+        description: Stable dashboard entry name used as the product key.
+      - name: dataset_key
+        data_type: text
+        semantic_type: dimension
+        sensitivity: public
+        description: Logical dataset grouping such as company overview or product profile.
+      - name: sequence_no
+        data_type: integer
+        semantic_type: dimension
+        sensitivity: public
+        description: Ordered position from the governed CSV seed.
+      - name: section_label
+        data_type: text
+        semantic_type: dimension
+        sensitivity: public
+        description: Human-readable dashboard section name.
+      - name: prompt_text
+        data_type: text
+        semantic_type: text
+        sensitivity: internal
+        description: Question or prompt shown to operators.
+      - name: answer_type
+        data_type: text
+        semantic_type: dimension
+        sensitivity: public
+        description: Expected answer type for the dashboard entry.
+      - name: example_answer
+        data_type: text
+        semantic_type: text
+        sensitivity: internal
+        description: Example seeded answer for the dashboard entry.
   - name: analytics_daily_pipeline
     description: Daily aggregate pipeline metrics by lead source.
     columns:

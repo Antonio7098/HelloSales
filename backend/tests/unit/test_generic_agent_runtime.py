@@ -55,7 +55,7 @@ class ScriptedToolProvider(LLMProviderPort):
     def __init__(
         self,
         *,
-        completions: list[ToolCallCompletionResult],
+        completions: list[ToolCallCompletionResult | AppError],
         configured: bool = True,
         output_text: str = "provider-output",
     ) -> None:
@@ -102,6 +102,7 @@ class ScriptedToolProvider(LLMProviderPort):
         tools: list[ProviderToolDefinition],
         context: LLMCallContext | None = None,
         tool_choice: str | None = None,
+        on_text_delta=None,
     ) -> ToolCallCompletionResult:
         del context, tool_choice
         self.tool_requests.append(
@@ -112,7 +113,12 @@ class ScriptedToolProvider(LLMProviderPort):
         )
         if not self._completions:
             raise AssertionError("provider completion script exhausted")
-        return self._completions.pop(0)
+        completion = self._completions.pop(0)
+        if isinstance(completion, AppError):
+            raise completion
+        if on_text_delta is not None and completion.content:
+            await on_text_delta(completion.content)
+        return completion
 
     def is_configured(self) -> bool:
         return self._configured
@@ -301,6 +307,7 @@ async def test_generic_agent_runtime_completes_turn_with_native_tool_calling() -
     assert tool_calls[0].tool_call_id == "call-1"
     assert tool_calls[0].status == AgentToolCallStatus.COMPLETED
     assert any(event.event_type == "agent.tool.completed" for event in events)
+    assert any(event.event_type == "agent.response.delta" for event in events)
     assert provider.tool_requests[0]["tool_names"] == ["get_runtime_status"]
     tool_messages = [
         item for item in provider.tool_requests[1]["messages"] if item.get("role") == "tool"
@@ -326,6 +333,12 @@ async def test_generic_agent_runtime_reclassifies_unknown_provider_tool_as_provi
                     )
                 ],
             )
+            ,
+            ToolCallCompletionResult(
+                provider="fake-runtime",
+                model="fake-model",
+                content="provider-output:show runtime status",
+            ),
         ]
     )
     runtime = _build_runtime(
@@ -419,7 +432,12 @@ async def test_generic_agent_runtime_preserves_data_error_when_tool_call_create_
                         arguments={},
                     )
                 ],
-            )
+            ),
+            ToolCallCompletionResult(
+                provider="fake-runtime",
+                model="fake-model",
+                content="provider-output:show runtime status",
+            ),
         ]
     )
     runtime = _build_runtime(
@@ -465,7 +483,12 @@ async def test_generic_agent_runtime_pauses_for_approval() -> None:
                         arguments={},
                     )
                 ],
-            )
+            ),
+            ToolCallCompletionResult(
+                provider="fake-runtime",
+                model="fake-model",
+                content="provider-output:show runtime status",
+            ),
         ]
     )
     runtime = _build_runtime(
@@ -527,7 +550,12 @@ async def test_generic_agent_runtime_records_tool_failures() -> None:
                         arguments={},
                     )
                 ],
-            )
+            ),
+            ToolCallCompletionResult(
+                provider="fake-runtime",
+                model="fake-model",
+                content="provider-output:show runtime status",
+            ),
         ]
     )
     runtime = _build_runtime(
@@ -545,20 +573,25 @@ async def test_generic_agent_runtime_records_tool_failures() -> None:
         ),
     )
 
-    with pytest.raises(AppError):
-        await runtime.process_turn(run_id="run-1", turn_id="turn-1")
+    await runtime.process_turn(run_id="run-1", turn_id="turn-1")
 
     run = await store.get_run("run-1")
     turn = await store.get_turn("turn-1")
     tool_calls = await store.list_tool_calls("run-1", "turn-1")
     events = await store.list_events("run-1", limit=20)
 
-    assert run is not None and run.status == AgentRunStatus.FAILED
-    assert turn is not None and turn.status == AgentTurnStatus.FAILED
+    assert run is not None and run.status == AgentRunStatus.COMPLETED
+    assert turn is not None and turn.status == AgentTurnStatus.COMPLETED
+    assert turn.response_text == "provider-output:show runtime status"
     assert tool_calls[0].status == AgentToolCallStatus.FAILED
     assert tool_calls[0].error_code == "agent.tool.test_failure"
     assert any(event.event_type == "agent.tool.failed" for event in events)
-    assert any(event.event_type == "agent.turn.failed" for event in events)
+    assert not any(event.event_type == "agent.turn.failed" for event in events)
+    tool_messages = [
+        item for item in provider.tool_requests[1]["messages"] if item.get("role") == "tool"
+    ]
+    assert len(tool_messages) == 1
+    assert "agent.tool.test_failure" in str(tool_messages[0]["content"])
 
 
 @pytest.mark.asyncio
@@ -569,14 +602,7 @@ async def test_generic_agent_runtime_failure_emits_operational_event_with_correl
     async def failing_tool(
         _arguments: dict[str, object], _context: AgentToolExecutionContext
     ) -> dict[str, object]:
-        raise app_error(
-            "Tool failed",
-            code="agent.tool.test_failure",
-            category="internal",
-            status_code=500,
-            operation="agent.tool.execute",
-            component="agent",
-        )
+        raise RuntimeError("boom")
 
     provider = ScriptedToolProvider(
         completions=[
@@ -612,12 +638,211 @@ async def test_generic_agent_runtime_failure_emits_operational_event_with_correl
         await runtime.process_turn(run_id="run-1", turn_id="turn-1")
 
     op_events = observability.recent_events()
-    assert op_events
-    failure_event = op_events[0]
+    failure_event = next(event for event in op_events if event.event_type == "agent.turn.failed")
     assert failure_event.event_type == "agent.turn.failed"
     assert failure_event.code
     assert failure_event.correlation_id == "req-1"
     assert failure_event.trace_id == "tr-1"
+
+
+@pytest.mark.asyncio
+async def test_generic_agent_runtime_fails_when_tool_failure_retry_budget_is_exhausted() -> None:
+    store = InMemoryAgentStore()
+    await _seed_run(store, input_text="show runtime status")
+
+    async def failing_tool(
+        _arguments: dict[str, object], _context: AgentToolExecutionContext
+    ) -> dict[str, object]:
+        raise app_error(
+            "Tool failed",
+            code="agent.tool.test_failure",
+            category="validation",
+            status_code=400,
+            operation="agent.tool.execute",
+            component="agent",
+        )
+
+    provider = ScriptedToolProvider(
+        completions=[
+            ToolCallCompletionResult(
+                provider="fake-runtime",
+                model="fake-model",
+                tool_calls=[
+                    ProviderToolCall(
+                        call_id="call-fail-1",
+                        tool_name="get_runtime_status",
+                        arguments={},
+                    )
+                ],
+            ),
+            ToolCallCompletionResult(
+                provider="fake-runtime",
+                model="fake-model",
+                tool_calls=[
+                    ProviderToolCall(
+                        call_id="call-fail-2",
+                        tool_name="get_runtime_status",
+                        arguments={},
+                    )
+                ],
+            ),
+            ToolCallCompletionResult(
+                provider="fake-runtime",
+                model="fake-model",
+                tool_calls=[
+                    ProviderToolCall(
+                        call_id="call-fail-3",
+                        tool_name="get_runtime_status",
+                        arguments={},
+                    )
+                ],
+            ),
+        ]
+    )
+    runtime = _build_runtime(
+        store=store,
+        llm_provider=provider,
+        tools=AgentToolCatalog(
+            [
+                AgentToolDefinition(
+                    name="get_runtime_status",
+                    description="status",
+                    arguments_model=EmptyToolArguments,
+                    execute=failing_tool,
+                )
+            ]
+        ),
+    )
+
+    provider._completions.append(
+        ToolCallCompletionResult(
+            provider="fake-runtime",
+            model="fake-model",
+            content="I could not complete the request because the tool retry budget was exhausted.",
+        )
+    )
+
+    await runtime.process_turn(run_id="run-1", turn_id="turn-1")
+
+    run = await store.get_run("run-1")
+    turn = await store.get_turn("turn-1")
+    events = await store.list_events("run-1", limit=40)
+
+    assert run is not None and run.status == AgentRunStatus.COMPLETED
+    assert turn is not None and turn.status == AgentTurnStatus.COMPLETED
+    assert "retry budget was exhausted" in (turn.response_text or "")
+    assert any(event.event_type == "agent.tool.retry_limit_exceeded" for event in events)
+    tool_messages = [
+        item for item in provider.tool_requests[-1]["messages"] if item.get("role") == "tool"
+    ]
+    assert any("agent.tool.max_retries_exceeded" in str(item["content"]) for item in tool_messages)
+
+
+@pytest.mark.asyncio
+async def test_generic_agent_runtime_retries_empty_completion_then_completes() -> None:
+    store = InMemoryAgentStore()
+    await _seed_run(store, input_text="show runtime status")
+    provider = ScriptedToolProvider(
+        completions=[
+            ToolCallCompletionResult(
+                provider="fake-runtime",
+                model="fake-model",
+                content="",
+            ),
+            ToolCallCompletionResult(
+                provider="fake-runtime",
+                model="fake-model",
+                content="provider-output:show runtime status",
+            ),
+        ]
+    )
+    runtime = _build_runtime(
+        store=store,
+        llm_provider=provider,
+        tools=AgentToolCatalog([]),
+    )
+
+    await runtime.process_turn(run_id="run-1", turn_id="turn-1")
+
+    turn = await store.get_turn("turn-1")
+    events = await store.list_events("run-1", limit=20)
+
+    assert turn is not None and turn.status == AgentTurnStatus.COMPLETED
+    assert turn.response_text == "provider-output:show runtime status"
+    assert provider.tool_requests[1]["messages"][-1]["role"] == "system"
+    assert any(event.event_type == "agent.attempt.empty_completion" for event in events)
+    assert any(event.event_type == "agent.attempt.retry_scheduled" for event in events)
+
+
+@pytest.mark.asyncio
+async def test_generic_agent_runtime_retries_retryable_provider_error_then_completes() -> None:
+    store = InMemoryAgentStore()
+    await _seed_run(store, input_text="show runtime status")
+    provider = ScriptedToolProvider(
+        completions=[
+            app_error(
+                "upstream unavailable",
+                code="provider.upstream_unavailable",
+                category="provider",
+                status_code=503,
+                retryable=True,
+                operation="agent.llm.complete_with_tools",
+                component="agent",
+            ),
+            ToolCallCompletionResult(
+                provider="fake-runtime",
+                model="fake-model",
+                content="provider-output:show runtime status",
+            ),
+        ]
+    )
+    runtime = _build_runtime(
+        store=store,
+        llm_provider=provider,
+        tools=AgentToolCatalog([]),
+    )
+
+    await runtime.process_turn(run_id="run-1", turn_id="turn-1")
+
+    turn = await store.get_turn("turn-1")
+    events = await store.list_events("run-1", limit=20)
+
+    assert turn is not None and turn.status == AgentTurnStatus.COMPLETED
+    assert turn.response_text == "provider-output:show runtime status"
+    assert len(provider.tool_requests) == 2
+    assert any(event.event_type == "agent.attempt.provider_failed" for event in events)
+    assert any(event.event_type == "agent.attempt.retry_scheduled" for event in events)
+
+
+@pytest.mark.asyncio
+async def test_generic_agent_runtime_fails_after_exhausting_empty_completion_retries() -> None:
+    store = InMemoryAgentStore()
+    await _seed_run(store, input_text="show runtime status")
+    provider = ScriptedToolProvider(
+        completions=[
+            ToolCallCompletionResult(provider="fake-runtime", model="fake-model", content=""),
+            ToolCallCompletionResult(provider="fake-runtime", model="fake-model", content=""),
+            ToolCallCompletionResult(provider="fake-runtime", model="fake-model", content=""),
+        ]
+    )
+    runtime = _build_runtime(
+        store=store,
+        llm_provider=provider,
+        tools=AgentToolCatalog([]),
+    )
+
+    with pytest.raises(AppError) as exc_info:
+        await runtime.process_turn(run_id="run-1", turn_id="turn-1")
+
+    run = await store.get_run("run-1")
+    turn = await store.get_turn("turn-1")
+    events = await store.list_events("run-1", limit=20)
+
+    assert exc_info.value.code == "agent.provider.empty_completion"
+    assert run is not None and run.status == AgentRunStatus.FAILED
+    assert turn is not None and turn.status == AgentTurnStatus.FAILED
+    assert any(event.event_type == "agent.attempt.empty_completion" for event in events)
+    assert any(event.event_type == "agent.turn.failed" for event in events)
 
 
 @pytest.mark.asyncio

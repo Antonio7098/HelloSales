@@ -251,3 +251,17 @@ class SessionSummaryRecord(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utc_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utc_now)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class DashboardDataRecord(Base):
+    """Persist one governed dashboard data entry."""
+
+    __tablename__ = "dashboard_data_entries"
+
+    entry_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    dataset_key: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    sequence_no: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    section_label: Mapped[str] = mapped_column(String(128), nullable=False)
+    prompt_text: Mapped[str] = mapped_column(Text, nullable=False)
+    answer_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    example_answer: Mapped[str] = mapped_column(Text, nullable=False)

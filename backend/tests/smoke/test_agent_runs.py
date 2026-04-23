@@ -69,6 +69,7 @@ class FakeChatModel(ChatModelPort):
         tools: list,
         context=None,
         tool_choice=None,
+        on_text_delta=None,
     ) -> ToolCallCompletionResult:
         FakeChatModel._call_count += 1
         tool_name = tools[0].name if tools else "get_runtime_status"

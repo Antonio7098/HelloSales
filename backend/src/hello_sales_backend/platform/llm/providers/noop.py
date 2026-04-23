@@ -73,8 +73,9 @@ class NoopLLMProvider:
         tools: list[ProviderToolDefinition],
         context: LLMCallContext | None = None,
         tool_choice: str | None = None,
+        on_text_delta=None,
     ) -> ToolCallCompletionResult:
-        del tools, tool_choice
+        del tools, tool_choice, on_text_delta
         raise app_error(
             message="No LLM provider is configured for this environment",
             code="provider.llm.not_configured",

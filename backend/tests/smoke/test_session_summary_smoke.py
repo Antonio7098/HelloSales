@@ -60,7 +60,9 @@ class FakeChatModel(ChatModelPort):
         tools: list,
         context=None,
         tool_choice=None,
+        on_text_delta=None,
     ) -> ToolCallCompletionResult:
+        del messages, tools, context, tool_choice, on_text_delta
         return ToolCallCompletionResult(
             provider=self.provider_name,
             model="fake-model",

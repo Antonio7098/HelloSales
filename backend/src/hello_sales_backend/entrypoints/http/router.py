@@ -3,6 +3,7 @@
 from fastapi import APIRouter
 
 from hello_sales_backend.entrypoints.http.routes import (
+    dashboard_data,
     health,
     jobs,
     sessions,
@@ -12,6 +13,7 @@ from hello_sales_backend.entrypoints.http.routes import (
 
 api_router = APIRouter()
 api_router.include_router(health.router, prefix="/health", tags=["health"])
+api_router.include_router(dashboard_data.router, prefix="/dashboard-data", tags=["dashboard-data"])
 api_router.include_router(sessions.router, prefix="/sessions", tags=["sessions"])
 api_router.include_router(worker_runs.router, prefix="/worker-runs", tags=["worker-runs"])
 api_router.include_router(jobs.router, prefix="/jobs", tags=["jobs"])

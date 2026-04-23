@@ -63,6 +63,7 @@ class FakeChatModel(ChatModelPort):
         tools: list[ProviderToolDefinition],
         context=None,
         tool_choice: str | None = None,
+        on_text_delta=None,
     ) -> ToolCallCompletionResult:
         del tools, context, tool_choice
         latest_user = next(

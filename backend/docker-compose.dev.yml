@@ -1,7 +1,6 @@
 services:
   postgres:
     image: postgres:17
-    container_name: hello-sales-postgres
     restart: unless-stopped
     environment:
       POSTGRES_DB: hello_sales
