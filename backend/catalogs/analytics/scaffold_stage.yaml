@@ -5,6 +5,127 @@ description: >
   Scaffold-stage analytics catalog for governed read-only agent queries over curated
   aggregate-friendly PostgreSQL curated views.
 relations:
+  - name: company_profiles
+    description: Company profile data used by the analyst agent.
+    columns:
+      - name: profile_id
+        data_type: text
+        semantic_type: identifier
+        sensitivity: public
+        description: Stable company profile identifier.
+      - name: company_name
+        data_type: text
+        semantic_type: text
+        sensitivity: public
+        description: Company name.
+      - name: industry
+        data_type: text
+        semantic_type: dimension
+        sensitivity: public
+        description: Company industry.
+      - name: target_customer
+        data_type: text
+        semantic_type: text
+        sensitivity: public
+        description: Primary target customer.
+      - name: pricing_model
+        data_type: text
+        semantic_type: dimension
+        sensitivity: public
+        description: Main company pricing model.
+      - name: sales_team_size
+        data_type: integer
+        semantic_type: metric
+        sensitivity: public
+        description: Number of sales representatives.
+      - name: crm_tool
+        data_type: text
+        semantic_type: dimension
+        sensitivity: public
+        description: CRM system in use.
+      - name: average_deal_size
+        data_type: text
+        semantic_type: dimension
+        sensitivity: public
+        description: Typical deal size range.
+      - name: average_sales_cycle
+        data_type: text
+        semantic_type: dimension
+        sensitivity: public
+        description: Typical sales cycle.
+      - name: primary_sales_constraint
+        data_type: text
+        semantic_type: text
+        sensitivity: internal
+        description: Current sales constraint.
+      - name: quarterly_sales_focus
+        data_type: text
+        semantic_type: text
+        sensitivity: internal
+        description: Current quarterly sales focus.
+  - name: products
+    description: Product catalog entries linked to the company profile.
+    columns:
+      - name: product_id
+        data_type: text
+        semantic_type: identifier
+        sensitivity: public
+        description: Stable product identifier.
+      - name: company_profile_id
+        data_type: text
+        semantic_type: identifier
+        sensitivity: public
+        description: Owning company profile identifier.
+      - name: product_name
+        data_type: text
+        semantic_type: text
+        sensitivity: public
+        description: Product name.
+      - name: product_description
+        data_type: text
+        semantic_type: text
+        sensitivity: public
+        description: Product description.
+      - name: target_customer
+        data_type: text
+        semantic_type: text
+        sensitivity: public
+        description: Product target customer.
+      - name: primary_use_case
+        data_type: text
+        semantic_type: text
+        sensitivity: public
+        description: Primary problem the product solves.
+      - name: pricing_model
+        data_type: text
+        semantic_type: dimension
+        sensitivity: public
+        description: Product pricing model.
+      - name: list_price
+        data_type: text
+        semantic_type: currency
+        sensitivity: public
+        description: Product list price.
+      - name: sales_cycle
+        data_type: text
+        semantic_type: dimension
+        sensitivity: public
+        description: Typical product sales cycle.
+      - name: deal_size
+        data_type: text
+        semantic_type: currency
+        sensitivity: public
+        description: Typical product deal size.
+      - name: revenue_share
+        data_type: text
+        semantic_type: metric
+        sensitivity: internal
+        description: Product revenue share.
+      - name: is_primary
+        data_type: boolean
+        semantic_type: dimension
+        sensitivity: public
+        description: Whether this is the primary product.
   - name: analytics_daily_pipeline
     description: Daily aggregate pipeline metrics by lead source.
     columns:

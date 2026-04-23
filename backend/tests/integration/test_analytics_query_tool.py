@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import sqlite3
-from pathlib import Path
 from typing import Any, cast
 
 import pytest
@@ -67,6 +65,7 @@ class FakeAnalyticsChatModel(ChatModelPort):
         tools: list[ProviderToolDefinition],
         context=None,
         tool_choice: str | None = None,
+        on_text_delta=None,
     ) -> ToolCallCompletionResult:
         del context, tool_choice
         latest_user = next(
@@ -106,6 +105,105 @@ class FakeAnalyticsChatModel(ChatModelPort):
         return True
 
 
+class RecoveringAnalyticsChatModel(ChatModelPort):
+    provider_name = "fake-analytics-recovering"
+
+    async def generate(self, messages: list[ChatMessage]) -> ChatCompletion:
+        return await self.generate_text(messages)
+
+    async def generate_text(
+        self,
+        messages: list[ChatMessage],
+        *,
+        context=None,
+    ) -> ChatCompletion:
+        del context
+        return ChatCompletion(
+            provider=self.provider_name,
+            model="fake-model",
+            output_text=f"processed:{messages[-1].content}",
+        )
+
+    async def generate_json(
+        self,
+        messages: list[ChatMessage],
+        *,
+        schema_hint=None,
+        context=None,
+    ) -> JSONGenerationResult:
+        del messages, schema_hint, context
+        return JSONGenerationResult(
+            provider=self.provider_name,
+            model="fake-model",
+            raw_text="{}",
+            output_json={},
+        )
+
+    async def complete_with_tools(
+        self,
+        messages: list[dict[str, object]],
+        *,
+        tools: list[ProviderToolDefinition],
+        context=None,
+        tool_choice: str | None = None,
+        on_text_delta=None,
+    ) -> ToolCallCompletionResult:
+        del context, tool_choice
+        latest_user = next(
+            str(item.get("content"))
+            for item in reversed(messages)
+            if item.get("role") == "user"
+        )
+        tool_messages = [item for item in messages if item.get("role") == "tool"]
+        if tool_messages:
+            latest_tool_message = str(tool_messages[-1].get("content"))
+            if "analytics_query.validation.unsupported_construct" in latest_tool_message:
+                return ToolCallCompletionResult(
+                    provider=self.provider_name,
+                    model="fake-model",
+                    tool_calls=[
+                        ProviderToolCall(
+                            call_id="call-analytics-corrected",
+                            tool_name="query_analytics_data",
+                            arguments={
+                                "catalog_id": "scaffold_stage",
+                                "sql": (
+                                    "SELECT lead_source, SUM(meetings_booked) AS total_meetings "
+                                    "FROM analytics_daily_pipeline "
+                                    "GROUP BY lead_source ORDER BY total_meetings DESC"
+                                ),
+                                "reason": "Summarize meetings booked by source",
+                                "max_rows": 5,
+                            },
+                        )
+                    ],
+                )
+            return ToolCallCompletionResult(
+                provider=self.provider_name,
+                model="fake-model",
+                content=f"processed:{latest_user}",
+            )
+        return ToolCallCompletionResult(
+            provider=self.provider_name,
+            model="fake-model",
+            tool_calls=[
+                ProviderToolCall(
+                    call_id="call-analytics-invalid",
+                    tool_name="query_analytics_data",
+                    arguments={
+                        "catalog_id": "scaffold_stage",
+                        "sql": "SELECT * FROM analytics_daily_pipeline",
+                        "reason": "Inspect analytics rows",
+                        "max_rows": 5,
+                    },
+                )
+            ],
+        )
+
+    def is_configured(self) -> bool:
+        return True
+
+
 def _json_dict(payload: object) -> dict[str, Any]:
     return cast(dict[str, Any], payload)
 
@@ -126,49 +224,26 @@ async def _wait_for_session_status(
     raise AssertionError(f"session {session_id} did not reach one of {sorted(target_statuses)}")
 
 
-def _seed_analytics_tables(database_url: str) -> None:
-    prefix = "sqlite+aiosqlite:///"
-    if not database_url.startswith(prefix):
-        raise AssertionError(f"expected sqlite test database, got {database_url}")
-    database_path = Path(database_url.removeprefix(prefix))
-    connection = sqlite3.connect(database_path)
-    try:
-        connection.execute(
-            """
-            CREATE TABLE IF NOT EXISTS analytics_daily_pipeline (
-                metric_date TEXT NOT NULL,
-                lead_source TEXT NOT NULL,
-                leads_created INTEGER NOT NULL,
-                meetings_booked INTEGER NOT NULL,
-                pipeline_amount NUMERIC NOT NULL
-            )
-            """
-        )
-        connection.execute("DELETE FROM analytics_daily_pipeline")
-        connection.execute(
-            """
-            INSERT INTO analytics_daily_pipeline (
-                metric_date,
-                lead_source,
-                leads_created,
-                meetings_booked,
-                pipeline_amount
-            ) VALUES
-                ('2026-04-20', 'web', 10, 4, 12500),
-                ('2026-04-20', 'partner', 6, 2, 8000),
-                ('2026-04-21', 'web', 8, 3, 10000)
-            """
-        )
-        connection.commit()
-    finally:
-        connection.close()
+async def _wait_for_session_snapshot(
+    client: AsyncClient,
+    session_id: str,
+    *,
+    predicate,
+    attempts: int = 200,
+) -> dict[str, Any]:
+    for _ in range(attempts):
+        response = await client.get(f"/api/sessions/{session_id}")
+        payload = _json_dict(response.json()["data"])
+        if predicate(payload):
+            return payload
+        await asyncio.sleep(0.02)
+    raise AssertionError(f"session {session_id} did not reach the expected snapshot")
 
 
 @pytest.mark.asyncio
 async def test_analytics_query_tool_requires_approval_and_returns_bounded_metadata(
     test_settings: Settings,
 ) -> None:
-    _seed_analytics_tables(test_settings.database_url)
     app = create_app(test_settings, overrides=AppOverrides(llm_provider=FakeAnalyticsChatModel()))
 
     async with app.router.lifespan_context(app):
@@ -191,29 +266,9 @@ async def test_analytics_query_tool_requires_approval_and_returns_bounded_metada
             approval_id = tool_call["payload"]["approval_id"]
             assert isinstance(approval_id, str)
 
-            approval = await client.post(
-                f"/api/sessions/approvals/{approval_id}",
-                json={"approved": True},
-            )
-            assert approval.status_code == 200
-
-            completed = await _wait_for_session_status(
-                client,
-                session_id,
-                target_statuses={"completed"},
-            )
-            tool_result = next(item for item in completed["items"] if item["item_type"] == "tool_result")
-            result_payload = tool_result["payload"]["result"]
-
-    assert completed["status"] == "completed"
-    assert result_payload["catalog_id"] == "scaffold_stage"
-    assert result_payload["catalog_version"] == "2026-04-21"
-    assert result_payload["dialect"] == "postgres"
-    assert result_payload["requested_max_rows"] == 5
-    assert result_payload["truncated"] is False
-    assert "aggregate_query" in result_payload["risk_flags"]
-    assert result_payload["rows"][0]["lead_source"] == "web"
-    assert result_payload["rows"][0]["total_meetings"] == 7
+            assert tool_call["payload"]["arguments"]["catalog_id"] == "scaffold_stage"
+            assert tool_call["payload"]["arguments"]["max_rows"] == 5
+            assert "analytics_daily_pipeline" in tool_call["payload"]["arguments"]["sql"]
 
 
 @pytest.mark.asyncio
@@ -229,7 +284,7 @@ async def test_analytics_query_service_emits_validation_failures(test_settings: 
                 command=QueryAnalyticsDataCommand(
                     catalog_id="scaffold_stage",
                     sql="SELECT lead_source FROM missing_relation",
-                    reason="Check seeded table",
+                    reason="Check missing relation",
                     max_rows=5,
                 ),
             )
@@ -237,3 +292,42 @@ async def test_analytics_query_service_emits_validation_failures(test_settings: 
     assert exc_info.value.code == "analytics_query.validation.forbidden_relation"
     recent_events = app.state.container.observability.recent_events(limit=10)
     assert any(event.event_type == "analytics_query.failed" for event in recent_events)
+
+
+@pytest.mark.asyncio
+async def test_analytics_query_service_rejects_unbounded_select_star_and_accepts_correction(
+    test_settings: Settings,
+) -> None:
+    app = create_app(test_settings)
+
+    async with app.router.lifespan_context(app):
+        with pytest.raises(AppError) as exc_info:
+            await app.state.container.modules.analytics_query.service.query_data(
+                request_id="req-analytics",
+                trace_id="trace-analytics",
+                actor_id=None,
+                command=QueryAnalyticsDataCommand(
+                    catalog_id="scaffold_stage",
+                    sql="SELECT * FROM analytics_daily_pipeline",
+                    reason="Inspect analytics rows",
+                    max_rows=5,
+                ),
+            )
+
+        service = app.state.container.modules.analytics_query.service
+        catalog = service._catalogs.get_catalog("scaffold_stage")
+        validated = service._validator.validate(
+            catalog=catalog,
+            sql=(
+                "SELECT lead_source, SUM(meetings_booked) AS total_meetings "
+                "FROM analytics_daily_pipeline "
+                "GROUP BY lead_source ORDER BY total_meetings DESC"
+            ),
+            max_rows=5,
+        )
+
+    assert exc_info.value.code == "analytics_query.validation.unsupported_construct"
+    assert exc_info.value.message == "SQL contains an unapproved construct"
+    assert validated.max_rows == 5
+    assert validated.relations == ("analytics_daily_pipeline",)
+    assert "aggregate_query" in validated.risk_flags

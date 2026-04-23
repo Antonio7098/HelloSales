@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
+
 from hello_sales_backend.platform.llm.contracts import (
     JSONGenerationResult,
     JSONSchemaHint,
@@ -73,8 +75,9 @@ class NoopLLMProvider:
         tools: list[ProviderToolDefinition],
         context: LLMCallContext | None = None,
         tool_choice: str | None = None,
+        on_text_delta: Callable[[str], Awaitable[None]] | None = None,
     ) -> ToolCallCompletionResult:
-        del tools, tool_choice
+        del tools, tool_choice, on_text_delta
         raise app_error(
             message="No LLM provider is configured for this environment",
             code="provider.llm.not_configured",

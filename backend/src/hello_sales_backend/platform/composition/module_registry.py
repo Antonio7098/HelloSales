@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 from hello_sales_backend.modules.agent_runs.bootstrap import AgentRunsModule
 from hello_sales_backend.modules.analytics_query.bootstrap import AnalyticsQueryModule
+from hello_sales_backend.modules.company_profile.bootstrap import CompanyProfileModule
 from hello_sales_backend.modules.jobs.bootstrap import JobsModule
 from hello_sales_backend.modules.sessions.bootstrap import SessionsModule
 from hello_sales_backend.modules.system.bootstrap import SystemModule
@@ -18,6 +19,7 @@ class ModuleRegistry:
 
     analytics_query: AnalyticsQueryModule
     agent_runs: AgentRunsModule
+    company_profile: CompanyProfileModule
     jobs: JobsModule
     sessions: SessionsModule
     system: SystemModule

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import sys
 from logging.config import fileConfig
 from pathlib import Path
@@ -17,6 +18,10 @@ if src_str not in sys.path:
     sys.path.insert(0, src_str)
 
 config = context.config
+
+database_url = os.getenv("HELLO_SALES_DATABASE_URL")
+if database_url:
+    config.set_main_option("sqlalchemy.url", database_url)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)

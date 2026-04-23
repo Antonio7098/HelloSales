@@ -10,6 +10,7 @@ from hello_sales_backend.application.agents.bootstrap import build_agent_registr
 from hello_sales_backend.application.workers.bootstrap import build_worker_registry
 from hello_sales_backend.modules.agent_runs.bootstrap import build_agent_runs_module
 from hello_sales_backend.modules.analytics_query.bootstrap import build_analytics_query_module
+from hello_sales_backend.modules.company_profile.bootstrap import build_company_profile_module
 from hello_sales_backend.modules.jobs.bootstrap import build_jobs_module
 from hello_sales_backend.modules.sessions.bootstrap import build_sessions_module
 from hello_sales_backend.modules.system.bootstrap import build_system_module
@@ -177,6 +178,10 @@ def build_app_container(settings: Settings, overrides: AppOverrides | None = Non
         engine=db.engine,
         observability=observability,
     )
+    company_profile_module = build_company_profile_module(
+        settings=settings,
+        session_factory=db.session_factory,
+    )
     agent_registry = build_agent_registry(
         system_service=system_module.service,
         jobs_service=jobs_module.service,
@@ -196,6 +201,7 @@ def build_app_container(settings: Settings, overrides: AppOverrides | None = Non
             llm_provider=providers.llm,
             settings=settings,
         ),
+        session_store=session_store,
     )
     agent_runs_module = build_agent_runs_module(
         store=agent_store,
@@ -217,6 +223,7 @@ def build_app_container(settings: Settings, overrides: AppOverrides | None = Non
     modules = ModuleRegistry(
         analytics_query=analytics_query_module,
         agent_runs=agent_runs_module,
+        company_profile=company_profile_module,
         jobs=jobs_module,
         sessions=sessions_module,
         system=system_module,

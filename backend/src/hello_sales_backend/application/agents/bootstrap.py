@@ -24,8 +24,6 @@ def build_agent_registry(
     return AgentRegistry(
         [
             build_generic_agent_definition(
-                system_service=system_service,
-                jobs_service=jobs_service,
                 analytics_query_service=analytics_query_service,
             ),
             build_observer_agent_definition(system_service=system_service, jobs_service=jobs_service),

@@ -11,6 +11,31 @@ The canonical technical documentation set for the backend lives in `backend/docs
 
 ## Development Database
 
+For the full Docker-based local stack, including Postgres, backend, `frontend-draft`,
+Grafana, Prometheus, Loki, Tempo, MinIO, and the OTEL collector, from the repo root run:
+
+```bash
+make dev-up
+```
+
+Useful companion commands:
+
+```bash
+make dev-logs
+make dev-ps
+make dev-down
+```
+
+Default local URLs:
+
+- frontend-draft: `http://localhost:5173`
+- backend API: `http://localhost:8000`
+- Grafana: `http://localhost:3001`
+- Prometheus: `http://localhost:9090`
+- Loki: `http://localhost:3100`
+- Tempo: `http://localhost:3200`
+- MinIO console: `http://localhost:9001`
+
 Default application database URL:
 
 ```text

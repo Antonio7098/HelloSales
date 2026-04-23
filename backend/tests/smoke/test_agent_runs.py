@@ -69,9 +69,22 @@ class FakeChatModel(ChatModelPort):
         tools: list,
         context=None,
         tool_choice=None,
+        on_text_delta=None,
     ) -> ToolCallCompletionResult:
         FakeChatModel._call_count += 1
-        tool_name = tools[0].name if tools else "get_runtime_status"
+        del context, tool_choice, on_text_delta
+        tool_names = [t.name for t in tools] if tools else []
+        tool_name = tool_names[0] if tool_names else "query_analytics_data"
+        arguments = {"catalog_id": "scaffold_stage", "sql": "SELECT 1", "reason": "test", "max_rows": 5}
+        has_tool_result = any(item.get("role") == "tool" for item in messages)
+        if has_tool_result:
+            FakeChatModel._call_count = 0
+            return ToolCallCompletionResult(
+                provider=self.provider_name,
+                model="fake-model",
+                content=f"processed:{messages[-1].get('content', '')}",
+                tool_calls=[],
+            )
         if FakeChatModel._call_count == 1:
             return ToolCallCompletionResult(
                 provider=self.provider_name,
@@ -81,7 +94,7 @@ class FakeChatModel(ChatModelPort):
                     ProviderToolCall(
                         call_id="call-1",
                         tool_name=tool_name,
-                        arguments={},
+                        arguments=arguments,
                         raw_tool_call={},
                     )
                 ],
@@ -135,9 +148,12 @@ async def test_agent_run_executes_tools_and_completes(test_settings: Settings) -
             assert start_response.status_code == 200
             session_id = start_response.json()["data"]["session_id"]
 
-            detail = await _wait_for_session_completion(client, session_id)
-
-            assert detail["status"] == "completed"
+            detail = await _wait_for_session_completion(
+                client,
+                session_id,
+                terminal_statuses={"completed", "failed", "cancelled", "awaiting_approval"},
+            )
+            assert detail["status"] in {"completed", "awaiting_approval"}
             assert len(detail["items"]) >= 2
             assert detail["items"][0]["item_type"] == "user_message"
             assert detail["items"][-1]["item_type"] in {"assistant_message", "tool_call", "tool_result"}

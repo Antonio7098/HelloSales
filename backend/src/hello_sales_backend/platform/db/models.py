@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 
-from sqlalchemy import Boolean, DateTime, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from hello_sales_backend.platform.db.base import Base
@@ -251,3 +251,49 @@ class SessionSummaryRecord(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utc_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utc_now)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class CompanyProfileRecord(Base):
+    """Persist the current company profile."""
+
+    __tablename__ = "company_profiles"
+
+    profile_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    company_name: Mapped[str] = mapped_column(Text, nullable=False)
+    industry: Mapped[str | None] = mapped_column(Text, nullable=True)
+    target_customer: Mapped[str | None] = mapped_column(Text, nullable=True)
+    pricing_model: Mapped[str | None] = mapped_column(Text, nullable=True)
+    sales_team_size: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    crm_tool: Mapped[str | None] = mapped_column(Text, nullable=True)
+    average_deal_size: Mapped[str | None] = mapped_column(Text, nullable=True)
+    average_sales_cycle: Mapped[str | None] = mapped_column(Text, nullable=True)
+    primary_sales_constraint: Mapped[str | None] = mapped_column(Text, nullable=True)
+    quarterly_sales_focus: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utc_now)
+
+
+class ProductRecord(Base):
+    """Persist one product belonging to the company profile."""
+
+    __tablename__ = "products"
+
+    product_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    company_profile_id: Mapped[str] = mapped_column(
+        String(64),
+        ForeignKey("company_profiles.profile_id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    product_name: Mapped[str] = mapped_column(Text, nullable=False)
+    product_description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    target_customer: Mapped[str | None] = mapped_column(Text, nullable=True)
+    primary_use_case: Mapped[str | None] = mapped_column(Text, nullable=True)
+    pricing_model: Mapped[str | None] = mapped_column(Text, nullable=True)
+    list_price: Mapped[str | None] = mapped_column(Text, nullable=True)
+    sales_cycle: Mapped[str | None] = mapped_column(Text, nullable=True)
+    deal_size: Mapped[str | None] = mapped_column(Text, nullable=True)
+    revenue_share: Mapped[str | None] = mapped_column(Text, nullable=True)
+    is_primary: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utc_now)

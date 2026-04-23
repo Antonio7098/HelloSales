@@ -19,6 +19,7 @@ from hello_sales_backend.platform.workers import (
     WorkerRunStatus,
 )
 from hello_sales_backend.platform.workers.runtime import WorkerRuntime
+from hello_sales_backend.shared.errors import app_error
 
 
 class FakeJSONProvider:
@@ -55,6 +56,33 @@ class FakeJSONProvider:
 
     def is_configured(self) -> bool:
         return True
+
+
+class ScriptedJSONProvider(FakeJSONProvider):
+    def __init__(
+        self,
+        *,
+        provider_name: str,
+        responses: list[JSONGenerationResult | Exception],
+    ) -> None:
+        self.provider_name = provider_name
+        self._responses = responses
+        self.calls = 0
+
+    async def generate_json(
+        self,
+        messages: list[LLMMessage],
+        *,
+        schema_hint=None,
+        context: LLMCallContext | None = None,
+    ) -> JSONGenerationResult:
+        del messages, schema_hint, context
+        index = min(self.calls, len(self._responses) - 1)
+        self.calls += 1
+        response = self._responses[index]
+        if isinstance(response, Exception):
+            raise response
+        return response
 
 
 async def test_worker_runtime_retries_invalid_json_and_completes() -> None:
@@ -168,3 +196,59 @@ async def test_worker_runtime_uses_backup_provider_on_final_attempt() -> None:
     assert updated.provider_name == "backup"
     assert updated.model_name == "backup-model"
     assert any(item.event_type == "worker.fallback.selected" for item in events)
+
+
+async def test_worker_runtime_retries_retryable_provider_error_then_completes() -> None:
+    store = InMemoryWorkerStore()
+    observability = ObservabilityRuntime(
+        store=InMemoryOperationalStore(), alert_policy=AlertPolicy()
+    )
+    provider = ScriptedJSONProvider(
+        provider_name="primary",
+        responses=[
+            app_error(
+                "upstream unavailable",
+                code="provider.upstream_unavailable",
+                category="provider",
+                status_code=503,
+                retryable=True,
+            ),
+            JSONGenerationResult(
+                provider="primary",
+                model="fake-model",
+                raw_text='{"brief":"ok","key_points":["one"],"priority":"medium"}',
+                output_json={"brief": "ok", "key_points": ["one"], "priority": "medium"},
+            ),
+        ],
+    )
+    runtime = WorkerRuntime(
+        llm_provider=provider,
+        store=store,
+        workers=build_worker_registry(),
+        observability=observability,
+    )
+    run = WorkerRun(
+        run_id="worker-run-3",
+        worker_name="structured-brief",
+        status=WorkerRunStatus.PENDING,
+        input_payload={"text": "Summarize this update."},
+        request_id="req-3",
+        trace_id="0123456789abcdef0123456789abcdef",
+        actor_id=None,
+        execution_mode=WorkerExecutionMode.DIRECT,
+        max_attempts=3,
+        timeout_seconds=5.0,
+    )
+    await store.create_run(run)
+
+    await runtime.process_run(run_id=run.run_id)
+
+    updated = await store.get_run(run.run_id)
+    events = await store.list_events(run.run_id)
+
+    assert updated is not None
+    assert updated.status == WorkerRunStatus.COMPLETED
+    assert updated.attempt_count == 2
+    assert any(item.event_type == "worker.attempt.provider_failed" for item in events)
+    retry_event = next(item for item in events if item.event_type == "worker.attempt.retry_scheduled")
+    assert retry_event.payload["issue_code"] == "provider.upstream_unavailable"

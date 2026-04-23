@@ -13,3 +13,5 @@ class AgentRuntimeConfig:
     approval_timeout_seconds: int = 3600
     max_event_replay: int = 200
     max_tool_iterations: int = 8
+    max_llm_completion_retries: int = 2
+    max_tool_execution_retries: int = 2

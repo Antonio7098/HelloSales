@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+from collections import defaultdict
+from collections.abc import Awaitable, Callable
 from typing import Any, cast
 
 import httpx
@@ -44,6 +46,42 @@ def _extract_tool_calls(message: dict[str, object]) -> list[ProviderToolCall]:
                     )
                 )
     return tool_calls
+
+
+def _safe_int(value: object, default: int = 0) -> int:
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str):
+        try:
+            return int(value)
+        except ValueError:
+            return default
+    return default
+
+
+def _merge_tool_call_chunks(chunks: list[dict[str, object]]) -> list[ProviderToolCall]:
+    by_index: dict[int, dict[str, object]] = defaultdict(
+        lambda: {"id": "", "function": {"name": "", "arguments": ""}}
+    )
+    for chunk in chunks:
+        if not isinstance(chunk, dict):
+            continue
+        index = _safe_int(chunk.get("index"), 0)
+        current = by_index[index]
+        call_id = chunk.get("id")
+        if isinstance(call_id, str) and call_id:
+            current["id"] = call_id
+        function = chunk.get("function")
+        if isinstance(function, dict):
+            current_function = cast(dict[str, object], current["function"])
+            name = function.get("name")
+            if isinstance(name, str) and name:
+                current_function["name"] = name
+            arguments = function.get("arguments")
+            if isinstance(arguments, str) and arguments:
+                current_function["arguments"] = str(current_function.get("arguments", "")) + arguments
+    materialized = [by_index[idx] for idx in sorted(by_index)]
+    return _extract_tool_calls({"tool_calls": materialized})
 
 
 def _supports_strict_json_schema(provider_name: str) -> bool:
@@ -229,6 +267,134 @@ class OpenAICompatibleLLMProvider:
                 exc=exc,
             ) from exc
 
+    async def _stream_chat_completion(
+        self,
+        *,
+        messages: list[dict[str, object]],
+        operation: str,
+        tools: list[dict[str, object]] | None = None,
+        tool_choice: str | None = None,
+        on_text_delta: Callable[[str], Awaitable[None]] | None = None,
+    ) -> ToolCallCompletionResult:
+        request_payload: dict[str, object] = {
+            "model": self._model,
+            "messages": messages,
+            "stream": True,
+        }
+        if tools is not None:
+            request_payload["tools"] = tools
+            request_payload["parallel_tool_calls"] = False
+        if tool_choice is not None:
+            request_payload["tool_choice"] = {"type": "function", "function": {"name": tool_choice}}
+        self._logger.info(
+            "provider.call.started",
+            provider=self.provider_name,
+            model=self._model,
+            endpoint=f"{self._base_url}/chat/completions",
+            request=redact_mapping(
+                {
+                    "api_key": self._api_key,
+                    "message_count": len(messages),
+                    "stream": True,
+                    "tool_count": len(tools or []),
+                }
+            ),
+        )
+        content_parts: list[str] = []
+        tool_call_chunks: list[dict[str, object]] = []
+        resolved_model = self._model
+        try:
+            async with self._http_client.stream(
+                "POST",
+                f"{self._base_url}/chat/completions",
+                json=request_payload,
+            ) as response:
+                response.raise_for_status()
+                async for line in response.aiter_lines():
+                    if not line.startswith("data: "):
+                        continue
+                    data = line.removeprefix("data: ").strip()
+                    if not data:
+                        continue
+                    if data == "[DONE]":
+                        break
+                    payload = cast(dict[str, Any], json.loads(data))
+                    resolved_model = str(payload.get("model", resolved_model))
+                    choices = payload.get("choices", [])
+                    if not isinstance(choices, list):
+                        continue
+                    for choice in choices:
+                        if not isinstance(choice, dict):
+                            continue
+                        delta = choice.get("delta", {})
+                        if not isinstance(delta, dict):
+                            continue
+                        content_delta = delta.get("content")
+                        if isinstance(content_delta, str) and content_delta:
+                            content_parts.append(content_delta)
+                            if on_text_delta is not None:
+                                await on_text_delta(content_delta)
+                        raw_tool_calls = delta.get("tool_calls", [])
+                        if isinstance(raw_tool_calls, list):
+                            tool_call_chunks.extend(
+                                item for item in raw_tool_calls if isinstance(item, dict)
+                            )
+            self._logger.info(
+                "provider.call.completed",
+                provider=self.provider_name,
+                model=resolved_model,
+                message_count=len(messages),
+            )
+            tool_calls = _merge_tool_call_chunks(tool_call_chunks)
+            content = "".join(content_parts)
+            return ToolCallCompletionResult(
+                provider=self.provider_name,
+                model=resolved_model,
+                content=None if tool_calls else content,
+                tool_calls=tool_calls,
+            )
+        except httpx.HTTPError as exc:
+            self._logger.exception(
+                "provider.call.failed",
+                provider=self.provider_name,
+                model=self._model,
+                message_count=len(messages),
+                operation=operation,
+            )
+            status_code = getattr(getattr(exc, "response", None), "status_code", 502) or 502
+            error_code = "provider.http.failure"
+            if isinstance(exc, httpx.TimeoutException):
+                error_code = "provider.timeout"
+            elif isinstance(exc, httpx.HTTPStatusError):
+                if status_code == 429:
+                    error_code = "provider.rate_limit"
+                elif status_code == 401:
+                    error_code = "provider.authentication_failed"
+                elif status_code >= 500:
+                    error_code = "provider.remote_5xx"
+            raise app_error(
+                message="LLM provider request failed",
+                code=error_code,
+                category="provider",
+                status_code=status_code if isinstance(exc, httpx.HTTPStatusError) else 502,
+                retryable=isinstance(exc, (httpx.TimeoutException, httpx.ConnectError))
+                or (isinstance(exc, httpx.HTTPStatusError) and status_code in {408, 409, 425, 429, 500, 502, 503, 504}),
+                details={
+                    "provider": self.provider_name,
+                    "model": self._model,
+                    "error": str(exc),
+                    "timeout_seconds": self._timeout_seconds,
+                    "base_url": self._base_url,
+                    "message_count": len(messages),
+                    "response_status_code": status_code if isinstance(exc, httpx.HTTPStatusError) else None,
+                    "provider_request_id": getattr(getattr(exc, "response", None), "headers", {}).get("x-request-id"),
+                    "operation": operation,
+                },
+                operation=operation,
+                component="provider",
+                exc=exc,
+            ) from exc
+
     def is_configured(self) -> bool:
         return bool(self._api_key and self._model and self._base_url)
 
@@ -239,6 +405,7 @@ class OpenAICompatibleLLMProvider:
         tools: list[ProviderToolDefinition],
         context: LLMCallContext | None = None,
         tool_choice: str | None = None,
+        on_text_delta: Callable[[str], Awaitable[None]] | None = None,
     ) -> ToolCallCompletionResult:
         provider_tools: list[dict[str, object]] = [
             {
@@ -251,31 +418,12 @@ class OpenAICompatibleLLMProvider:
             }
             for tool in tools
         ]
-        payload = await self._post_chat_completion(
-            messages=messages,  # type: ignore[arg-type]
-            response_format=None,
+        return await self._stream_chat_completion(
+            messages=messages,
             operation=(context.operation if context is not None else None) or "provider.llm.complete_with_tools",
             tools=provider_tools,
             tool_choice=tool_choice,
-        )
-        message = payload["choices"][0]["message"]
-        if not isinstance(message, dict):
-            raise app_error(
-                "Provider returned an invalid assistant message payload",
-                code="provider.invalid_message",
-                category="provider",
-                status_code=502,
-                details={"message_type": type(message).__name__},
-                operation="provider.llm.complete_with_tools",
-                component="provider",
-            )
-        content = message.get("content")
-        extracted_calls = _extract_tool_calls(message)
-        return ToolCallCompletionResult(
-            provider=self.provider_name,
-            model=payload.get("model", self._model),
-            content=None if extracted_calls else _coerce_message_content(content),
-            tool_calls=extracted_calls,
+            on_text_delta=on_text_delta,
         )
 
     async def aclose(self) -> None:

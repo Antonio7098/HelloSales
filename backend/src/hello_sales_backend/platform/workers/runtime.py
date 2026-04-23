@@ -13,8 +13,14 @@ from pydantic import ValidationError
 from hello_sales_backend.platform.llm import (
     EffectivePromptRef,
     LLMCallContext,
+    LLMExecutionIssue,
     LLMProviderPort,
+    decide_llm_retry,
+    invalid_json_issue,
+    output_validation_issue,
+    provider_error_issue,
     schema_hint_from_model,
+    timeout_issue,
 )
 from hello_sales_backend.platform.observability.events import OperationalEvent
 from hello_sales_backend.platform.observability.logging import get_logger
@@ -86,6 +92,7 @@ class WorkerRuntime:
                     definition.output_model, name=f"{definition.worker_name}_result"
                 )
                 last_issue: str | None = None
+                last_retry_issue: LLMExecutionIssue | None = None
                 for attempt in range(1, run.max_attempts + 1):
                     provider = self._select_provider(
                         definition=definition, attempt=attempt, run=run
@@ -104,6 +111,14 @@ class WorkerRuntime:
                                 "attempt": attempt,
                                 "max_attempts": run.max_attempts,
                                 "worker_name": run.worker_name,
+                                "issue_kind": (
+                                    last_retry_issue.kind.value
+                                    if last_retry_issue is not None
+                                    else None
+                                ),
+                                "issue_code": (
+                                    last_retry_issue.code if last_retry_issue is not None else None
+                                ),
                             },
                         )
                     run.status = WorkerRunStatus.RUNNING
@@ -141,23 +156,34 @@ class WorkerRuntime:
                             )
                     except TimeoutError as exc:
                         last_issue = f"timed out after {run.timeout_seconds} seconds"
-                        structured = app_error(
-                            "Worker execution attempt timed out",
+                        issue = timeout_issue(
                             code="worker.timeout",
-                            category="worker",
-                            status_code=504,
-                            retryable=attempt < run.max_attempts,
+                            message="Worker execution attempt timed out",
                             details={
                                 "run_id": run.run_id,
                                 "worker_name": run.worker_name,
                                 "attempt": attempt,
                                 "timeout_seconds": run.timeout_seconds,
                             },
+                        )
+                        decision = decide_llm_retry(
+                            issue=issue,
+                            attempt=attempt,
+                            max_attempts=run.max_attempts,
+                        )
+                        structured = app_error(
+                            "Worker execution attempt timed out",
+                            code="worker.timeout",
+                            category="worker",
+                            status_code=504,
+                            retryable=decision.should_retry,
+                            details=issue.details,
                             operation="worker.process_run",
                             component="worker",
                             exc=exc,
                         )
-                        if attempt < run.max_attempts:
+                        if decision.should_retry:
+                            last_retry_issue = issue
                             await self._append_event(
                                 run=run,
                                 event_type="worker.attempt.timeout",
@@ -169,7 +195,22 @@ class WorkerRuntime:
                         raise structured from exc
                     except AppError as exc:
                         last_issue = exc.message
-                        if exc.retryable and attempt < run.max_attempts:
+                        issue = provider_error_issue(
+                            exc,
+                            details={
+                                "run_id": run.run_id,
+                                "worker_name": run.worker_name,
+                                "attempt": attempt,
+                                "provider": provider_name,
+                            },
+                        )
+                        decision = decide_llm_retry(
+                            issue=issue,
+                            attempt=attempt,
+                            max_attempts=run.max_attempts,
+                        )
+                        if decision.should_retry:
+                            last_retry_issue = issue
                             await self._append_event(
                                 run=run,
                                 event_type="worker.attempt.provider_failed",
@@ -181,6 +222,20 @@ class WorkerRuntime:
                         raise
                     if result.output_json is None:
                         last_issue = f"provider returned non-JSON output: {result.raw_text[:500]}"
+                        issue = invalid_json_issue(
+                            code="worker.output.invalid_json",
+                            message="Worker output was not valid JSON",
+                            details={
+                                "run_id": run.run_id,
+                                "worker_name": run.worker_name,
+                                "attempt": attempt,
+                            },
+                        )
+                        decision = decide_llm_retry(
+                            issue=issue,
+                            attempt=attempt,
+                            max_attempts=run.max_attempts,
+                        )
                         await self._append_event(
                             run=run,
                             event_type="worker.attempt.validation_failed",
@@ -188,7 +243,8 @@ class WorkerRuntime:
                             code="worker.output.invalid_json",
                             payload={"attempt": attempt, "raw_text": result.raw_text[:500]},
                         )
-                        if attempt < run.max_attempts:
+                        if decision.should_retry:
+                            last_retry_issue = issue
                             continue
                         raise app_error(
                             "Worker output was not valid JSON",
@@ -218,6 +274,21 @@ class WorkerRuntime:
                             issue_code = "worker.output.validation_failed"
                             issue_payload = {"message": str(exc)}
                             last_issue = str(exc)
+                        issue = output_validation_issue(
+                            code=issue_code,
+                            message="Worker output did not satisfy the local contract",
+                            details={
+                                "run_id": run.run_id,
+                                "worker_name": run.worker_name,
+                                "attempt": attempt,
+                                "issue": last_issue,
+                            },
+                        )
+                        decision = decide_llm_retry(
+                            issue=issue,
+                            attempt=attempt,
+                            max_attempts=run.max_attempts,
+                        )
                         await self._append_event(
                             run=run,
                             event_type="worker.attempt.validation_failed",
@@ -225,7 +296,8 @@ class WorkerRuntime:
                             code=issue_code,
                             payload={"attempt": attempt, "error": issue_payload},
                         )
-                        if attempt < run.max_attempts:
+                        if decision.should_retry:
+                            last_retry_issue = issue
                             continue
                         raise app_error(
                             "Worker output did not satisfy the local contract",
@@ -242,6 +314,7 @@ class WorkerRuntime:
                             component="worker",
                             exc=exc if isinstance(exc, BaseException) else None,
                         ) from exc
+                    last_retry_issue = None
                     await self._mark_completed(
                         run=run,
                         output_payload=validated_output.model_dump(mode="json"),

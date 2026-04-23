@@ -229,26 +229,12 @@ async def test_openai_compatible_provider_sends_native_tools_and_parses_tool_cal
         assert payload["parallel_tool_calls"] is False
         return httpx.Response(
             200,
-            json={
-                "model": "test-model",
-                "choices": [
-                    {
-                        "message": {
-                            "content": "",
-                            "tool_calls": [
-                                {
-                                    "id": "call-1",
-                                    "type": "function",
-                                    "function": {
-                                        "name": "get_runtime_status",
-                                        "arguments": "{}",
-                                    },
-                                }
-                            ],
-                        }
-                    }
-                ],
-            },
+            text=(
+                'data: {"model":"test-model","choices":[{"delta":{"tool_calls":[{"index":0,"id":"call-1","type":"function","function":{"name":"get_runtime_status","arguments":"{"}}]}}]}\n\n'
+                'data: {"model":"test-model","choices":[{"delta":{"tool_calls":[{"index":0,"function":{"arguments":"}"}}]}}]}\n\n'
+                "data: [DONE]\n\n"
+            ),
+            headers={"content-type": "text/event-stream"},
         )
 
     client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
@@ -282,3 +268,43 @@ async def test_openai_compatible_provider_sends_native_tools_and_parses_tool_cal
     assert result.tool_calls[0].tool_name == "get_runtime_status"
     assert result.tool_calls[0].arguments == {}
     await client.aclose()
+
+
+@pytest.mark.asyncio
+async def test_openai_compatible_provider_streams_text_deltas_to_callback() -> None:
+    async def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            text=(
+                'data: {"model":"test-model","choices":[{"delta":{"content":"Hello"}}]}\n\n'
+                'data: {"model":"test-model","choices":[{"delta":{"content":" world"}}]}\n\n'
+                "data: [DONE]\n\n"
+            ),
+            headers={"content-type": "text/event-stream"},
+        )
+
+    client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    provider = OpenAICompatibleChatModel(
+        provider_name="test-provider",
+        base_url="https://example.test/v1",
+        api_key="secret",
+        model="test-model",
+        timeout_seconds=5.0,
+        http_client=client,
+    )
+    deltas: list[str] = []
+
+    result = await provider.complete_with_tools(
+        [{"role": "user", "content": "hello"}],
+        tools=[],
+        on_text_delta=lambda delta: _record_delta(deltas, delta),
+    )
+
+    assert deltas == ["Hello", " world"]
+    assert result.content == "Hello world"
+    assert result.tool_calls == []
+    await client.aclose()
+
+
+async def _record_delta(buffer: list[str], delta: str) -> None:
+    buffer.append(delta)
