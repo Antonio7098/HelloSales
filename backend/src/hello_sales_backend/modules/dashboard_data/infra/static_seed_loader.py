@@ -7,7 +7,7 @@ from collections.abc import Sequence
 from hello_sales_backend.modules.dashboard_data.use_cases.ports import DashboardSeedLoaderPort
 from hello_sales_backend.modules.dashboard_data.use_cases.views import DashboardDataEntryView
 
-_SEED_ROWS: tuple[tuple[str, int, str, str, str, str], ...] = (
+_SEED_ROWS: tuple[tuple[str, int, str, str, str, str, str], ...] = (
     (
         "company_overview",
         1,
