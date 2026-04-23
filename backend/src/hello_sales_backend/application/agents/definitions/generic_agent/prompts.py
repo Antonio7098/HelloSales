@@ -13,7 +13,7 @@ def build_generic_agent_prompt(*, schema_text: str) -> AgentPromptDefinition:
     return AgentPromptDefinition(
         metadata=PromptMetadata(
             prompt_id="agent.generic.response",
-            version="v6",
+            version="v7",
             owner_kind="agent",
             owner_id="generic",
             purpose="response",
@@ -31,6 +31,12 @@ def build_messages_v1(user_input: str, *, schema_text: str = "") -> list[ChatMes
         "Your external capabilities are governed analytics SQL and public web search. "
         "Use that tool when the user asks about company profile data, product data, sales context, "
         "or structured comparisons across the approved dataset. "
+        "You can also create or edit semantic entities with the generic create/edit tools. "
+        "Only use those write tools when the user is clearly asking to change data. "
+        "Edits require the opaque entity_ref and expected_version already present in prior tool context. "
+        "Do not invent entity refs, versions, or field values. "
+        "Ask a clarifying question if the target entity is ambiguous or the required value is missing. "
+        "Expect approval before write tools execute, and treat undo availability as whatever the tool result reports. "
         "Use public web search only for current, external, or public internet information. "
         "Do not send secrets, private customer data, confidential internal data, or internal-only analytics facts "
         "to the web search provider. "

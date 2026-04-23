@@ -1,23 +1,47 @@
 catalog_id: scaffold_stage
-catalog_version: "2026-04-21"
+catalog_version: "2026-04-23"
 dialect: postgres
 description: >
-  Scaffold-stage analytics catalog for governed read-only agent queries over curated
-  aggregate-friendly PostgreSQL curated views.
-relations:
-  - name: company_profiles
-    description: Company profile data used by the analyst agent.
-    columns:
+  Scaffold-stage semantic catalog for approved analytics reads and conservative
+  generic entity mutations over the persisted company profile and product surfaces.
+entities:
+  - entity_type: company_profile
+    description: The current scaffold-stage company profile singleton.
+    display:
+      singular: Company profile
+      plural: Company profiles
+      label_field: company_name
+    storage:
+      relation_name: company_profiles
+      primary_key_field: profile_id
+      entity_kind: singleton
+    analytics:
+      enabled: true
+      relation_name: company_profiles
+      description: Company profile data used by the generic agent.
+    mutations:
+      create_allowed: true
+      edit_allowed: true
+      ref_ttl_seconds: 86400
+      create_requires_absence: true
+    fields:
       - name: profile_id
         data_type: text
         semantic_type: identifier
         sensitivity: public
+        nullable: false
         description: Stable company profile identifier.
+        mutations:
+          write_policy: system_managed
       - name: company_name
         data_type: text
         semantic_type: text
         sensitivity: public
+        nullable: false
         description: Company name.
+        mutations:
+          write_policy: editable
+          required_on_create: true
       - name: industry
         data_type: text
         semantic_type: dimension
@@ -63,24 +87,56 @@ relations:
         semantic_type: text
         sensitivity: internal
         description: Current quarterly sales focus.
-  - name: products
-    description: Product catalog entries linked to the company profile.
-    columns:
+  - entity_type: product
+    description: Product catalog entries linked to the scaffold company profile.
+    display:
+      singular: Product
+      plural: Products
+      label_field: product_name
+    storage:
+      relation_name: products
+      primary_key_field: product_id
+      entity_kind: record
+    analytics:
+      enabled: true
+      relation_name: products
+      description: Product catalog entries linked to the company profile.
+    mutations:
+      create_allowed: true
+      edit_allowed: true
+      ref_ttl_seconds: 86400
+    relationships:
+      - name: belongs_to_company_profile
+        target_entity_type: company_profile
+        kind: belongs_to
+        source_field: company_profile_id
+        description: Each product belongs to the current company profile.
+    fields:
       - name: product_id
         data_type: text
         semantic_type: identifier
         sensitivity: public
+        nullable: false
         description: Stable product identifier.
+        mutations:
+          write_policy: system_managed
       - name: company_profile_id
         data_type: text
         semantic_type: identifier
         sensitivity: public
+        nullable: false
         description: Owning company profile identifier.
+        mutations:
+          write_policy: system_managed
       - name: product_name
         data_type: text
         semantic_type: text
         sensitivity: public
+        nullable: false
         description: Product name.
+        mutations:
+          write_policy: editable
+          required_on_create: true
       - name: product_description
         data_type: text
         semantic_type: text
@@ -125,60 +181,115 @@ relations:
         data_type: boolean
         semantic_type: dimension
         sensitivity: public
+        nullable: false
         description: Whether this is the primary product.
-  - name: analytics_daily_pipeline
+  - entity_type: analytics_daily_pipeline
     description: Daily aggregate pipeline metrics by lead source.
-    columns:
+    display:
+      singular: Daily pipeline metric
+      plural: Daily pipeline metrics
+      label_field: lead_source
+    storage:
+      relation_name: analytics_daily_pipeline
+      primary_key_field: metric_date
+      entity_kind: aggregate
+    analytics:
+      enabled: true
+      relation_name: analytics_daily_pipeline
+      description: Daily aggregate pipeline metrics by lead source.
+    fields:
       - name: metric_date
         data_type: date
         semantic_type: date
         sensitivity: public
+        nullable: false
         description: Calendar date for the aggregate bucket.
+        mutations:
+          write_policy: read_only
       - name: lead_source
         data_type: text
         semantic_type: dimension
         sensitivity: public
+        nullable: false
         description: Generic lead source classification.
+        mutations:
+          write_policy: read_only
       - name: leads_created
         data_type: integer
         semantic_type: metric
         sensitivity: public
+        nullable: false
         description: Number of leads created in the bucket.
+        mutations:
+          write_policy: read_only
       - name: meetings_booked
         data_type: integer
         semantic_type: metric
         sensitivity: public
+        nullable: false
         description: Number of meetings booked in the bucket.
+        mutations:
+          write_policy: read_only
       - name: pipeline_amount
         data_type: numeric
         semantic_type: currency
         sensitivity: internal
+        nullable: false
         description: Total pipeline amount associated with the bucket.
-  - name: analytics_rep_performance
+        mutations:
+          write_policy: read_only
+  - entity_type: analytics_rep_performance
     description: Seller performance aggregates by reporting period.
-    columns:
+    display:
+      singular: Rep performance metric
+      plural: Rep performance metrics
+      label_field: rep_name
+    storage:
+      relation_name: analytics_rep_performance
+      primary_key_field: report_period
+      entity_kind: aggregate
+    analytics:
+      enabled: true
+      relation_name: analytics_rep_performance
+      description: Seller performance aggregates by reporting period.
+    fields:
       - name: report_period
         data_type: text
         semantic_type: dimension
         sensitivity: public
+        nullable: false
         description: Reporting period identifier.
+        mutations:
+          write_policy: read_only
       - name: rep_name
         data_type: text
         semantic_type: dimension
         sensitivity: internal
+        nullable: false
         description: Human-readable seller identifier.
+        mutations:
+          write_policy: read_only
       - name: owner_email
         data_type: text
         semantic_type: pii
         sensitivity: restricted
+        nullable: false
         description: Seller email address.
+        mutations:
+          write_policy: read_only
       - name: meetings_completed
         data_type: integer
         semantic_type: metric
         sensitivity: public
+        nullable: false
         description: Count of completed meetings.
+        mutations:
+          write_policy: read_only
       - name: closed_won_amount
         data_type: numeric
         semantic_type: currency
         sensitivity: internal
+        nullable: false
         description: Closed-won revenue for the reporting bucket.
+        mutations:
+          write_policy: read_only

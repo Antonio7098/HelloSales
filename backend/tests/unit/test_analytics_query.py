@@ -4,7 +4,9 @@ from pathlib import Path
 
 import pytest
 
-from hello_sales_backend.modules.analytics_query.infra.catalogs import YamlAnalyticsCatalogStore
+from hello_sales_backend.modules.analytics_query.infra.catalogs import (
+    SemanticAnalyticsCatalogStore,
+)
 from hello_sales_backend.modules.analytics_query.infra.redaction import AnalyticsResultRedactor
 from hello_sales_backend.modules.analytics_query.infra.validator import (
     SqlglotAnalyticsQueryValidator,
@@ -16,6 +18,10 @@ from hello_sales_backend.modules.analytics_query.use_cases.ports import (
     ExecutedAnalyticsQuery,
     QueryProjection,
     ValidatedAnalyticsQuery,
+)
+from hello_sales_backend.modules.semantic_catalog.infra.catalogs import YamlSemanticCatalogStore
+from hello_sales_backend.modules.semantic_catalog.use_cases.semantic_catalog_service import (
+    SemanticCatalogService,
 )
 from hello_sales_backend.shared.errors import AppError
 
@@ -78,7 +84,7 @@ def _catalog() -> AnalyticsCatalog:
     )
 
 
-def test_yaml_catalog_store_loads_manifest(tmp_path: Path) -> None:
+def test_semantic_projection_store_loads_manifest(tmp_path: Path) -> None:
     catalog_dir = tmp_path / "catalogs"
     catalog_dir.mkdir()
     (catalog_dir / "catalog.yaml").write_text(
@@ -87,20 +93,35 @@ catalog_id: smoke_catalog
 catalog_version: 1
 dialect: postgres
 description: Smoke catalog
-relations:
-  - name: analytics_daily_pipeline
+entities:
+  - entity_type: analytics_daily_pipeline
     description: Daily pipeline metrics
-    columns:
+    display:
+      singular: Pipeline metric
+      plural: Pipeline metrics
+      label_field: lead_source
+    storage:
+      relation_name: analytics_daily_pipeline
+      primary_key_field: lead_source
+      entity_kind: aggregate
+    analytics:
+      enabled: true
+    fields:
       - name: lead_source
         data_type: text
         semantic_type: dimension
         sensitivity: public
+        nullable: false
         description: Lead source
+        mutations:
+          write_policy: read_only
 """.strip(),
         encoding="utf-8",
     )
 
-    catalog = YamlAnalyticsCatalogStore(catalog_dir).get_catalog("smoke_catalog")
+    catalog = SemanticAnalyticsCatalogStore(
+        SemanticCatalogService(catalogs=YamlSemanticCatalogStore(catalog_dir))
+    ).get_catalog("smoke_catalog")
 
     assert catalog.catalog_id == "smoke_catalog"
     assert catalog.dialect == "postgres"

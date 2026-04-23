@@ -49,6 +49,7 @@ class AnalyticsQueryService:
     ) -> AnalyticsQueryResultView:
         del actor_id
         started = perf_counter()
+        catalog = None
         try:
             catalog = self._catalogs.get_catalog(command.catalog_id)
             validated = self._validator.validate(
@@ -88,6 +89,9 @@ class AnalyticsQueryService:
             )
             return result
         except AppError as exc:
+            exc.details.setdefault("catalog_id", command.catalog_id)
+            if catalog is not None:
+                exc.details.setdefault("catalog_version", catalog.catalog_version)
             enriched = exc.with_context(correlation_id=request_id, trace_id=trace_id)
             await self._diagnostics.query_failed(
                 request_id=request_id,
@@ -101,7 +105,10 @@ class AnalyticsQueryService:
             unexpected = internal_error(
                 "Analytics query execution failed unexpectedly",
                 code="analytics_query.unhandled_exception",
-                details={"catalog_id": command.catalog_id},
+                details={
+                    "catalog_id": command.catalog_id,
+                    "catalog_version": None if catalog is None else catalog.catalog_version,
+                },
                 operation="analytics_query.service.query_data",
                 component="analytics_query",
                 exc=exc,

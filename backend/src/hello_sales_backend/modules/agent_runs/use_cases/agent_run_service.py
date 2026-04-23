@@ -33,7 +33,7 @@ from hello_sales_backend.platform.agents.models import (
 from hello_sales_backend.platform.agents.persistence import AgentStorePort
 from hello_sales_backend.platform.agents.runtime import AgentExecutionRuntime
 from hello_sales_backend.platform.llm import EffectivePromptRef
-from hello_sales_backend.platform.tasks.models import TaskMetadata
+from hello_sales_backend.platform.tasks.models import TaskMetadata, TaskStatus
 from hello_sales_backend.platform.tasks.runner import BackgroundTaskRunner
 from hello_sales_backend.shared.errors import app_error
 from hello_sales_backend.shared.ids import new_id
@@ -98,6 +98,7 @@ class AgentRunService:
         command: AppendAgentTurnCommand,
     ) -> AgentRunSummaryView:
         run = await self._require_run(run_id)
+        run = await self._recover_orphaned_run(run)
         if run.status in {AgentRunStatus.RUNNING, AgentRunStatus.AWAITING_APPROVAL}:
             raise app_error(
                 "Agent run is not ready to accept another turn",
@@ -394,6 +395,52 @@ class AgentRunService:
                 component="agent",
             )
         return run
+
+    async def _recover_orphaned_run(self, run: AgentRun) -> AgentRun:
+        if run.status != AgentRunStatus.RUNNING:
+            return run
+        snapshot = self._tasks.get_snapshot(run.run_id)
+        if snapshot is not None and snapshot.status == TaskStatus.RUNNING:
+            return run
+        now = utc_now()
+        error = app_error(
+            "Previous agent turn stopped before reaching a terminal state",
+            code="agent.run.orphaned",
+            category="internal",
+            status_code=500,
+            details={
+                "run_id": run.run_id,
+                "task_status": snapshot.status.value if snapshot is not None else None,
+            },
+            operation="agent_run.recover_orphaned",
+            component="agent",
+        )
+        run.status = AgentRunStatus.FAILED
+        run.updated_at = now
+        run.completed_at = now
+        run.error_code = error.code
+        run.error_category = error.category
+        run.error_message = error.message
+        run.error_details = error.to_dict()
+        await self._store.update_run(run)
+        turn = await self._store.get_turn(run.latest_turn_id) if run.latest_turn_id is not None else None
+        if turn is not None and turn.status == AgentTurnStatus.RUNNING:
+            turn.status = AgentTurnStatus.FAILED
+            turn.completed_at = now
+            turn.error_code = error.code
+            turn.error_category = error.category
+            turn.error_message = error.message
+            turn.error_details = error.to_dict()
+            await self._store.update_turn(turn)
+            await self._append_event(
+                run_id=run.run_id,
+                turn_id=turn.turn_id,
+                event_type="agent.turn.failed",
+                severity=error.severity,
+                code=error.code,
+                payload={"turn_id": turn.turn_id, "error": error.to_dict()},
+            )
+        return await self._require_run(run.run_id)
 
     async def _append_event(
         self,

@@ -30,6 +30,9 @@ These backend docs are implementation-oriented and describe the code as it exist
 - **`agent-runtime.md`**
   Detailed explanation of the generic agent runtime, approvals, tools, lifecycle, and event model.
 
+- **`semantic-catalog-and-entity-mutations.md`**
+  Canonical semantic catalog structure, analytics projection, generic entity mutation tools, context refs, undo semantics, and known deferrals.
+
 - **`web-search.md`**
   Provider setup, `search_web` behavior, diagnostics, smoke expectations, and the future fanout seam.
 

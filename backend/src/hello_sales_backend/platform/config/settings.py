@@ -70,6 +70,9 @@ class Settings(BaseSettings):
     web_search_default_max_results: int = Field(default=5, ge=1, le=20)
     web_search_required: bool = False
     web_search_requires_approval: bool = False
+    semantic_catalog_dir: str = "backend/catalogs/semantic"
+    semantic_catalog_default_id: str = "scaffold_stage"
+    entity_ref_signing_secret: str = "scaffold-stage-entity-ref-secret"
     analytics_query_catalog_dir: str = "backend/catalogs/analytics"
     analytics_query_statement_timeout_ms: int = Field(default=5000, ge=100, le=60000)
     analytics_query_default_max_rows: int = Field(default=25, ge=1, le=200)
@@ -99,6 +102,9 @@ class Settings(BaseSettings):
         "web_search_provider",
         "web_search_api_key",
         "tavily_api_key",
+        "semantic_catalog_dir",
+        "semantic_catalog_default_id",
+        "entity_ref_signing_secret",
         "analytics_query_catalog_dir",
         "groq_api_key",
         "openrouter_api_key",

@@ -319,6 +319,8 @@ class ProviderSmokeHarness:
                     "tool_name": result_payload.get("tool_name") if isinstance(result_payload, dict) else None,
                     "row_count": len(rows) if isinstance(rows, list) else 0,
                     "truncated": result_body.get("truncated") if isinstance(result_body, dict) else None,
+                    "catalog_id": result_body.get("catalog_id") if isinstance(result_body, dict) else None,
+                    "catalog_version": result_body.get("catalog_version") if isinstance(result_body, dict) else None,
                 },
             ),
             payload,
@@ -407,6 +409,254 @@ class ProviderSmokeHarness:
                     "tool_name": search_result["payload"].get("tool_name") if isinstance(search_result.get("payload"), dict) else None,
                     "source_count": len(sources) if isinstance(sources, list) else 0,
                     "provider": result_body.get("provider") if isinstance(result_body, dict) else None,
+                },
+            ),
+            payload,
+        )
+
+    async def scenario_entity_mutation_completion(
+        self,
+        client: httpx.AsyncClient,
+    ) -> tuple[SmokeScenarioResult, dict[str, object]]:
+        create_session_id = await self.start_run(
+            client,
+            input_text=(
+                "Use create_entity to create a company_profile with company_name HelloSales and "
+                "industry B2B SaaS. Do not answer without the tool."
+            ),
+            profile_name="generic",
+        )
+        create_payload = await wait_for_terminal_run_state(
+            client,
+            path=f"{self.settings.api_prefix}/sessions/{create_session_id}",
+            terminal_statuses={"awaiting_approval", "failed", "cancelled", "completed"},
+        )
+        if create_payload["status"] != "awaiting_approval":
+            raise app_error(
+                "Entity-mutation smoke did not pause for create_entity approval",
+                code="smoke.generic_agent_provider.entity_mutation.failed",
+                category="runtime",
+                status_code=500,
+                details={"session_id": create_session_id, "status": create_payload["status"]},
+                operation="smoke.generic_agent_provider.entity_mutation",
+                component="smoke",
+            )
+        create_tool_call = next(
+            (
+                item for item in self.extract_items(create_payload)
+                if item.get("item_type") == "tool_call"
+                and isinstance(item.get("payload"), dict)
+                and item["payload"].get("tool_name") == "create_entity"
+            ),
+            None,
+        )
+        if create_tool_call is None:
+            raise app_error(
+                "Entity-mutation smoke did not record a create_entity tool call",
+                code="smoke.generic_agent_provider.entity_mutation.missing_create_call",
+                category="runtime",
+                status_code=500,
+                details={"session_id": create_session_id},
+                operation="smoke.generic_agent_provider.entity_mutation",
+                component="smoke",
+            )
+        create_approval_id = create_tool_call["payload"].get("approval_id")
+        if not isinstance(create_approval_id, str):
+            raise app_error(
+                "Entity-mutation smoke did not receive an approval id for create_entity",
+                code="smoke.generic_agent_provider.entity_mutation.missing_approval",
+                category="runtime",
+                status_code=500,
+                details={"session_id": create_session_id},
+                operation="smoke.generic_agent_provider.entity_mutation",
+                component="smoke",
+            )
+        approval_response = await client.post(
+            f"{self.settings.api_prefix}/sessions/approvals/{create_approval_id}",
+            json={"approved": True},
+        )
+        approval_response.raise_for_status()
+        create_payload = await wait_for_terminal_run_state(
+            client,
+            path=f"{self.settings.api_prefix}/sessions/{create_session_id}",
+            terminal_statuses={"completed", "failed", "cancelled"},
+        )
+        if create_payload["status"] != "completed":
+            raise app_error(
+                "Entity-mutation smoke create_entity run did not complete successfully",
+                code="smoke.generic_agent_provider.entity_mutation.create_failed",
+                category="runtime",
+                status_code=500,
+                details={"session_id": create_session_id, "status": create_payload["status"]},
+                operation="smoke.generic_agent_provider.entity_mutation",
+                component="smoke",
+            )
+        create_result = next(
+            (
+                item
+                for item in self.extract_items(create_payload)
+                if item.get("item_type") == "tool_result"
+                and isinstance(item.get("payload"), dict)
+                and item["payload"].get("tool_name") == "create_entity"
+            ),
+            None,
+        )
+        if create_result is None:
+            raise app_error(
+                "Entity-mutation smoke did not record a create_entity result",
+                code="smoke.generic_agent_provider.entity_mutation.missing_create_result",
+                category="runtime",
+                status_code=500,
+                details={"session_id": create_session_id},
+                operation="smoke.generic_agent_provider.entity_mutation",
+                component="smoke",
+            )
+        create_body = create_result["payload"].get("result") if isinstance(create_result.get("payload"), dict) else {}
+        entity_ref = create_body.get("entity_ref") if isinstance(create_body, dict) else None
+        version = create_body.get("version") if isinstance(create_body, dict) else None
+        if not isinstance(entity_ref, str) or not isinstance(version, str):
+            raise app_error(
+                "Entity-mutation smoke create_entity result did not expose entity_ref and version",
+                code="smoke.generic_agent_provider.entity_mutation.invalid_create_result",
+                category="runtime",
+                status_code=500,
+                details={"session_id": create_session_id},
+                operation="smoke.generic_agent_provider.entity_mutation",
+                component="smoke",
+            )
+        append_response = await client.post(
+            f"{self.settings.api_prefix}/sessions/{create_session_id}/messages",
+            json={
+                "input_text": (
+                    "Use edit_entity to update the current company profile. "
+                    f"entity_ref={entity_ref}. "
+                    f"expected_version={version}. "
+                    "Set quarterly_sales_focus to Improve close rate. "
+                    "Do not answer without the tool."
+                )
+            },
+        )
+        append_response.raise_for_status()
+        edit_session_id = create_session_id
+        payload = await wait_for_terminal_run_state(
+            client,
+            path=f"{self.settings.api_prefix}/sessions/{edit_session_id}",
+            terminal_statuses={"awaiting_approval", "failed", "cancelled", "completed"},
+        )
+        if payload["status"] != "awaiting_approval":
+            raise app_error(
+                "Entity-mutation smoke did not pause for edit_entity approval",
+                code="smoke.generic_agent_provider.entity_mutation.edit_missing_approval",
+                category="runtime",
+                status_code=500,
+                details={"session_id": edit_session_id, "status": payload["status"]},
+                operation="smoke.generic_agent_provider.entity_mutation",
+                component="smoke",
+            )
+        edit_tool_call = next(
+            (
+                item for item in self.extract_items(payload)
+                if item.get("item_type") == "tool_call"
+                and isinstance(item.get("payload"), dict)
+                and item["payload"].get("tool_name") == "edit_entity"
+            ),
+            None,
+        )
+        if edit_tool_call is None:
+            raise app_error(
+                "Entity-mutation smoke did not record an edit_entity tool call",
+                code="smoke.generic_agent_provider.entity_mutation.missing_edit_call",
+                category="runtime",
+                status_code=500,
+                details={"session_id": edit_session_id},
+                operation="smoke.generic_agent_provider.entity_mutation",
+                component="smoke",
+            )
+        edit_approval_id = edit_tool_call["payload"].get("approval_id")
+        if not isinstance(edit_approval_id, str):
+            raise app_error(
+                "Entity-mutation smoke did not receive an approval id for edit_entity",
+                code="smoke.generic_agent_provider.entity_mutation.missing_approval",
+                category="runtime",
+                status_code=500,
+                details={"session_id": edit_session_id},
+                operation="smoke.generic_agent_provider.entity_mutation",
+                component="smoke",
+            )
+        approval_response = await client.post(
+            f"{self.settings.api_prefix}/sessions/approvals/{edit_approval_id}",
+            json={"approved": True},
+        )
+        approval_response.raise_for_status()
+        payload = await wait_for_terminal_run_state(
+            client,
+            path=f"{self.settings.api_prefix}/sessions/{edit_session_id}",
+            terminal_statuses={"completed", "failed", "cancelled"},
+        )
+        if payload["status"] != "completed":
+            raise app_error(
+                "Entity-mutation smoke edit_entity run did not complete successfully",
+                code="smoke.generic_agent_provider.entity_mutation.edit_failed",
+                category="runtime",
+                status_code=500,
+                details={"session_id": edit_session_id, "status": payload["status"]},
+                operation="smoke.generic_agent_provider.entity_mutation",
+                component="smoke",
+            )
+        edit_result = next(
+            (
+                item
+                for item in self.extract_items(payload)
+                if item.get("item_type") == "tool_result"
+                and isinstance(item.get("payload"), dict)
+                and item["payload"].get("tool_name") == "edit_entity"
+            ),
+            None,
+        )
+        if edit_result is None:
+            raise app_error(
+                "Entity-mutation smoke did not record an edit_entity result",
+                code="smoke.generic_agent_provider.entity_mutation.missing_edit_result",
+                category="runtime",
+                status_code=500,
+                details={"session_id": edit_session_id},
+                operation="smoke.generic_agent_provider.entity_mutation",
+                component="smoke",
+            )
+        profile_response = await client.get(f"{self.settings.api_prefix}/company-profile")
+        profile_response.raise_for_status()
+        profile = profile_response.json()["data"]
+        if not isinstance(profile, dict):
+            raise app_error(
+                "Entity-mutation smoke could not read back the persisted company profile",
+                code="smoke.generic_agent_provider.entity_mutation.invalid_profile",
+                category="runtime",
+                status_code=500,
+                details={"session_id": edit_session_id},
+                operation="smoke.generic_agent_provider.entity_mutation",
+                component="smoke",
+            )
+        edit_body = edit_result["payload"].get("result") if isinstance(edit_result.get("payload"), dict) else {}
+        return (
+            SmokeScenarioResult(
+                name="entity_mutation_completion",
+                status="completed",
+                session_id=edit_session_id,
+                details={
+                    "create_tool_name": create_result["payload"].get("tool_name") if isinstance(create_result.get("payload"), dict) else None,
+                    "edit_tool_name": edit_result["payload"].get("tool_name") if isinstance(edit_result.get("payload"), dict) else None,
+                    "create_session_id": create_session_id,
+                    "edit_session_id": edit_session_id,
+                    "catalog_id": edit_body.get("catalog_id") if isinstance(edit_body, dict) else None,
+                    "catalog_version": edit_body.get("catalog_version") if isinstance(edit_body, dict) else None,
+                    "entity_ref": edit_body.get("entity_ref") if isinstance(edit_body, dict) else None,
+                    "entity_type": edit_body.get("entity_type") if isinstance(edit_body, dict) else None,
+                    "undo_status": edit_body.get("undo_status") if isinstance(edit_body, dict) else None,
+                    "changed_fields": edit_body.get("changed_fields") if isinstance(edit_body, dict) else None,
+                    "created_version": create_body.get("version") if isinstance(create_body, dict) else None,
+                    "edited_version": edit_body.get("version") if isinstance(edit_body, dict) else None,
+                    "company_name": profile.get("company_name"),
+                    "quarterly_sales_focus": profile.get("quarterly_sales_focus"),
                 },
             ),
             payload,
@@ -512,6 +762,10 @@ class _ProviderSmokeBase(SmokeCase):
         harness.validate_provider_configuration()
         try:
             await _seed_test_analytics_data(
+                environment=str(context.settings.environment),
+                database_url=str(context.settings.database_url),
+            )
+            await _reset_test_company_data(
                 environment=str(context.settings.environment),
                 database_url=str(context.settings.database_url),
             )
@@ -635,6 +889,28 @@ async def _seed_test_analytics_data(*, environment: str, database_url: str) -> N
     raise ValueError(f"Unsupported smoke database url: {database_url}")
 
 
+async def _reset_test_company_data(*, environment: str, database_url: str) -> None:
+    if environment not in {"test", "development"}:
+        return
+    prefix = "sqlite+aiosqlite:///"
+    if database_url.startswith(prefix):
+        database_path = Path(database_url.removeprefix(prefix))
+        await asyncio.to_thread(_reset_sqlite_company_data, database_path)
+        return
+
+    postgres_prefix = "postgresql+asyncpg://"
+    if database_url.startswith(postgres_prefix):
+        connection = await asyncpg.connect(database_url.replace("+asyncpg", "", 1))
+        try:
+            await connection.execute("DELETE FROM products")
+            await connection.execute("DELETE FROM company_profiles")
+        finally:
+            await connection.close()
+        return
+
+    raise ValueError(f"Unsupported smoke database url: {database_url}")
+
+
 def _seed_sqlite_analytics_data(database_path: Path) -> None:
     connection = sqlite3.connect(database_path)
     try:
@@ -664,6 +940,16 @@ def _seed_sqlite_analytics_data(database_path: Path) -> None:
                 ('2026-04-21', 'web', 8, 3, 10000)
             """
         )
+        connection.commit()
+    finally:
+        connection.close()
+
+
+def _reset_sqlite_company_data(database_path: Path) -> None:
+    connection = sqlite3.connect(database_path)
+    try:
+        connection.execute("DELETE FROM products")
+        connection.execute("DELETE FROM company_profiles")
         connection.commit()
     finally:
         connection.close()
@@ -763,5 +1049,37 @@ class GenericAgentWebSearchSmoke(_ProviderSmokeBase):
         harness: ProviderSmokeHarness,
     ) -> GenericAgentProviderSmokeResult:
         scenario, payload = await harness.scenario_web_search_completion(client)
+        session_id = str(scenario.session_id)
+        return self._result(harness, payload, [scenario], session_id=session_id)
+
+
+class GenericAgentSemanticCatalogReadSmoke(_ProviderSmokeBase):
+    """Run the semantic-catalog analytics read scenario with a real provider."""
+
+    name = "generic-agent-provider-semantic-catalog-read"
+    description = "Runs a provider-backed analytics read through the semantic catalog."
+
+    async def execute(
+        self,
+        client: httpx.AsyncClient,
+        harness: ProviderSmokeHarness,
+    ) -> GenericAgentProviderSmokeResult:
+        scenario, payload = await harness.scenario_analytics_query_completion(client)
+        session_id = str(scenario.session_id)
+        return self._result(harness, payload, [scenario], session_id=session_id)
+
+
+class GenericAgentEntityMutationSmoke(_ProviderSmokeBase):
+    """Run the entity mutation create/edit flow with a real provider."""
+
+    name = "generic-agent-provider-entity-mutation"
+    description = "Runs provider-backed create_entity and edit_entity approval flows and verifies persisted state."
+
+    async def execute(
+        self,
+        client: httpx.AsyncClient,
+        harness: ProviderSmokeHarness,
+    ) -> GenericAgentProviderSmokeResult:
+        scenario, payload = await harness.scenario_entity_mutation_completion(client)
         session_id = str(scenario.session_id)
         return self._result(harness, payload, [scenario], session_id=session_id)
