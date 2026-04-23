@@ -290,6 +290,8 @@ async def test_analytics_query_service_emits_validation_failures(test_settings: 
             )
 
     assert exc_info.value.code == "analytics_query.validation.forbidden_relation"
+    assert exc_info.value.details["catalog_id"] == "scaffold_stage"
+    assert exc_info.value.details["catalog_version"] == "2026-04-23"
     recent_events = app.state.container.observability.recent_events(limit=10)
     assert any(event.event_type == "analytics_query.failed" for event in recent_events)
 

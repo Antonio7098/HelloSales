@@ -54,12 +54,15 @@ The current concrete profiles are:
 
 The current generic-agent tool bundle includes:
 - `query_analytics_data`
+- `create_entity`
+- `edit_entity`
 - `search_web`
 
 The governed SQL tool is intentionally generic-agent-only in Sprint 5.
 It is not registered on the observer profile.
 The public web-search tool is also generic-agent-only in Sprint 6.
 It is for current or public internet information, not private customer data or internal-only analytics.
+Generic entity mutation tools were added in Sprint 7 and remain generic-agent-only with static approval required for every write.
 
 ### 3. Operational Exposure Through A Module
 Location:
@@ -225,6 +228,7 @@ Tool execution uses:
 - tool name
 - structured arguments
 - execution context containing request / trace / actor metadata
+- session / run / turn / tool-call correlation metadata when available
 
 `query_analytics_data` is the first governed SQL tool in this runtime.
 Its current policy is:
@@ -244,6 +248,13 @@ On failure:
 - tool failure detail is persisted
 - `agent.tool.failed` event is appended
 - the turn ultimately fails unless the runtime explicitly handles the error
+
+`create_entity` and `edit_entity` now follow the same persisted lifecycle shape.
+They differ in policy, not in runtime mechanics:
+- both require approval
+- `edit_entity` requires an opaque `entity_ref` plus `expected_version`
+- both persist bounded redacted results rather than raw changed values
+- both rely on module-owned validation and execution rather than runtime-owned heuristics
 
 ## Approvals
 

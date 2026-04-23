@@ -47,6 +47,13 @@ const terminalEventTypes = new Set([
   "agent.run.cancelled",
 ]);
 
+function shouldClearDraft(items: SessionItem[], draft: StreamedAssistantDraft): boolean {
+  return (
+    draft.turnId != null &&
+    items.some((item) => item.turn_id === draft.turnId && item.item_type === "assistant_message")
+  );
+}
+
 export function useAgentChat() {
   const [state, setState] = useState<AgentChatState>(initialState);
 
@@ -72,14 +79,11 @@ export function useAgentChat() {
           if (current.session?.session_id !== sessionId) {
             return current;
           }
-          const draftTurnId = current.streamedAssistantDraft.turnId;
-          const hasMatchingItem =
-            draftTurnId != null && items.some((item: SessionItem) => item.turn_id === draftTurnId);
           return {
             ...current,
             session,
             items,
-            streamedAssistantDraft: hasMatchingItem
+            streamedAssistantDraft: shouldClearDraft(items, current.streamedAssistantDraft)
               ? { turnId: null, text: "" }
               : current.streamedAssistantDraft,
             error:
@@ -125,10 +129,7 @@ export function useAgentChat() {
                       : delta,
                 };
         } else if (
-          (event.event_type === "agent.turn.completed" ||
-            event.event_type === "agent.turn.awaiting_approval" ||
-            event.event_type === "agent.turn.failed" ||
-            event.event_type === "agent.turn.cancelled") &&
+          (event.event_type === "agent.turn.failed" || event.event_type === "agent.turn.cancelled") &&
           eventTurnId != null &&
           current.streamedAssistantDraft.turnId === eventTurnId
         ) {
@@ -184,19 +185,22 @@ export function useAgentChat() {
     try {
       const session = await createChatSession({ inputText });
       const items = await getSessionItems(session.session_id);
-      setState({
+      setState((current) => ({
         session,
         items,
-        events: [],
-        streamedAssistantDraft: {
-          turnId: null,
-          text: "",
-        },
+        events: current.session?.session_id === session.session_id ? current.events : [],
+        streamedAssistantDraft:
+          current.session?.session_id === session.session_id && !shouldClearDraft(items, current.streamedAssistantDraft)
+            ? current.streamedAssistantDraft
+            : {
+                turnId: null,
+                text: "",
+              },
         isConnecting: false,
         isSending: false,
         approvalDecisionById: {},
         error: null,
-      });
+      }));
       return session;
     } catch (error) {
       const resolvedError = error instanceof Error ? error : new Error("Failed to create chat session");
@@ -226,10 +230,9 @@ export function useAgentChat() {
         ...current,
         session,
         items,
-        streamedAssistantDraft: {
-          turnId: null,
-          text: "",
-        },
+        streamedAssistantDraft: shouldClearDraft(items, current.streamedAssistantDraft)
+          ? { turnId: null, text: "" }
+          : current.streamedAssistantDraft,
         isSending: false,
         error: null,
       }));

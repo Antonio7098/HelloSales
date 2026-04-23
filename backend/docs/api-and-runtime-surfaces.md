@@ -218,6 +218,10 @@ High-signal extension points today:
 - add a new agent definition under `application/agents/definitions/`
 - add a new worker definition under `application/workers/definitions/`
 - add a new smoke suite under `smoke/suites/`
+
+Recent internal runtime surfaces added in Sprint 7:
+- `modules/semantic_catalog/` for canonical shared schema metadata
+- `modules/entity_operations/` for generic create/edit orchestration, context refs, and undo records
 - extend diagnostics through `modules/system/`
 - extend runtime assembly through `platform/composition/`
 

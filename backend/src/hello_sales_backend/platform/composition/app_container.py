@@ -11,8 +11,10 @@ from hello_sales_backend.application.workers.bootstrap import build_worker_regis
 from hello_sales_backend.modules.agent_runs.bootstrap import build_agent_runs_module
 from hello_sales_backend.modules.analytics_query.bootstrap import build_analytics_query_module
 from hello_sales_backend.modules.company_profile.bootstrap import build_company_profile_module
+from hello_sales_backend.modules.entity_operations.bootstrap import build_entity_operations_module
 from hello_sales_backend.modules.jobs.bootstrap import build_jobs_module
 from hello_sales_backend.modules.sessions.bootstrap import build_sessions_module
+from hello_sales_backend.modules.semantic_catalog.bootstrap import build_semantic_catalog_module
 from hello_sales_backend.modules.system.bootstrap import build_system_module
 from hello_sales_backend.modules.web_search.bootstrap import build_web_search_module
 from hello_sales_backend.modules.worker_runs.bootstrap import build_worker_runs_module
@@ -178,10 +180,12 @@ def build_app_container(settings: Settings, overrides: AppOverrides | None = Non
         agent_registry=agent_registry_diagnostics,
         clock=resolved_overrides.system_clock,
     )
+    semantic_catalog_module = build_semantic_catalog_module(settings=settings)
     analytics_query_module = build_analytics_query_module(
         settings=settings,
         engine=db.engine,
         observability=observability,
+        semantic_catalogs=semantic_catalog_module.service,
     )
     web_search_module = build_web_search_module(
         settings=settings,
@@ -191,11 +195,19 @@ def build_app_container(settings: Settings, overrides: AppOverrides | None = Non
         settings=settings,
         session_factory=db.session_factory,
     )
+    entity_operations_module = build_entity_operations_module(
+        settings=settings,
+        semantic_catalogs=semantic_catalog_module.service,
+        company_profiles=company_profile_module.service,
+        observability=observability,
+    )
     agent_registry = build_agent_registry(
         settings=settings,
         system_service=system_module.service,
         jobs_service=jobs_module.service,
         analytics_query_service=analytics_query_module.service,
+        semantic_catalog_service=semantic_catalog_module.service,
+        entity_operations_service=entity_operations_module.service,
         web_search_service=web_search_module.service,
     )
     agent_registry_diagnostics.registry = agent_registry
@@ -235,7 +247,9 @@ def build_app_container(settings: Settings, overrides: AppOverrides | None = Non
         analytics_query=analytics_query_module,
         agent_runs=agent_runs_module,
         company_profile=company_profile_module,
+        entity_operations=entity_operations_module,
         jobs=jobs_module,
+        semantic_catalog=semantic_catalog_module,
         sessions=sessions_module,
         system=system_module,
         web_search=web_search_module,

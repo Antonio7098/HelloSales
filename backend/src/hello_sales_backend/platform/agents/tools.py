@@ -27,6 +27,10 @@ class AgentToolExecutionContext:
     request_id: str | None
     trace_id: str | None
     actor_id: str | None
+    session_id: str | None = None
+    run_id: str | None = None
+    turn_id: str | None = None
+    tool_call_id: str | None = None
 
 
 @dataclass(slots=True, frozen=True)
@@ -163,7 +167,7 @@ class AgentToolCatalog:
         return definition
 
     def provider_definitions(self) -> list[ProviderToolDefinition]:
-        return [self._definitions[key].provider_definition() for key in sorted(self._definitions)]
+        return [definition.provider_definition() for definition in self._definitions.values()]
 
     async def execute(
         self,

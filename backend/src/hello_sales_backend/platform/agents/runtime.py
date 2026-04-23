@@ -541,6 +541,19 @@ class GenericAgentRuntime:
                 text = item.payload.get("text")
                 if isinstance(text, str) and text.strip():
                     messages.append(ChatMessage(role="assistant", content=text))
+            elif item.item_type == SessionItemType.TOOL_RESULT:
+                result_payload = item.payload.get("result")
+                if isinstance(result_payload, dict):
+                    messages.append(
+                        ChatMessage(
+                            role="system",
+                            content=(
+                                "Recent tool result context from this session. Reuse any entity refs, "
+                                "versions, and bounded tool evidence it contains when relevant.\n"
+                                f"{json.dumps(result_payload, separators=(',', ':'), sort_keys=True)}"
+                            ),
+                        )
+                    )
         return messages
 
     @staticmethod
@@ -548,7 +561,12 @@ class GenericAgentRuntime:
         message_items = [
             item
             for item in items
-            if item.item_type in {SessionItemType.USER_MESSAGE, SessionItemType.ASSISTANT_MESSAGE}
+            if item.item_type
+            in {
+                SessionItemType.USER_MESSAGE,
+                SessionItemType.ASSISTANT_MESSAGE,
+                SessionItemType.TOOL_RESULT,
+            }
         ]
         if not message_items:
             return []
@@ -790,6 +808,10 @@ class GenericAgentRuntime:
                             request_id=run.request_id,
                             trace_id=run.trace_id,
                             actor_id=run.actor_id,
+                            session_id=run.session_id,
+                            run_id=run.run_id,
+                            turn_id=turn.turn_id,
+                            tool_call_id=tool_call.tool_call_id,
                         ),
                     )
                 except Exception as exc:

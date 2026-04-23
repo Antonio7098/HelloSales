@@ -106,6 +106,7 @@ Important current producers include:
 - startup completion and startup failure in `platform/composition/startup.py`
 - background task failure in `platform/tasks/runner.py`
 - agent run failure in `platform/agents/runtime.py`
+- entity mutation success/failure/undo events in `modules/entity_operations/infra/observability.py`
 - worker run lifecycle and failure events in `platform/workers/runtime.py`
 
 This is important because the diagnostics surface is not just passive storage; it reflects events emitted by runtime services.
@@ -207,6 +208,12 @@ Important agent-specific observability surfaces include:
 - tool-call counters and duration histogram by agent profile, tool name, and terminal status
 - approval-request counters by agent profile and tool name
 - tracing spans for `agent_turn.execute` and `agent_tool.execute`
+
+Entity mutation observability adds module-owned operational events keyed by:
+- mutation created / updated / rejected / stale version / failed
+- undo applied / conflicted / unavailable
+
+These mutation events preserve request, trace, actor, session, run, turn, and tool-call correlation metadata when present.
 
 ## Worker Diagnostics
 
