@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from collections import defaultdict
-from typing import Any, cast
+from typing import Any, Awaitable, Callable, cast
 
 import httpx
 
@@ -47,6 +47,17 @@ def _extract_tool_calls(message: dict[str, object]) -> list[ProviderToolCall]:
     return tool_calls
 
 
+def _safe_int(value: object, default: int = 0) -> int:
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str):
+        try:
+            return int(value)
+        except ValueError:
+            return default
+    return default
+
+
 def _merge_tool_call_chunks(chunks: list[dict[str, object]]) -> list[ProviderToolCall]:
     by_index: dict[int, dict[str, object]] = defaultdict(
         lambda: {"id": "", "function": {"name": "", "arguments": ""}}
@@ -54,7 +65,7 @@ def _merge_tool_call_chunks(chunks: list[dict[str, object]]) -> list[ProviderToo
     for chunk in chunks:
         if not isinstance(chunk, dict):
             continue
-        index = int(chunk.get("index", 0))
+        index = _safe_int(chunk.get("index"), 0)
         current = by_index[index]
         call_id = chunk.get("id")
         if isinstance(call_id, str) and call_id:
@@ -262,7 +273,7 @@ class OpenAICompatibleLLMProvider:
         operation: str,
         tools: list[dict[str, object]] | None = None,
         tool_choice: str | None = None,
-        on_text_delta=None,
+        on_text_delta: Callable[[str], Awaitable[None]] | None = None,
     ) -> ToolCallCompletionResult:
         request_payload: dict[str, object] = {
             "model": self._model,
@@ -393,7 +404,7 @@ class OpenAICompatibleLLMProvider:
         tools: list[ProviderToolDefinition],
         context: LLMCallContext | None = None,
         tool_choice: str | None = None,
-        on_text_delta=None,
+        on_text_delta: Callable[[str], Awaitable[None]] | None = None,
     ) -> ToolCallCompletionResult:
         provider_tools: list[dict[str, object]] = [
             {

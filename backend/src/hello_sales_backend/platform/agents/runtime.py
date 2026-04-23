@@ -6,7 +6,7 @@ import asyncio
 import json
 from dataclasses import dataclass, field
 from time import perf_counter
-from typing import Any, Protocol
+from typing import Any, Protocol, cast
 
 from stageflow.pipeline.dag import UnifiedStageExecutionError
 
@@ -33,6 +33,17 @@ from hello_sales_backend.platform.llm import (
     provider_error_issue,
 )
 from hello_sales_backend.platform.llm.contracts import LLMCallContext, LLMProviderPort
+
+
+def _safe_int(value: object, default: int) -> int:
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str):
+        try:
+            return int(value)
+        except ValueError:
+            return default
+    return default
 from hello_sales_backend.platform.observability.events import OperationalEvent
 from hello_sales_backend.platform.observability.logging import get_logger
 from hello_sales_backend.platform.observability.runtime import ObservabilityRuntime
@@ -295,7 +306,7 @@ class GenericAgentRuntime:
             )
             if execution_result.get("awaiting_approval") is True:
                 return execution_result
-            failed_tool_attempts = int(execution_result.get("failed_tool_attempts", failed_tool_attempts))
+            failed_tool_attempts = _safe_int(execution_result.get("failed_tool_attempts"), failed_tool_attempts)
             budget_exhausted_now = bool(
                 execution_result.get("tool_retry_budget_exhausted", tool_retry_budget_exhausted)
             )
@@ -801,10 +812,10 @@ class GenericAgentRuntime:
                     )
                     tool_call.status = AgentToolCallStatus.FAILED
                     tool_call.completed_at = utc_now()
-                    tool_call.error_code = structured.code
-                    tool_call.error_category = structured.category
-                    tool_call.error_message = structured.message
-                    tool_call.error_details = structured.to_dict()
+                    tool_call.error_code = structured.code  # type: ignore[attr-defined]
+                    tool_call.error_category = structured.category  # type: ignore[attr-defined]
+                    tool_call.error_message = structured.message  # type: ignore[attr-defined]
+                    tool_call.error_details = structured.to_dict()  # type: ignore[attr-defined]
                     await self._update_tool_call(tool_call)
                     if self.sessions is not None:
                         await self.sessions.append_tool_result(run=run, turn=turn, tool_call=tool_call)
@@ -812,12 +823,12 @@ class GenericAgentRuntime:
                         run_id=run.run_id,
                         turn_id=turn.turn_id,
                         event_type="agent.tool.failed",
-                        severity=structured.severity,
-                        code=structured.code,
+                        severity=structured.severity,  # type: ignore[attr-defined]
+                        code=structured.code,  # type: ignore[attr-defined]
                         payload={
                             "tool_call_id": tool_call.tool_call_id,
                             "tool_name": tool_call.tool_name,
-                            "error": structured.to_dict(),
+                            "error": structured.to_dict(),  # type: ignore[attr-defined]
                         },
                     )
                     self.observability.finish_agent_tool_span(
@@ -831,7 +842,7 @@ class GenericAgentRuntime:
                         error_type=structured.__class__.__name__,
                     )
                     if expected_tool_failure:
-                        return structured
+                        return structured  # type: ignore[return-value]
                     raise structured from exc
                 tool_call.status = AgentToolCallStatus.COMPLETED
                 tool_call.completed_at = utc_now()

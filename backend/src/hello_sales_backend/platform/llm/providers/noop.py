@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Awaitable, Callable
+
 from hello_sales_backend.platform.llm.contracts import (
     JSONGenerationResult,
     JSONSchemaHint,
@@ -73,7 +75,7 @@ class NoopLLMProvider:
         tools: list[ProviderToolDefinition],
         context: LLMCallContext | None = None,
         tool_choice: str | None = None,
-        on_text_delta=None,
+        on_text_delta: Callable[[str], Awaitable[None]] | None = None,
     ) -> ToolCallCompletionResult:
         del tools, tool_choice, on_text_delta
         raise app_error(
