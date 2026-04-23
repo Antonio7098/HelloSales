@@ -7,6 +7,7 @@ from hello_sales_backend.modules.analytics_query.use_cases.analytics_query_servi
     AnalyticsQueryService,
 )
 from hello_sales_backend.modules.analytics_query.use_cases.ports import AnalyticsCatalog
+from hello_sales_backend.modules.web_search.use_cases.web_search_service import WebSearchService
 
 from .prompts import build_generic_agent_prompt
 from .tools import build_tool_catalog
@@ -41,6 +42,8 @@ def _fallback_schema_text() -> str:
 def build_generic_agent_definition(
     *,
     analytics_query_service: AnalyticsQueryService,
+    web_search_service: WebSearchService,
+    search_web_requires_approval: bool,
 ) -> AgentDefinition:
     """Build the company analyst agent definition."""
 
@@ -52,6 +55,10 @@ def build_generic_agent_definition(
     return AgentDefinition(
         agent_id="generic",
         display_name="Company Analyst",
-        tools=build_tool_catalog(analytics_query_service=analytics_query_service),
+        tools=build_tool_catalog(
+            analytics_query_service=analytics_query_service,
+            web_search_service=web_search_service,
+            search_web_requires_approval=search_web_requires_approval,
+        ),
         prompt=build_generic_agent_prompt(schema_text=schema_text),
     )

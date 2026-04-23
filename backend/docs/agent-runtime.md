@@ -53,13 +53,13 @@ The current concrete profiles are:
 - `observer`
 
 The current generic-agent tool bundle includes:
-- `get_runtime_status`
-- `list_recent_tasks`
-- `run_diagnostic_job`
 - `query_analytics_data`
+- `search_web`
 
 The governed SQL tool is intentionally generic-agent-only in Sprint 5.
 It is not registered on the observer profile.
+The public web-search tool is also generic-agent-only in Sprint 6.
+It is for current or public internet information, not private customer data or internal-only analytics.
 
 ### 3. Operational Exposure Through A Module
 Location:
@@ -148,6 +148,15 @@ A tool call records:
 - approval id when applicable
 - result payload on success
 - error summary on failure
+
+### Public Web Search Tool Policy
+
+`search_web` is a native tool backed by `modules/web_search.WebSearchService`.
+The service returns normalized source objects and metadata only; it does not synthesize final answers.
+The agent prompt instructs the model to use returned URLs for citation and to prefer governed SQL for approved internal analytics data.
+
+The tool must not be used to send secrets, private customer data, confidential internal data, or internal-only analytics facts to a public search provider.
+Approval is configurable with `HELLO_SALES_WEB_SEARCH_REQUIRES_APPROVAL`.
 
 ### Event Stream Lifecycle
 A run has an append-only ordered event stream.

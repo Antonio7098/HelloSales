@@ -45,6 +45,14 @@ class AgentStorePort(Protocol):
 
     async def list_events(self, run_id: str, limit: int = 100) -> list[AgentStreamEvent]: ...
 
+    async def list_events_after(
+        self,
+        run_id: str,
+        *,
+        after_sequence: int,
+        limit: int = 100,
+    ) -> list[AgentStreamEvent]: ...
+
     async def next_turn_sequence(self, run_id: str) -> int: ...
 
     async def next_tool_sequence(self, run_id: str, turn_id: str) -> int: ...

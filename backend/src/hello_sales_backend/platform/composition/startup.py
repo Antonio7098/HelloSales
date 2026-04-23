@@ -81,6 +81,8 @@ async def bootstrap_container(container: AppContainer) -> None:
             workflow_installed=container.workflow_runtime.installed,
             llm_provider=container.providers.llm.provider_name,
             llm_available=container.providers.llm.is_configured(),
+            web_search_provider=container.providers.web_search.provider_name,
+            web_search_available=container.providers.web_search.is_configured(),
         )
         await container.observability.emit(
             OperationalEvent(
@@ -97,6 +99,8 @@ async def bootstrap_container(container: AppContainer) -> None:
                     "workflow_installed": container.workflow_runtime.installed,
                     "llm_provider": container.providers.llm.provider_name,
                     "llm_available": container.providers.llm.is_configured(),
+                    "web_search_provider": container.providers.web_search.provider_name,
+                    "web_search_available": container.providers.web_search.is_configured(),
                 },
             )
         )

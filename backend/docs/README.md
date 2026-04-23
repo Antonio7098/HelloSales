@@ -30,6 +30,9 @@ These backend docs are implementation-oriented and describe the code as it exist
 - **`agent-runtime.md`**
   Detailed explanation of the generic agent runtime, approvals, tools, lifecycle, and event model.
 
+- **`web-search.md`**
+  Provider setup, `search_web` behavior, diagnostics, smoke expectations, and the future fanout seam.
+
 - **`worker-runtime.md`**
   Detailed explanation of the worker runtime, structured-output validation, retries, and operational monitoring.
 

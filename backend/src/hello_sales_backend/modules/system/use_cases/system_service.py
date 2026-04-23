@@ -84,7 +84,13 @@ class SystemService:
     async def get_diagnostics(self) -> SystemDiagnosticsView:
         providers = [
             ProviderDiagnosticsView.model_validate(
-                ProviderRuntimeStatus(name=item.name, available=item.available).model_dump()
+                ProviderRuntimeStatus(
+                    name=item.name,
+                    available=item.available,
+                    kind=item.kind,
+                    required=item.required,
+                    degraded=item.degraded,
+                ).model_dump()
             )
             for item in self._providers.diagnostics()
         ]

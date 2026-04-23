@@ -18,6 +18,9 @@ class ProviderDiagnosticsView(BaseModel):
 
     name: str
     available: bool
+    kind: str = "provider"
+    required: bool = False
+    degraded: bool = False
 
 
 class TaskSnapshotView(BaseModel):

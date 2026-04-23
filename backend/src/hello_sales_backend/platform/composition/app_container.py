@@ -14,6 +14,7 @@ from hello_sales_backend.modules.company_profile.bootstrap import build_company_
 from hello_sales_backend.modules.jobs.bootstrap import build_jobs_module
 from hello_sales_backend.modules.sessions.bootstrap import build_sessions_module
 from hello_sales_backend.modules.system.bootstrap import build_system_module
+from hello_sales_backend.modules.web_search.bootstrap import build_web_search_module
 from hello_sales_backend.modules.worker_runs.bootstrap import build_worker_runs_module
 from hello_sales_backend.platform.agents.config import AgentRuntimeConfig
 from hello_sales_backend.platform.agents.contracts import AgentProfileCatalogPort
@@ -125,7 +126,11 @@ def build_app_container(settings: Settings, overrides: AppOverrides | None = Non
         session_store=session_store,
         worker_store=worker_store,
     )
-    providers = build_provider_registry(settings=settings, llm_provider=resolved_overrides.llm_provider)
+    providers = build_provider_registry(
+        settings=settings,
+        llm_provider=resolved_overrides.llm_provider,
+        web_search_provider=resolved_overrides.web_search_provider,
+    )
     task_event_sink = resolved_overrides.task_event_sink
     if task_event_sink is None and not settings.database_url.startswith("sqlite+aiosqlite"):
         task_event_sink = task_run_store
@@ -178,14 +183,20 @@ def build_app_container(settings: Settings, overrides: AppOverrides | None = Non
         engine=db.engine,
         observability=observability,
     )
+    web_search_module = build_web_search_module(
+        settings=settings,
+        provider=providers.web_search,
+    )
     company_profile_module = build_company_profile_module(
         settings=settings,
         session_factory=db.session_factory,
     )
     agent_registry = build_agent_registry(
+        settings=settings,
         system_service=system_module.service,
         jobs_service=jobs_module.service,
         analytics_query_service=analytics_query_module.service,
+        web_search_service=web_search_module.service,
     )
     agent_registry_diagnostics.registry = agent_registry
     agent_runtime = GenericAgentRuntime(
@@ -227,6 +238,7 @@ def build_app_container(settings: Settings, overrides: AppOverrides | None = Non
         jobs=jobs_module,
         sessions=sessions_module,
         system=system_module,
+        web_search=web_search_module,
         worker_runs=worker_runs_module,
     )
     return AppContainer(
