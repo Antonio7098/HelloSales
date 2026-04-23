@@ -181,7 +181,6 @@ def build_app_container(settings: Settings, overrides: AppOverrides | None = Non
     dashboard_data_module = build_dashboard_data_module(
         settings=settings,
         session_factory=db.session_factory,
-        seed_path=settings.dashboard_data_seed_path,
     )
     agent_registry = build_agent_registry(
         system_service=system_module.service,
