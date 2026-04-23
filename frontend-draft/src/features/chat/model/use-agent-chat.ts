@@ -39,11 +39,22 @@ const initialState: AgentChatState = {
   error: null,
 };
 
+const terminalSessionStatuses = new Set(["completed", "failed", "cancelled"]);
+const terminalEventTypes = new Set([
+  "agent.turn.completed",
+  "agent.turn.failed",
+  "agent.turn.cancelled",
+  "agent.run.cancelled",
+]);
+
 export function useAgentChat() {
   const [state, setState] = useState<AgentChatState>(initialState);
 
   useEffect(() => {
     if (!state.session) {
+      return;
+    }
+    if (terminalSessionStatuses.has(state.session.status)) {
       return;
     }
 
@@ -82,7 +93,8 @@ export function useAgentChat() {
       }
     }
 
-    const unsubscribe = subscribeToSessionEvents(sessionId, lastSequence, (event) => {
+    let unsubscribe = () => {};
+    unsubscribe = subscribeToSessionEvents(sessionId, lastSequence, (event) => {
       setState((current) => {
         const latestSequence = current.events.at(-1)?.sequence_no ?? 0;
         const alreadySeen =
@@ -150,13 +162,18 @@ export function useAgentChat() {
       ) {
         void refreshSessionState();
       }
+
+      if (terminalEventTypes.has(event.event_type)) {
+        isClosed = true;
+        unsubscribe();
+      }
     });
 
     return () => {
       isClosed = true;
       unsubscribe();
     };
-  }, [state.session]);
+  }, [state.session?.session_id, state.session?.status]);
 
   async function startSession(inputText: string) {
     setState((current) => ({

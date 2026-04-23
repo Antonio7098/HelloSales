@@ -324,6 +324,94 @@ class ProviderSmokeHarness:
             payload,
         )
 
+    async def scenario_web_search_completion(
+        self,
+        client: httpx.AsyncClient,
+    ) -> tuple[SmokeScenarioResult, dict[str, object]]:
+        if not self.settings.resolved_web_search_provider or not self.settings.resolved_web_search_api_key:
+            raise app_error(
+                "Web-search provider is not configured",
+                code="smoke.generic_agent_provider.web_search.missing_provider",
+                category="config",
+                status_code=500,
+                details={"required_env": ["WEB_SEARCH_PROVIDER", "WEB_SEARCH_API_KEY or TAVILY_API_KEY"]},
+                operation="smoke.generic_agent_provider.web_search",
+                component="smoke",
+            )
+        session_id = await self.start_run(
+            client,
+            input_text=(
+                "Use search_web now for current public information about Tavily web search APIs. "
+                "Cite the returned source URL."
+            ),
+            profile_name="generic",
+        )
+        payload = await wait_for_terminal_run_state(
+            client,
+            path=f"{self.settings.api_prefix}/sessions/{session_id}",
+            terminal_statuses={"completed", "failed", "cancelled", "awaiting_approval"},
+        )
+        if payload["status"] == "awaiting_approval":
+            tool_call = next(item for item in self.extract_items(payload) if item.get("item_type") == "tool_call")
+            approval_id = None
+            if isinstance(tool_call.get("payload"), dict):
+                approval_id = tool_call["payload"].get("approval_id")
+            if isinstance(approval_id, str):
+                approval_response = await client.post(
+                    f"{self.settings.api_prefix}/sessions/approvals/{approval_id}",
+                    json={"approved": True},
+                )
+                approval_response.raise_for_status()
+                payload = await wait_for_terminal_run_state(
+                    client,
+                    path=f"{self.settings.api_prefix}/sessions/{session_id}",
+                    terminal_statuses={"completed", "failed", "cancelled"},
+                )
+        if payload["status"] != "completed":
+            raise app_error(
+                "Web-search provider smoke scenario did not complete successfully",
+                code="smoke.generic_agent_provider.web_search.failed",
+                category="runtime",
+                status_code=500,
+                details={"session_id": session_id, "status": payload["status"]},
+                operation="smoke.generic_agent_provider.web_search",
+                component="smoke",
+            )
+        tool_results = [item for item in self.extract_items(payload) if item.get("item_type") == "tool_result"]
+        search_result = next(
+            (
+                item
+                for item in tool_results
+                if isinstance(item.get("payload"), dict) and item["payload"].get("tool_name") == "search_web"
+            ),
+            None,
+        )
+        if search_result is None:
+            raise app_error(
+                "Web-search provider smoke did not record a search_web tool result",
+                code="smoke.generic_agent_provider.web_search.missing_tool_result",
+                category="runtime",
+                status_code=500,
+                details={"session_id": session_id},
+                operation="smoke.generic_agent_provider.web_search",
+                component="smoke",
+            )
+        result_body = search_result["payload"].get("result") if isinstance(search_result.get("payload"), dict) else {}
+        sources = result_body.get("sources") if isinstance(result_body, dict) else []
+        return (
+            SmokeScenarioResult(
+                name="web_search_completion",
+                status="completed",
+                session_id=session_id,
+                details={
+                    "tool_name": search_result["payload"].get("tool_name") if isinstance(search_result.get("payload"), dict) else None,
+                    "source_count": len(sources) if isinstance(sources, list) else 0,
+                    "provider": result_body.get("provider") if isinstance(result_body, dict) else None,
+                },
+            ),
+            payload,
+        )
+
     async def scenario_approval_boundary(self, client: httpx.AsyncClient) -> tuple[SmokeScenarioResult, dict[str, object]]:
         session_id = await self.start_run(
             client,
@@ -661,3 +749,19 @@ class GenericAgentEventStreamSmoke(_ProviderSmokeBase):
         session_id = str(baseline.session_id)
         scenario, payload = await harness.scenario_event_stream_replay(client, existing_session_id=session_id)
         return self._result(harness, payload, [baseline, scenario], session_id=session_id)
+
+
+class GenericAgentWebSearchSmoke(_ProviderSmokeBase):
+    """Run the generic-agent public web-search scenario with real providers."""
+
+    name = "generic-agent-provider-web-search"
+    description = "Runs a provider-backed generic-agent web-search tool scenario."
+
+    async def execute(
+        self,
+        client: httpx.AsyncClient,
+        harness: ProviderSmokeHarness,
+    ) -> GenericAgentProviderSmokeResult:
+        scenario, payload = await harness.scenario_web_search_completion(client)
+        session_id = str(scenario.session_id)
+        return self._result(harness, payload, [scenario], session_id=session_id)

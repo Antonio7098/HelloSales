@@ -75,7 +75,51 @@ class HealthService:
                 required=self._workflows.required,
                 details={"engine": self._workflows.engine_name},
             ),
+            "web_search": HealthCheckView(
+                status="disabled",
+                required=self._settings.web_search_required,
+                details={"provider": self._settings.resolved_web_search_provider or "noop"},
+            ),
         }
+        if self._settings.resolved_web_search_provider:
+            if self._settings.resolved_web_search_api_key:
+                checks["web_search"] = HealthCheckView(
+                    status="configured",
+                    required=self._settings.web_search_required,
+                    details={"provider": self._settings.resolved_web_search_provider},
+                )
+            elif self._settings.web_search_required:
+                checks["web_search"] = HealthCheckView(
+                    status="not_ready",
+                    required=True,
+                    details={"provider": self._settings.resolved_web_search_provider},
+                )
+                self._record_metrics(
+                    kind="readiness",
+                    payload=HealthReadinessView(
+                        status="not_ready",
+                        database=database_status,
+                        workflows=workflow_status,
+                        checks=checks,
+                    ),
+                )
+                raise app_error(
+                    "Required web search provider is not configured",
+                    code="dependency.web_search.not_configured",
+                    category="dependency",
+                    status_code=503,
+                    severity="critical",
+                    details={"provider": self._settings.resolved_web_search_provider},
+                    operation="health.readiness",
+                    component="provider",
+                )
+            else:
+                overall_status = "degraded"
+                checks["web_search"] = HealthCheckView(
+                    status="missing_credentials",
+                    required=False,
+                    details={"provider": self._settings.resolved_web_search_provider},
+                )
 
         if database_required:
             try:

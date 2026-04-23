@@ -98,6 +98,7 @@ For the self-hosted stack introduced in Sprint 3, the intended endpoint is the O
 ## Provider Configuration Model
 
 The backend currently resolves one shared LLM provider path that both the conversational agent runtime and the worker runtime consume.
+It also resolves an optional public web-search provider path for the generic agent's `search_web` tool and the reusable `modules/web_search` service.
 
 Relevant variables include:
 - `HELLO_SALES_GENERIC_AGENT_PROVIDER`
@@ -107,6 +108,13 @@ Relevant variables include:
 - `HELLO_SALES_GROQ_API_KEY`
 - `HELLO_SALES_OPENROUTER_API_KEY`
 - `HELLO_SALES_OPENAI_API_KEY`
+- `HELLO_SALES_WEB_SEARCH_PROVIDER`
+- `HELLO_SALES_WEB_SEARCH_API_KEY`
+- `HELLO_SALES_TAVILY_API_KEY`
+- `HELLO_SALES_WEB_SEARCH_TIMEOUT_SECONDS`
+- `HELLO_SALES_WEB_SEARCH_DEFAULT_MAX_RESULTS`
+- `HELLO_SALES_WEB_SEARCH_REQUIRED`
+- `HELLO_SALES_WEB_SEARCH_REQUIRES_APPROVAL`
 
 The settings name remains `generic_agent_*` because that path existed before the neutral `platform/llm/` extraction.
 At runtime, the resolved provider now backs:
@@ -131,6 +139,24 @@ Resolution behavior is:
 - otherwise known providers get their default base URL
 - API key is chosen based on the resolved provider name
 
+### Public Web Search Provider Resolution
+
+The web-search provider is intentionally separate from the LLM provider.
+The current built-in adapter is:
+- `tavily`
+
+Resolution behavior:
+- `HELLO_SALES_WEB_SEARCH_PROVIDER=tavily` selects the Tavily adapter
+- `HELLO_SALES_WEB_SEARCH_API_KEY` is the generic web-search key override
+- `HELLO_SALES_TAVILY_API_KEY` is used when the provider is `tavily` and no generic web-search key is set
+- no provider or missing credentials resolves to the no-op provider unless web search is required
+- `HELLO_SALES_WEB_SEARCH_REQUIRES_APPROVAL=true` makes `search_web` pause for approval before sending a query to the provider
+
+Readiness behavior:
+- web search is optional by default and appears as disabled or degraded in readiness/diagnostics when not configured
+- `HELLO_SALES_WEB_SEARCH_REQUIRED=true` makes readiness fail if a provider is selected without usable credentials
+- diagnostics expose provider `kind=web_search`, availability, required state, and degraded state
+
 ## Startup Validation
 
 Startup validation lives in:
@@ -140,6 +166,7 @@ Current startup validation checks:
 - environment must be one of `development`, `test`, `staging`, `production`
 - configured generic-agent provider must be supported
 - provider config must not be partial
+- required web-search readiness fails when the selected search provider has no usable credentials
 
 ### Partial Provider Config
 The backend treats partial provider configuration as a startup error.

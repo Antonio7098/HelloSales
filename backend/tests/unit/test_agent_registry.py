@@ -11,6 +11,7 @@ from hello_sales_backend.modules.analytics_query.use_cases.analytics_query_servi
 )
 from hello_sales_backend.modules.jobs.bootstrap import build_jobs_module
 from hello_sales_backend.modules.system.bootstrap import build_system_module
+from hello_sales_backend.modules.web_search.use_cases.web_search_service import WebSearchService
 from hello_sales_backend.platform.config.settings import Settings
 from hello_sales_backend.platform.observability.runtime import (
     AlertPolicy,
@@ -46,10 +47,13 @@ def _build_registry() -> AgentRegistry:
         clock=None,
     )
     analytics_query_service = cast(AnalyticsQueryService, type("AnalyticsQueryStub", (), {"query_data": None})())
+    web_search_service = cast(WebSearchService, type("WebSearchStub", (), {"search": None})())
     return build_agent_registry(
+        settings=settings,
         system_service=system_module.service,
         jobs_service=jobs_module.service,
         analytics_query_service=analytics_query_service,
+        web_search_service=web_search_service,
     )
 
 
@@ -62,6 +66,7 @@ def test_agent_registry_exposes_generic_and_observer_profiles() -> None:
     assert generic.agent_id == "generic"
     assert observer.agent_id == "observer"
     assert generic.tools.has("query_analytics_data")
+    assert generic.tools.has("search_web")
     assert observer.tools.has("get_runtime_status")
     assert not observer.tools.has("run_diagnostic_job")
 

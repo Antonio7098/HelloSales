@@ -10,6 +10,7 @@ from hello_sales_backend.modules.company_profile.bootstrap import CompanyProfile
 from hello_sales_backend.modules.jobs.bootstrap import JobsModule
 from hello_sales_backend.modules.sessions.bootstrap import SessionsModule
 from hello_sales_backend.modules.system.bootstrap import SystemModule
+from hello_sales_backend.modules.web_search.bootstrap import WebSearchModule
 from hello_sales_backend.modules.worker_runs.bootstrap import WorkerRunsModule
 
 
@@ -23,4 +24,5 @@ class ModuleRegistry:
     jobs: JobsModule
     sessions: SessionsModule
     system: SystemModule
+    web_search: WebSearchModule
     worker_runs: WorkerRunsModule

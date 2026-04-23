@@ -80,6 +80,21 @@ class InMemoryAgentStore:
         ordered = sorted(matches, key=lambda item: item.sequence_no)
         return [replace(item) for item in ordered[:limit]]
 
+    async def list_events_after(
+        self,
+        run_id: str,
+        *,
+        after_sequence: int,
+        limit: int = 100,
+    ) -> list[AgentStreamEvent]:
+        matches = [
+            item
+            for item in self._events.values()
+            if item.run_id == run_id and item.sequence_no > after_sequence
+        ]
+        ordered = sorted(matches, key=lambda item: item.sequence_no)
+        return [replace(item) for item in ordered[:limit]]
+
     async def next_turn_sequence(self, run_id: str) -> int:
         current = max((item.sequence_no for item in self._turns.values() if item.run_id == run_id), default=0)
         return current + 1

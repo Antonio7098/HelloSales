@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     }
     SUPPORTED_OBSERVABILITY_METRICS_EXPORTERS: ClassVar[set[str]] = {"prometheus"}
     SUPPORTED_OBSERVABILITY_TRACING_EXPORTERS: ClassVar[set[str]] = {"console", "none", "otlp"}
+    SUPPORTED_WEB_SEARCH_PROVIDERS: ClassVar[set[str]] = {"", "tavily"}
 
     model_config = SettingsConfigDict(
         env_prefix="HELLO_SALES_",
@@ -62,6 +63,13 @@ class Settings(BaseSettings):
     generic_agent_model: str = ""
     generic_agent_base_url: str = ""
     generic_agent_timeout_seconds: float = Field(default=30.0, gt=0)
+    web_search_provider: str = ""
+    web_search_api_key: str = ""
+    tavily_api_key: str = ""
+    web_search_timeout_seconds: float = Field(default=15.0, gt=0)
+    web_search_default_max_results: int = Field(default=5, ge=1, le=20)
+    web_search_required: bool = False
+    web_search_requires_approval: bool = False
     analytics_query_catalog_dir: str = "backend/catalogs/analytics"
     analytics_query_statement_timeout_ms: int = Field(default=5000, ge=100, le=60000)
     analytics_query_default_max_rows: int = Field(default=25, ge=1, le=200)
@@ -88,6 +96,9 @@ class Settings(BaseSettings):
         "generic_agent_provider",
         "generic_agent_model",
         "generic_agent_base_url",
+        "web_search_provider",
+        "web_search_api_key",
+        "tavily_api_key",
         "analytics_query_catalog_dir",
         "groq_api_key",
         "openrouter_api_key",
@@ -129,6 +140,16 @@ class Settings(BaseSettings):
         if value not in cls.SUPPORTED_OBSERVABILITY_TRACING_EXPORTERS:
             supported = ", ".join(sorted(cls.SUPPORTED_OBSERVABILITY_TRACING_EXPORTERS))
             raise ValueError(f"observability_tracing_exporter must be one of: {supported}")
+        return value
+
+    @field_validator("web_search_provider")
+    @classmethod
+    def validate_web_search_provider(cls, value: str) -> str:
+        """Restrict public web-search providers to implemented adapters."""
+
+        if value not in cls.SUPPORTED_WEB_SEARCH_PROVIDERS:
+            supported = ", ".join(sorted(item or "<empty>" for item in cls.SUPPORTED_WEB_SEARCH_PROVIDERS))
+            raise ValueError(f"web_search_provider must be one of: {supported}")
         return value
 
     @field_validator("observability_tracing_otlp_endpoint")
@@ -175,6 +196,22 @@ class Settings(BaseSettings):
             return self.openrouter_api_key
         if provider == "openai":
             return self.openai_api_key
+        return ""
+
+    @property
+    def resolved_web_search_provider(self) -> str:
+        """Return the effective public web-search provider name."""
+
+        return self.web_search_provider
+
+    @property
+    def resolved_web_search_api_key(self) -> str:
+        """Return the effective API key for the configured web-search provider."""
+
+        if self.web_search_api_key:
+            return self.web_search_api_key
+        if self.resolved_web_search_provider == "tavily":
+            return self.tavily_api_key
         return ""
 
     @property

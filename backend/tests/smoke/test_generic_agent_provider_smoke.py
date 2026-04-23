@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from typing import Any
 
 import pytest
 
@@ -34,7 +35,7 @@ class FakeChatModel(ChatModelPort):
         self,
         messages: list[ChatMessage],
         *,
-        context=None,
+        context: object | None = None,
     ) -> ChatCompletion:
         return ChatCompletion(
             provider=self.provider_name,
@@ -46,8 +47,8 @@ class FakeChatModel(ChatModelPort):
         self,
         messages: list[ChatMessage],
         *,
-        schema_hint=None,
-        context=None,
+        schema_hint: object | None = None,
+        context: object | None = None,
     ) -> JSONGenerationResult:
         return JSONGenerationResult(
             provider=self.provider_name,
@@ -61,9 +62,9 @@ class FakeChatModel(ChatModelPort):
         messages: list[dict[str, object]],
         *,
         tools: list[ProviderToolDefinition],
-        context=None,
+        context: object | None = None,
         tool_choice: str | None = None,
-        on_text_delta=None,
+        on_text_delta: Any = None,
     ) -> ToolCallCompletionResult:
         del context, tool_choice, on_text_delta
         latest_user = next(
@@ -106,6 +107,33 @@ def _provider_env_available() -> bool:
             or os.getenv("HELLO_SALES_OPENROUTER_API_KEY")
         )
     )
+
+
+def _real_provider_settings_or_skip(test_settings: Settings) -> Settings:
+    configured = Settings()
+    provider = configured.resolved_web_search_provider or "tavily"
+    settings = test_settings.model_copy(
+        update={
+            "generic_agent_provider": configured.resolved_generic_agent_provider,
+            "generic_agent_model": configured.resolved_generic_agent_model,
+            "generic_agent_base_url": configured.generic_agent_base_url,
+            "groq_api_key": configured.groq_api_key,
+            "openai_api_key": configured.openai_api_key,
+            "openrouter_api_key": configured.openrouter_api_key,
+            "web_search_provider": provider,
+            "web_search_api_key": configured.web_search_api_key,
+            "tavily_api_key": configured.tavily_api_key,
+        }
+    )
+    if not settings.resolved_generic_agent_provider:
+        pytest.skip("real web-search smoke requires HELLO_SALES_GENERIC_AGENT_PROVIDER")
+    if not settings.resolved_generic_agent_model:
+        pytest.skip("real web-search smoke requires HELLO_SALES_GENERIC_AGENT_MODEL")
+    if not settings.resolved_generic_agent_api_key:
+        pytest.skip("real web-search smoke requires a generic-agent provider API key")
+    if not settings.resolved_web_search_api_key:
+        pytest.skip("real web-search smoke requires HELLO_SALES_TAVILY_API_KEY or HELLO_SALES_WEB_SEARCH_API_KEY")
+    return settings
 
 
 @pytest.mark.asyncio
@@ -154,6 +182,40 @@ async def test_generic_agent_provider_smoke_executes_end_to_end(test_settings: S
     }
     tool_results = [item for item in items if item["item_type"] == "tool_result"]
     assert any(item["payload"]["tool_name"] == "query_analytics_data" for item in tool_results)
+
+
+@pytest.mark.asyncio
+async def test_generic_agent_web_search_smoke_executes_real_tool_lifecycle(test_settings: Settings) -> None:
+    settings = _real_provider_settings_or_skip(test_settings)
+    runner = SmokeRunner(
+        build_registry(),
+        SmokeContext.create(settings=settings),
+    )
+
+    result = await runner.run("generic-agent-provider-web-search")
+
+    assert result.smoke_name == "generic-agent-provider-web-search"
+    assert result.payload["status"] == "completed"
+    assert result.payload["provider"] == settings.resolved_generic_agent_provider
+    assert result.payload["model"] == settings.resolved_generic_agent_model
+    assert isinstance(result.payload["response_text"], str)
+    scenarios = result.payload["scenarios"]
+    assert isinstance(scenarios, list)
+    assert scenarios[0]["name"] == "web_search_completion"
+    assert scenarios[0]["status"] == "completed"
+    assert scenarios[0]["details"]["tool_name"] == "search_web"
+    assert scenarios[0]["details"]["source_count"] >= 1
+    assert scenarios[0]["details"]["provider"] == settings.resolved_web_search_provider
+    items = result.payload["items"]
+    assert isinstance(items, list)
+    tool_calls = [item for item in items if item["item_type"] == "tool_call"]
+    tool_results = [item for item in items if item["item_type"] == "tool_result"]
+    assert any(item["payload"]["tool_name"] == "search_web" for item in tool_calls)
+    search_result = next(item for item in tool_results if item["payload"]["tool_name"] == "search_web")
+    assert search_result["payload"]["status"] == "completed"
+    assert search_result["payload"]["result"]["provider"] == settings.resolved_web_search_provider
+    assert len(search_result["payload"]["result"]["sources"]) >= 1
+    assert search_result["payload"]["result"]["sources"][0]["url"].startswith(("http://", "https://"))
 
 
 @pytest.mark.asyncio

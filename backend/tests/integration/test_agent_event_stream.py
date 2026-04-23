@@ -16,6 +16,7 @@ from hello_sales_backend.platform.providers.llm.contracts import (
     JSONGenerationResult,
     ProviderToolCall,
     ProviderToolDefinition,
+    TextDeltaCallback,
     ToolCallCompletionResult,
 )
 
@@ -34,7 +35,7 @@ class FakeChatModel(ChatModelPort):
         self,
         messages: list[ChatMessage],
         *,
-        context=None,
+        context: object | None = None,
     ) -> ChatCompletion:
         return ChatCompletion(
             provider=self.provider_name,
@@ -46,8 +47,8 @@ class FakeChatModel(ChatModelPort):
         self,
         messages: list[ChatMessage],
         *,
-        schema_hint=None,
-        context=None,
+        schema_hint: object | None = None,
+        context: object | None = None,
     ) -> JSONGenerationResult:
         return JSONGenerationResult(
             provider=self.provider_name,
@@ -61,9 +62,9 @@ class FakeChatModel(ChatModelPort):
         messages: list[dict[str, object]],
         *,
         tools: list[ProviderToolDefinition],
-        context=None,
+        context: object | None = None,
         tool_choice: str | None = None,
-        on_text_delta=None,
+        on_text_delta: TextDeltaCallback | None = None,
     ) -> ToolCallCompletionResult:
         del tools, context, tool_choice
         latest_user = next(
@@ -108,6 +109,27 @@ class FakeChatModel(ChatModelPort):
 
     def is_configured(self) -> bool:
         return True
+
+
+class LongStreamingFakeChatModel(FakeChatModel):
+    async def complete_with_tools(
+        self,
+        messages: list[dict[str, object]],
+        *,
+        tools: list[ProviderToolDefinition],
+        context: object | None = None,
+        tool_choice: str | None = None,
+        on_text_delta: TextDeltaCallback | None = None,
+    ) -> ToolCallCompletionResult:
+        del messages, tools, context, tool_choice
+        if on_text_delta is not None:
+            for index in range(520):
+                await on_text_delta(f"chunk-{index} ")
+        return ToolCallCompletionResult(
+            provider=self.provider_name,
+            model="fake-model",
+            content="long streamed response",
+        )
 
 
 def _json_dict(payload: object) -> dict[str, Any]:
@@ -188,6 +210,33 @@ async def test_agent_event_stream_replays_and_tails_run_events(test_settings: Se
             replay_events = _parse_sse_events(replay_body)
             assert replay_events
             assert min(_require_int(item["id"]) for item in replay_events) > cutoff
+
+
+async def test_agent_event_stream_pages_beyond_first_event_batch(test_settings: Settings) -> None:
+    app = create_app(
+        test_settings,
+        overrides=AppOverrides(llm_provider=LongStreamingFakeChatModel()),
+    )
+    async with app.router.lifespan_context(app):
+        transport = ASGITransport(app=app, raise_app_exceptions=True)
+        async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+            start_response = await client.post(
+                "/api/sessions",
+                json={"input_text": "stream a long response"},
+            )
+            session_id = start_response.json()["data"]["session_id"]
+
+            async with client.stream(
+                "GET",
+                f"/api/sessions/{session_id}/events/stream?after_sequence=10",
+            ) as response:
+                body = "".join([chunk async for chunk in response.aiter_text()])
+
+            events = _parse_sse_events(body)
+
+            assert len(events) > 500
+            assert events[-1]["event"] == "agent.turn.completed"
+            assert _require_int(events[-1]["id"]) > 500
 
 
 async def test_agent_event_log_records_rejection_and_cancellation(test_settings: Settings) -> None:

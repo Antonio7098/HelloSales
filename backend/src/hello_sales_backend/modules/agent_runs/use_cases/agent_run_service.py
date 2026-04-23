@@ -183,9 +183,11 @@ class AgentRunService:
         }
         while True:
             emitted = False
-            for event in await self._store.list_events(run_id, limit=500):
-                if event.sequence_no < next_sequence:
-                    continue
+            for event in await self._store.list_events_after(
+                run_id,
+                after_sequence=next_sequence - 1,
+                limit=500,
+            ):
                 emitted = True
                 next_sequence = event.sequence_no + 1
                 yield AgentEventView(

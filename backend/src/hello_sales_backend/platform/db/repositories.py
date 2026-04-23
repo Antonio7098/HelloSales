@@ -398,6 +398,25 @@ class SqlAlchemyAgentStore:
             )
             return [self._map_event(item) for item in result.scalars()]
 
+    async def list_events_after(
+        self,
+        run_id: str,
+        *,
+        after_sequence: int,
+        limit: int = 100,
+    ) -> list[AgentStreamEvent]:
+        async with self._session_factory() as session:
+            result = await session.execute(
+                select(AgentStreamEventRecord)
+                .where(
+                    AgentStreamEventRecord.run_id == run_id,
+                    AgentStreamEventRecord.sequence_no > after_sequence,
+                )
+                .order_by(AgentStreamEventRecord.sequence_no.asc())
+                .limit(limit)
+            )
+            return [self._map_event(item) for item in result.scalars()]
+
     async def next_turn_sequence(self, run_id: str) -> int:
         async with self._session_factory() as session:
             result = await session.execute(
