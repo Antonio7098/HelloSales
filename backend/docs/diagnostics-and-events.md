@@ -131,6 +131,8 @@ The main aggregated diagnostics surface lives in:
 
 This makes the `system` module the main operator-facing diagnostics facade.
 
+Provider diagnostics include auth provider state. A configured WorkOS adapter appears with provider kind `auth`, and startup validation emits configuration failures before the app serves traffic when auth is required but incomplete.
+
 ## Metrics Surface
 
 The canonical operational metrics surface is:
@@ -245,6 +247,7 @@ Important current limitations:
 - operational events and alerts are in-memory, not durable
 - diagnostics are scaffold-stage and optimized for visibility, not yet long-term analytics
 - alerting policy is intentionally minimal
+- auth diagnostics report provider availability, not full identity-provider policy state
 - some signals now exist across logs, operational events, metrics, and traces by design rather than through a single sink
 - deeper provider, workflow, and agent telemetry remains intentionally shallow after the foundation sprint
 

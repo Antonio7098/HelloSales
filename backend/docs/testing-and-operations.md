@@ -9,6 +9,7 @@ The backend test suite is split into four layers.
 
 ### `tests/unit/`
 Owns fast unit verification for:
+- auth and tool permission behavior
 - generic agent runtime behavior
 - worker runtime behavior
 - provider adapters and provider registry
@@ -19,6 +20,7 @@ Owns fast unit verification for:
 
 ### `tests/integration/`
 Owns integration verification for:
+- auth API, middleware, callback/logout/session behavior, and protected routes
 - app factory and app assembly
 - composition overrides
 - agent event stream behavior
@@ -100,6 +102,15 @@ In test mode it seeds a bounded SQLite fixture before app startup so the convers
 ## Environment Model
 
 The backend reads runtime settings from `HELLO_SALES_*` environment variables.
+Auth uses:
+- `HELLO_SALES_AUTH_PROVIDER`
+- `HELLO_SALES_AUTH_REQUIRED`
+- `HELLO_SALES_WORKOS_CLIENT_ID`
+- `HELLO_SALES_WORKOS_API_KEY`
+- `HELLO_SALES_WORKOS_COOKIE_PASSWORD`
+- `HELLO_SALES_WORKOS_REDIRECT_URI`
+- `HELLO_SALES_FRONTEND_APP_URL`
+
 The generic-agent provider path uses provider-specific env such as:
 - `GENERIC_AGENT_PROVIDER`
 - `GENERIC_AGENT_MODEL`
@@ -113,6 +124,8 @@ The scaffold currently provides:
 - async SQLAlchemy runtime
 - composition root
 - Stageflow runtime boundary
+- provider-neutral auth with WorkOS as the first real adapter
+- request auth middleware and explicit route permission dependencies
 - neutral LLM substrate with an OpenAI-compatible adapter
 - request context middleware
 - request, provider, workflow, and task failure logging

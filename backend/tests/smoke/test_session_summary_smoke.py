@@ -15,6 +15,7 @@ from hello_sales_backend.platform.providers.llm.contracts import (
     JSONGenerationResult,
     ToolCallCompletionResult,
 )
+from tests.support.auth import attach_test_session_cookie, build_test_auth_provider
 
 
 class FakeChatModel(ChatModelPort):
@@ -124,11 +125,15 @@ async def _wait_for_summary_completion(
 async def test_session_summary_generates_after_configured_turn_cadence(test_settings: Settings) -> None:
     app = create_app(
         test_settings.model_copy(update={"session_summary_turn_interval": 2}),
-        overrides=AppOverrides(llm_provider=FakeChatModel()),
+        overrides=AppOverrides(
+            auth_provider=build_test_auth_provider(),
+            llm_provider=FakeChatModel(),
+        ),
     )
     async with app.router.lifespan_context(app):
         transport = ASGITransport(app=app, raise_app_exceptions=True)
         async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+            attach_test_session_cookie(client)
             create_response = await client.post(
                 "/api/sessions",
                 json={"input_text": "show me the current system status"},

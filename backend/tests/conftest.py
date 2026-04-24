@@ -15,7 +15,15 @@ if src_str not in sys.path:
     sys.path.insert(0, src_str)
 
 from hello_sales_backend.app import create_app  # noqa: E402
+from hello_sales_backend.platform.composition.overrides import AppOverrides  # noqa: E402
 from hello_sales_backend.platform.config.settings import Settings  # noqa: E402
+from hello_sales_backend.shared.auth import AuthContext  # noqa: E402
+from tests.support.auth import (  # noqa: E402
+    FakeAuthProvider,
+    attach_test_session_cookie,
+    build_test_auth_context,
+    build_test_auth_provider,
+)
 
 
 @pytest.fixture()
@@ -28,8 +36,18 @@ def test_settings(tmp_path: Path) -> Settings:
 
 
 @pytest.fixture()
-def app(test_settings: Settings) -> FastAPI:
-    return create_app(test_settings)
+def test_auth_context() -> AuthContext:
+    return build_test_auth_context()
+
+
+@pytest.fixture()
+def test_auth_provider(test_auth_context: AuthContext) -> FakeAuthProvider:
+    return build_test_auth_provider()
+
+
+@pytest.fixture()
+def app(test_settings: Settings, test_auth_provider: FakeAuthProvider) -> FastAPI:
+    return create_app(test_settings, overrides=AppOverrides(auth_provider=test_auth_provider))
 
 
 @pytest_asyncio.fixture()
@@ -40,4 +58,5 @@ async def client(app: FastAPI) -> AsyncIterator[httpx.AsyncClient]:
             transport=transport,
             base_url="http://testserver",
         ) as async_client:
+            attach_test_session_cookie(async_client)
             yield async_client

@@ -22,6 +22,7 @@ from hello_sales_backend.platform.providers.llm.contracts import (
     ToolCallCompletionResult,
 )
 from hello_sales_backend.shared.errors import AppError
+from tests.support.auth import attach_test_session_cookie, build_test_auth_provider
 
 
 class FakeAnalyticsChatModel(ChatModelPort):
@@ -244,11 +245,18 @@ async def _wait_for_session_snapshot(
 async def test_analytics_query_tool_requires_approval_and_returns_bounded_metadata(
     test_settings: Settings,
 ) -> None:
-    app = create_app(test_settings, overrides=AppOverrides(llm_provider=FakeAnalyticsChatModel()))
+    app = create_app(
+        test_settings,
+        overrides=AppOverrides(
+            auth_provider=build_test_auth_provider(),
+            llm_provider=FakeAnalyticsChatModel(),
+        ),
+    )
 
     async with app.router.lifespan_context(app):
         transport = ASGITransport(app=app, raise_app_exceptions=True)
         async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+            attach_test_session_cookie(client)
             start = await client.post(
                 "/api/sessions",
                 json={"input_text": "show total meetings by source from analytics"},

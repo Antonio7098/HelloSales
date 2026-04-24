@@ -33,6 +33,11 @@ from hello_sales_backend.platform.sessions.models import (
     utc_now,
 )
 from hello_sales_backend.platform.sessions.persistence import SessionStorePort
+from hello_sales_backend.shared.auth import (
+    SESSIONS_READ_ANY_PERMISSION,
+    SESSIONS_WRITE_ANY_PERMISSION,
+    AuthContext,
+)
 from hello_sales_backend.shared.errors import app_error
 from hello_sales_backend.shared.ids import new_id
 
@@ -54,16 +59,16 @@ class SessionService:
         *,
         request_id: str | None,
         trace_id: str | None,
-        actor_id: str | None,
+        auth_context: AuthContext,
         command: CreateSessionCommand,
     ) -> SessionSummaryView:
         session = Session(
             session_id=new_id(),
             status=SessionStatus.ACTIVE,
             profile_name=command.profile_name,
-            actor_id=actor_id,
-            user_id=command.user_id,
-            org_id=command.org_id,
+            actor_id=auth_context.actor_id,
+            user_id=auth_context.user_id,
+            org_id=auth_context.org_id,
             request_id=request_id,
             trace_id=trace_id,
         )
@@ -71,7 +76,7 @@ class SessionService:
         run = await self._agent_runs.start_run(
             request_id=request_id,
             trace_id=trace_id,
-            actor_id=actor_id,
+            auth_context=auth_context,
             session_id=session.session_id,
             command=StartAgentRunCommand(
                 input_text=command.input_text,
@@ -83,7 +88,7 @@ class SessionService:
         await self._append_user_message(
             session=refreshed,
             input_text=command.input_text,
-            actor_id=actor_id,
+            actor_id=auth_context.actor_id,
             run_id=run.run_id,
         )
         await self._store.update_session(refreshed)
@@ -95,10 +100,11 @@ class SessionService:
         session_id: str,
         request_id: str | None,
         trace_id: str | None,
-        actor_id: str | None,
+        auth_context: AuthContext,
         command: AppendSessionMessageCommand,
     ) -> SessionSummaryView:
         session = await self._require_session(session_id)
+        self._ensure_session_access(session, auth_context, write=True)
         if session.status in {SessionStatus.CANCELLED, SessionStatus.FAILED}:
             raise app_error(
                 "Session is not available for more messages",
@@ -123,12 +129,14 @@ class SessionService:
             run_id=session.latest_run_id,
             request_id=request_id,
             trace_id=trace_id,
-            actor_id=actor_id,
+            auth_context=auth_context,
             command=AppendAgentTurnCommand(input_text=command.input_text),
         )
         session.request_id = request_id or session.request_id
         session.trace_id = trace_id or session.trace_id
-        session.actor_id = actor_id or session.actor_id
+        session.actor_id = auth_context.actor_id or session.actor_id
+        session.user_id = auth_context.user_id or session.user_id
+        session.org_id = auth_context.org_id or session.org_id
         session.latest_run_id = run.run_id
         session.status = SessionStatus.ACTIVE
         session.completed_at = None
@@ -139,16 +147,22 @@ class SessionService:
         await self._append_user_message(
             session=session,
             input_text=command.input_text,
-            actor_id=actor_id,
+            actor_id=auth_context.actor_id,
             run_id=run.run_id,
         )
         await self._store.update_session(session)
         return self._summary_view(await self._require_session(session_id))
 
-    async def get_session(self, session_id: str) -> SessionDetailView | None:
+    async def get_session(
+        self,
+        session_id: str,
+        *,
+        auth_context: AuthContext,
+    ) -> SessionDetailView | None:
         session = await self._store.get_session(session_id)
         if session is None:
             return None
+        self._ensure_session_access(session, auth_context, write=False)
         items = await self._store.list_items(session_id)
         summary = await self._store.get_latest_summary(session_id)
         return SessionDetailView(
@@ -157,11 +171,27 @@ class SessionService:
             items=[self._item_view(item) for item in items],
         )
 
-    async def list_sessions(self, *, limit: int = 50) -> list[SessionSummaryView]:
-        return [self._summary_view(item) for item in await self._store.list_sessions(limit=limit)]
+    async def list_sessions(
+        self,
+        *,
+        auth_context: AuthContext,
+        limit: int = 50,
+    ) -> list[SessionSummaryView]:
+        items = await self._store.list_sessions(limit=max(limit, 500))
+        if auth_context.has_permission(SESSIONS_READ_ANY_PERMISSION):
+            return [self._summary_view(item) for item in items[:limit]]
+        owned = [item for item in items if item.actor_id == auth_context.actor_id]
+        return [self._summary_view(item) for item in owned[:limit]]
 
-    async def list_items(self, session_id: str, *, limit: int = 500) -> list[SessionItemView]:
-        await self._require_session(session_id)
+    async def list_items(
+        self,
+        session_id: str,
+        *,
+        auth_context: AuthContext,
+        limit: int = 500,
+    ) -> list[SessionItemView]:
+        session = await self._require_session(session_id)
+        self._ensure_session_access(session, auth_context, write=False)
         return [
             self._item_view(item) for item in await self._store.list_items(session_id, limit=limit)
         ]
@@ -172,19 +202,25 @@ class SessionService:
         approval_id: str,
         request_id: str | None,
         trace_id: str | None,
-        actor_id: str | None,
+        auth_context: AuthContext,
         command: ApprovalDecisionCommand,
     ) -> AgentApprovalView:
         return await self._agent_runs.decide_approval(
             approval_id=approval_id,
             request_id=request_id,
             trace_id=trace_id,
-            actor_id=actor_id,
+            auth_context=auth_context,
             command=command,
         )
 
-    async def cancel_session(self, session_id: str) -> SessionSummaryView:
+    async def cancel_session(
+        self,
+        session_id: str,
+        *,
+        auth_context: AuthContext,
+    ) -> SessionSummaryView:
         session = await self._require_session(session_id)
+        self._ensure_session_access(session, auth_context, write=True)
         if session.latest_run_id is not None:
             await self._agent_runs.cancel_run(session.latest_run_id)
         session.status = SessionStatus.CANCELLED
@@ -194,8 +230,15 @@ class SessionService:
         refreshed = await self._require_session(session_id)
         return self._summary_view(refreshed)
 
-    async def list_events(self, session_id: str, *, limit: int = 100) -> list[AgentEventView]:
+    async def list_events(
+        self,
+        session_id: str,
+        *,
+        auth_context: AuthContext,
+        limit: int = 100,
+    ) -> list[AgentEventView]:
         session = await self._require_session(session_id)
+        self._ensure_session_access(session, auth_context, write=False)
         if session.latest_run_id is None:
             return []
         return await self._agent_runs.list_events(session.latest_run_id, limit=limit)
@@ -204,10 +247,12 @@ class SessionService:
         self,
         session_id: str,
         *,
+        auth_context: AuthContext,
         after_sequence: int = 0,
         poll_interval_seconds: float = 0.05,
     ) -> AsyncIterator[AgentEventView]:
         session = await self._require_session(session_id)
+        self._ensure_session_access(session, auth_context, write=False)
         if session.latest_run_id is None:
             return
         async for event in self._agent_runs.observe_events(
@@ -230,6 +275,38 @@ class SessionService:
                 component="sessions",
             )
         return session
+
+    @staticmethod
+    def _ensure_session_access(
+        session: Session,
+        auth_context: AuthContext,
+        *,
+        write: bool,
+    ) -> None:
+        if session.actor_id == auth_context.actor_id:
+            return
+        elevated_permission = (
+            SESSIONS_WRITE_ANY_PERMISSION if write else SESSIONS_READ_ANY_PERMISSION
+        )
+        if auth_context.has_permission(elevated_permission):
+            return
+        if session.actor_id is None and session.org_id is not None and session.org_id == auth_context.org_id:
+            return
+        raise app_error(
+            "Authenticated actor is not allowed to access this session",
+            code="session.forbidden",
+            category="validation",
+            status_code=403,
+            severity="warning",
+            details={
+                "session_id": session.session_id,
+                "actor_id": auth_context.actor_id,
+                "org_id": auth_context.org_id,
+                "write": write,
+            },
+            operation="session.authorize",
+            component="sessions",
+        )
 
     @staticmethod
     def _summary_view(session: Session) -> SessionSummaryView:

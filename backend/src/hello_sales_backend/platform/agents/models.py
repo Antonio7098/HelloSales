@@ -60,6 +60,8 @@ class AgentRun:
     request_id: str | None
     trace_id: str | None
     actor_id: str | None
+    org_id: str | None = None
+    permissions: tuple[str, ...] = ()
     session_id: str | None = None
     prompt: EffectivePromptRef | None = None
     created_at: datetime = field(default_factory=utc_now)

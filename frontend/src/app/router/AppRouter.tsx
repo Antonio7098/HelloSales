@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from "react-router-dom";
+import { RequireAuth } from "@/app/providers/AuthProvider";
 import { AppShell } from "@/shared/ui/AppShell";
 import { HomePage } from "@/pages/home";
 import { PipelinePage } from "@/pages/pipeline";
@@ -7,7 +8,13 @@ import { NotFoundPage } from "@/pages/not-found";
 export function AppRouter() {
   return (
     <Routes>
-      <Route element={<AppShell />}>
+      <Route
+        element={
+          <RequireAuth>
+            <AppShell />
+          </RequireAuth>
+        }
+      >
         <Route index element={<HomePage />} />
         <Route path="pipeline" element={<PipelinePage />} />
         <Route path="404" element={<NotFoundPage />} />

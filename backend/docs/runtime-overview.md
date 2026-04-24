@@ -57,6 +57,7 @@ create_app()
 `build_app_container()` assembles:
 - database runtime
 - provider registry
+- auth module and auth middleware
 - worker store
 - observability runtime
 - background task runner
@@ -80,16 +81,40 @@ The container builds:
 This is exposed through `DatabaseRuntime` in `platform/composition/app_container.py`.
 
 ### Provider Registry
-The provider registry currently owns the shared LLM substrate provider.
+The provider registry owns external provider adapters, including auth, LLM, and web search.
 
 - `platform/composition/providers.py`
+- `platform/auth/`
 - `platform/llm/`
 
 Behavior:
+- uses WorkOS for auth when configured
+- falls back to a no-op auth provider for local/test-only assembly
 - uses an OpenAI-compatible provider when configured
 - falls back to a noop provider when no real provider is configured
 - exposes provider diagnostics and close hooks
 - supports both text generation and provider-native JSON generation through one neutral substrate
+
+### Auth Runtime
+The auth runtime lives in:
+- `platform/auth/`
+- `modules/auth/`
+- `entrypoints/http/routes/auth.py`
+
+Execution shape:
+
+```text
+HTTP request
+-> AuthenticationMiddleware
+-> AuthService.authenticate_request()
+-> AuthProviderPort.authenticate()
+-> request.state.auth_context
+-> route permission dependencies
+```
+
+The backend authorizes through explicit permission slugs, not hard-coded binary roles. WorkOS roles and permissions are mapped into the provider-neutral `AuthContext`, then route dependencies and agent tool execution enforce backend-owned permissions.
+
+Session-backed agent runs persist `org_id` and permission snapshots so approvals, background execution, and tool calls continue with the authorization context from the authenticated request.
 
 ### Observability Runtime
 The observability runtime owns:
@@ -149,7 +174,14 @@ The runtime wrapper:
 
 ## Application Capability Modules
 
-The backend currently exposes six modules:
+The backend currently exposes seven modules:
+
+### `modules/auth`
+Purpose:
+- hosted-auth login URL creation
+- callback code exchange and session cookie establishment
+- current-session projection
+- logout redirect and cookie clearing
 
 ### `modules/analytics_query`
 Purpose:
@@ -211,8 +243,9 @@ Execution shape:
 
 ```text
 SessionService
+-> receive AuthContext from HTTP dependency
 -> create session + first user message
--> AgentRunService.start_run(session_id=...)
+-> AgentRunService.start_run(session_id=..., auth_context=...)
 -> schedule background task
 -> GenericAgentRuntime.process_turn()
 -> Stageflow-backed pipeline
@@ -232,6 +265,7 @@ The combined session/agent runtime currently owns:
 - tool-call lifecycle state
 - approval pause handling
 - governed analytics-query tool execution through the normal persisted tool-call lifecycle
+- actor, org, and permission propagation through long-lived execution
 - summary task lifecycle and materialized summary state
 - completion / failure / cancellation transitions
 

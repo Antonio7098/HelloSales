@@ -65,6 +65,56 @@ def _validate_settings(container: AppContainer) -> None:
             component="config",
         )
 
+    using_auth_provider = bool(settings.resolved_auth_provider)
+    if settings.auth_required and not using_auth_provider:
+        raise app_error(
+            "Authentication is required but no auth provider is configured",
+            code="config.auth_provider.required",
+            category="config",
+            status_code=500,
+            severity="critical",
+            details={"auth_required": settings.auth_required},
+            operation="startup.validate_settings",
+            component="config",
+        )
+    auth_settings_present = any(
+        (
+            settings.auth_provider,
+            settings.workos_api_key,
+            settings.workos_client_id,
+            settings.workos_cookie_password,
+            settings.workos_base_url,
+        )
+    )
+    partial_auth_config = bool(
+        settings.resolved_auth_provider == "workos"
+        and not all(
+            (
+                settings.workos_api_key,
+                settings.workos_client_id,
+                settings.workos_cookie_password,
+                settings.workos_redirect_uri,
+            )
+        )
+    ) or bool(not settings.resolved_auth_provider and auth_settings_present)
+    if partial_auth_config:
+        raise app_error(
+            "Auth provider configuration is partial",
+            code="config.auth_provider.partial",
+            category="config",
+            status_code=500,
+            severity="critical",
+            details={
+                "provider": settings.resolved_auth_provider,
+                "workos_api_key_present": bool(settings.workos_api_key),
+                "workos_client_id_present": bool(settings.workos_client_id),
+                "workos_cookie_password_present": bool(settings.workos_cookie_password),
+                "workos_redirect_uri_present": bool(settings.workos_redirect_uri),
+            },
+            operation="startup.validate_settings",
+            component="config",
+        )
+
 
 async def bootstrap_container(container: AppContainer) -> None:
     """Run startup hooks."""
@@ -79,6 +129,8 @@ async def bootstrap_container(container: AppContainer) -> None:
             environment=container.settings.environment,
             workflow_engine=container.workflow_runtime.engine_name,
             workflow_installed=container.workflow_runtime.installed,
+            auth_provider=container.providers.auth.provider_name,
+            auth_available=container.providers.auth.is_configured(),
             llm_provider=container.providers.llm.provider_name,
             llm_available=container.providers.llm.is_configured(),
             web_search_provider=container.providers.web_search.provider_name,
@@ -97,6 +149,8 @@ async def bootstrap_container(container: AppContainer) -> None:
                     "environment": container.settings.environment,
                     "workflow_engine": container.workflow_runtime.engine_name,
                     "workflow_installed": container.workflow_runtime.installed,
+                    "auth_provider": container.providers.auth.provider_name,
+                    "auth_available": container.providers.auth.is_configured(),
                     "llm_provider": container.providers.llm.provider_name,
                     "llm_available": container.providers.llm.is_configured(),
                     "web_search_provider": container.providers.web_search.provider_name,

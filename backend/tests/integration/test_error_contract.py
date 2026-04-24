@@ -7,8 +7,10 @@ from fastapi import APIRouter
 from httpx import ASGITransport, AsyncClient
 
 from hello_sales_backend.app import create_app
+from hello_sales_backend.platform.composition.overrides import AppOverrides
 from hello_sales_backend.platform.config.settings import Settings
 from hello_sales_backend.shared.errors import AppError, app_error
+from tests.support.auth import attach_test_session_cookie, build_test_auth_provider
 
 
 @pytest.mark.asyncio
@@ -17,7 +19,7 @@ async def test_structured_app_errors_include_operational_context(tmp_path: Path)
         environment="test",
         database_url=f"sqlite+aiosqlite:///{tmp_path / 'errors.db'}",
     )
-    app = create_app(settings)
+    app = create_app(settings, overrides=AppOverrides(auth_provider=build_test_auth_provider()))
     router = APIRouter()
 
     @router.get("/boom")
@@ -38,6 +40,7 @@ async def test_structured_app_errors_include_operational_context(tmp_path: Path)
     async with app.router.lifespan_context(app):
         transport = ASGITransport(app=app, raise_app_exceptions=False)
         async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+            attach_test_session_cookie(client)
             response = await client.get(
                 "/test-errors/boom", headers={"x-request-id": "req-123", "x-trace-id": "tr-456"}
             )
@@ -62,7 +65,7 @@ async def test_unhandled_exceptions_are_returned_as_internal_errors(tmp_path: Pa
         environment="test",
         database_url=f"sqlite+aiosqlite:///{tmp_path / 'unexpected.db'}",
     )
-    app = create_app(settings)
+    app = create_app(settings, overrides=AppOverrides(auth_provider=build_test_auth_provider()))
     router = APIRouter()
 
     @router.get("/crash")
@@ -74,6 +77,7 @@ async def test_unhandled_exceptions_are_returned_as_internal_errors(tmp_path: Pa
     async with app.router.lifespan_context(app):
         transport = ASGITransport(app=app, raise_app_exceptions=False)
         async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+            attach_test_session_cookie(client)
             response = await client.get("/test-errors/crash")
             diagnostics = await client.get("/api/system/diagnostics")
 

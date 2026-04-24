@@ -35,6 +35,10 @@ from hello_sales_backend.platform.agents.runtime import AgentExecutionRuntime
 from hello_sales_backend.platform.llm import EffectivePromptRef
 from hello_sales_backend.platform.tasks.models import TaskMetadata, TaskStatus
 from hello_sales_backend.platform.tasks.runner import BackgroundTaskRunner
+from hello_sales_backend.shared.auth import (
+    SESSIONS_WRITE_ANY_PERMISSION,
+    AuthContext,
+)
 from hello_sales_backend.shared.errors import app_error
 from hello_sales_backend.shared.ids import new_id
 
@@ -60,7 +64,7 @@ class AgentRunService:
         *,
         request_id: str | None,
         trace_id: str | None,
-        actor_id: str | None,
+        auth_context: AuthContext,
         session_id: str | None,
         command: StartAgentRunCommand,
     ) -> AgentRunSummaryView:
@@ -70,7 +74,9 @@ class AgentRunService:
             status=AgentRunStatus.PENDING,
             request_id=request_id,
             trace_id=trace_id,
-            actor_id=actor_id,
+            actor_id=auth_context.actor_id,
+            org_id=auth_context.org_id,
+            permissions=auth_context.permissions,
             session_id=session_id,
             prompt=self._agents.require(command.profile_name).effective_prompt_ref(),
         )
@@ -94,11 +100,12 @@ class AgentRunService:
         run_id: str,
         request_id: str | None,
         trace_id: str | None,
-        actor_id: str | None,
+        auth_context: AuthContext,
         command: AppendAgentTurnCommand,
     ) -> AgentRunSummaryView:
         run = await self._require_run(run_id)
         run = await self._recover_orphaned_run(run)
+        self._ensure_run_access(run, auth_context)
         if run.status in {AgentRunStatus.RUNNING, AgentRunStatus.AWAITING_APPROVAL}:
             raise app_error(
                 "Agent run is not ready to accept another turn",
@@ -129,7 +136,9 @@ class AgentRunService:
         )
         run.request_id = request_id or run.request_id
         run.trace_id = trace_id or run.trace_id
-        run.actor_id = actor_id or run.actor_id
+        run.actor_id = auth_context.actor_id or run.actor_id
+        run.org_id = auth_context.org_id or run.org_id
+        run.permissions = auth_context.permissions or run.permissions
         run.latest_turn_id = turn.turn_id
         run.status = AgentRunStatus.PENDING
         run.updated_at = utc_now()
@@ -212,7 +221,7 @@ class AgentRunService:
         approval_id: str,
         request_id: str | None,
         trace_id: str | None,
-        actor_id: str | None,
+        auth_context: AuthContext,
         command: ApprovalDecisionCommand,
     ) -> AgentApprovalView:
         tool_call = await self._store.get_tool_call_by_approval_id(approval_id)
@@ -227,6 +236,7 @@ class AgentRunService:
                 component="agent",
             )
         run = await self._require_run(tool_call.run_id)
+        self._ensure_run_access(run, auth_context)
         turn = await self._store.get_turn(tool_call.turn_id)
         if turn is None:
             raise app_error(
@@ -261,7 +271,9 @@ class AgentRunService:
             run.status = AgentRunStatus.PENDING
             run.request_id = request_id or run.request_id
             run.trace_id = trace_id or run.trace_id
-            run.actor_id = actor_id or run.actor_id
+            run.actor_id = auth_context.actor_id or run.actor_id
+            run.org_id = auth_context.org_id or run.org_id
+            run.permissions = auth_context.permissions or run.permissions
             run.updated_at = decided_at
             await self._store.update_run(run)
             turn.status = AgentTurnStatus.PENDING
@@ -291,6 +303,27 @@ class AgentRunService:
             turn_id=tool_call.turn_id,
             tool_call_id=tool_call.tool_call_id,
             status=tool_call.status.value,
+        )
+
+    @staticmethod
+    def _ensure_run_access(run: AgentRun, auth_context: AuthContext) -> None:
+        if run.actor_id == auth_context.actor_id:
+            return
+        if auth_context.has_permission(SESSIONS_WRITE_ANY_PERMISSION):
+            return
+        raise app_error(
+            "Authenticated actor is not allowed to modify this run",
+            code="agent.run.forbidden",
+            category="validation",
+            status_code=403,
+            severity="warning",
+            details={
+                "run_id": run.run_id,
+                "actor_id": auth_context.actor_id,
+                "org_id": auth_context.org_id,
+            },
+            operation="agent_run.authorize",
+            component="agent",
         )
 
     async def cancel_run(self, run_id: str) -> AgentRunSummaryView:

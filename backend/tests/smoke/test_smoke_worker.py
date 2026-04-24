@@ -12,6 +12,7 @@ from hello_sales_backend.platform.llm import (
     LLMMessage,
     TextGenerationResult,
 )
+from tests.support.auth import attach_test_session_cookie, build_test_auth_provider
 
 
 class FakeWorkerProvider:
@@ -52,12 +53,19 @@ async def test_worker_runs_endpoint_smoke(test_settings: Settings) -> None:
     # The smoke fixture builds the default app without overrides, so this test uses a local app.
     from hello_sales_backend.app import create_app
 
-    local_app = create_app(test_settings, overrides=AppOverrides(llm_provider=FakeWorkerProvider()))
+    local_app = create_app(
+        test_settings,
+        overrides=AppOverrides(
+            auth_provider=build_test_auth_provider(),
+            llm_provider=FakeWorkerProvider(),
+        ),
+    )
     async with local_app.router.lifespan_context(local_app):
         transport = httpx.ASGITransport(app=local_app, raise_app_exceptions=True)
         async with httpx.AsyncClient(
             transport=transport, base_url="http://testserver"
         ) as local_client:
+            attach_test_session_cookie(local_client)
             start = await local_client.post(
                 "/api/worker-runs",
                 json={"worker_name": "structured-brief", "input_payload": {"text": "smoke worker"}},

@@ -15,6 +15,7 @@ from hello_sales_backend.platform.llm import (
     LLMMessage,
     TextGenerationResult,
 )
+from tests.support.auth import attach_test_session_cookie, build_test_auth_provider
 
 
 class FakeWorkerProvider:
@@ -172,12 +173,16 @@ async def test_worker_run_is_visible_in_metrics_and_diagnostics(tmp_path: Path) 
             observability_metrics_enabled=True,
             observability_metrics_endpoint_enabled=True,
         ),
-        overrides=AppOverrides(llm_provider=FakeWorkerProvider()),
+        overrides=AppOverrides(
+            auth_provider=build_test_auth_provider(),
+            llm_provider=FakeWorkerProvider(),
+        ),
     )
 
     async with app.router.lifespan_context(app):
         transport = ASGITransport(app=app, raise_app_exceptions=True)
         async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+            attach_test_session_cookie(client)
             start = await client.post(
                 "/api/worker-runs",
                 json={"worker_name": "structured-brief", "input_payload": {"text": "hello worker"}},
@@ -215,12 +220,16 @@ async def test_worker_run_executes_through_stageflow_mode(tmp_path: Path) -> Non
             environment="test",
             database_url=f"sqlite+aiosqlite:///{tmp_path / 'worker-stageflow.db'}",
         ),
-        overrides=AppOverrides(llm_provider=FakeWorkerProvider()),
+        overrides=AppOverrides(
+            auth_provider=build_test_auth_provider(),
+            llm_provider=FakeWorkerProvider(),
+        ),
     )
 
     async with app.router.lifespan_context(app):
         transport = ASGITransport(app=app, raise_app_exceptions=True)
         async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+            attach_test_session_cookie(client)
             start = await client.post(
                 "/api/worker-runs",
                 json={
@@ -246,12 +255,16 @@ async def test_composite_worker_run_executes_stageflow_fanout_pipeline(tmp_path:
             environment="test",
             database_url=f"sqlite+aiosqlite:///{tmp_path / 'worker-composite.db'}",
         ),
-        overrides=AppOverrides(llm_provider=CompositeWorkerProvider()),
+        overrides=AppOverrides(
+            auth_provider=build_test_auth_provider(),
+            llm_provider=CompositeWorkerProvider(),
+        ),
     )
 
     async with app.router.lifespan_context(app):
         transport = ASGITransport(app=app, raise_app_exceptions=True)
         async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+            attach_test_session_cookie(client)
             product_ids = await _seed_company_context(client)
             start = await client.post(
                 "/api/worker-runs",
@@ -292,12 +305,16 @@ async def test_workflow_only_worker_rejects_direct_execution(tmp_path: Path) -> 
             environment="test",
             database_url=f"sqlite+aiosqlite:///{tmp_path / 'worker-direct-invalid.db'}",
         ),
-        overrides=AppOverrides(llm_provider=CompositeWorkerProvider()),
+        overrides=AppOverrides(
+            auth_provider=build_test_auth_provider(),
+            llm_provider=CompositeWorkerProvider(),
+        ),
     )
 
     async with app.router.lifespan_context(app):
         transport = ASGITransport(app=app, raise_app_exceptions=False)
         async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+            attach_test_session_cookie(client)
             response = await client.post(
                 "/api/worker-runs",
                 json={

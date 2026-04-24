@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from hello_sales_backend.modules.system.use_cases.ports import ClockPort
+from hello_sales_backend.platform.auth.contracts import AuthProviderPort
 from hello_sales_backend.platform.llm.contracts import LLMProviderPort
 from hello_sales_backend.platform.observability.runtime import ObservabilityRuntime
 from hello_sales_backend.platform.tasks.models import TaskEventSink
@@ -17,6 +18,7 @@ from hello_sales_backend.platform.workflows.runtime import WorkflowRuntime
 class AppOverrides:
     """Override selected collaborators when building the app container."""
 
+    auth_provider: AuthProviderPort | None = None
     llm_provider: LLMProviderPort | None = None
     web_search_provider: WebSearchProviderPort | None = None
     task_runner: BackgroundTaskRunner | None = None

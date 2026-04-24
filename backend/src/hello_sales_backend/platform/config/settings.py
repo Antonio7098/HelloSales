@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     }
     SUPPORTED_OBSERVABILITY_METRICS_EXPORTERS: ClassVar[set[str]] = {"prometheus"}
     SUPPORTED_OBSERVABILITY_TRACING_EXPORTERS: ClassVar[set[str]] = {"console", "none", "otlp"}
+    SUPPORTED_AUTH_PROVIDERS: ClassVar[set[str]] = {"", "workos"}
     SUPPORTED_WEB_SEARCH_PROVIDERS: ClassVar[set[str]] = {"", "tavily"}
 
     model_config = SettingsConfigDict(
@@ -78,6 +79,18 @@ class Settings(BaseSettings):
     analytics_query_default_max_rows: int = Field(default=25, ge=1, le=200)
     analytics_query_max_cell_length: int = Field(default=200, ge=32, le=4000)
     session_summary_turn_interval: int = Field(default=8, ge=1)
+    auth_provider: str = ""
+    auth_required: bool = False
+    auth_session_cookie_name: str = "hello_sales_session"
+    auth_session_cookie_secure: bool = False
+    auth_session_cookie_domain: str = ""
+    frontend_app_url: str = "http://localhost:5173"
+    workos_api_key: str = ""
+    workos_client_id: str = ""
+    workos_cookie_password: str = ""
+    workos_redirect_uri: str = "http://localhost:8000/api/auth/callback"
+    workos_base_url: str = ""
+    workos_request_timeout_seconds: int = Field(default=10, ge=1, le=60)
     groq_api_key: str = ""
     openrouter_api_key: str = ""
     openai_api_key: str = ""
@@ -106,6 +119,15 @@ class Settings(BaseSettings):
         "semantic_catalog_default_id",
         "entity_ref_signing_secret",
         "analytics_query_catalog_dir",
+        "auth_provider",
+        "auth_session_cookie_name",
+        "auth_session_cookie_domain",
+        "frontend_app_url",
+        "workos_api_key",
+        "workos_client_id",
+        "workos_cookie_password",
+        "workos_redirect_uri",
+        "workos_base_url",
         "groq_api_key",
         "openrouter_api_key",
         "openai_api_key",
@@ -158,6 +180,16 @@ class Settings(BaseSettings):
             raise ValueError(f"web_search_provider must be one of: {supported}")
         return value
 
+    @field_validator("auth_provider")
+    @classmethod
+    def validate_auth_provider(cls, value: str) -> str:
+        """Restrict auth providers to implemented adapters."""
+
+        if value not in cls.SUPPORTED_AUTH_PROVIDERS:
+            supported = ", ".join(sorted(item or "<empty>" for item in cls.SUPPORTED_AUTH_PROVIDERS))
+            raise ValueError(f"auth_provider must be one of: {supported}")
+        return value
+
     @field_validator("observability_tracing_otlp_endpoint")
     @classmethod
     def validate_tracing_otlp_endpoint(cls, value: str) -> str:
@@ -168,6 +200,17 @@ class Settings(BaseSettings):
         if value.startswith(("http://", "https://")):
             return value
         raise ValueError("observability_tracing_otlp_endpoint must start with 'http://' or 'https://'")
+
+    @field_validator("frontend_app_url", "workos_redirect_uri", "workos_base_url")
+    @classmethod
+    def validate_optional_urls(cls, value: str) -> str:
+        """Allow empty URL settings but validate configured values."""
+
+        if not value:
+            return value
+        if value.startswith(("http://", "https://")):
+            return value.rstrip("/")
+        raise ValueError("URL settings must start with 'http://' or 'https://'")
 
     @property
     def resolved_generic_agent_provider(self) -> str:
@@ -209,6 +252,18 @@ class Settings(BaseSettings):
         """Return the effective public web-search provider name."""
 
         return self.web_search_provider
+
+    @property
+    def resolved_auth_provider(self) -> str:
+        """Return the effective public auth provider name."""
+
+        return self.auth_provider
+
+    @property
+    def resolved_auth_cookie_domain(self) -> str | None:
+        """Return the effective auth cookie domain or None when unset."""
+
+        return self.auth_session_cookie_domain or None
 
     @property
     def resolved_web_search_api_key(self) -> str:

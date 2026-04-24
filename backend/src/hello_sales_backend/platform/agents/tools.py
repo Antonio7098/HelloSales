@@ -27,6 +27,8 @@ class AgentToolExecutionContext:
     request_id: str | None
     trace_id: str | None
     actor_id: str | None
+    org_id: str | None = None
+    permissions: tuple[str, ...] = ()
     session_id: str | None = None
     run_id: str | None = None
     turn_id: str | None = None
@@ -87,6 +89,7 @@ class AgentToolDefinition:
     arguments_model: type[BaseModel]
     execute: ToolCallback
     requires_approval: bool = False
+    required_permissions: tuple[str, ...] = ()
 
     def provider_definition(self) -> ProviderToolDefinition:
         return ProviderToolDefinition(
@@ -177,6 +180,28 @@ class AgentToolCatalog:
         context: AgentToolExecutionContext,
     ) -> dict[str, object]:
         definition = self.require(name)
+        missing_permissions = [
+            permission
+            for permission in definition.required_permissions
+            if permission not in set(context.permissions)
+        ]
+        if missing_permissions:
+            raise app_error(
+                "Authenticated actor does not have the required permissions for this tool",
+                code="auth.permission_denied",
+                category="validation",
+                status_code=403,
+                severity="warning",
+                details={
+                    "tool_name": name,
+                    "actor_id": context.actor_id,
+                    "org_id": context.org_id,
+                    "missing_permissions": missing_permissions,
+                    "required_permissions": list(definition.required_permissions),
+                },
+                operation="agent.tool.authorize",
+                component="agent",
+            )
         validated_arguments = definition.validate_arguments(arguments)
         result = definition.execute(validated_arguments, context)
         if isawaitable(result):

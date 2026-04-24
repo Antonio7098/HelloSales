@@ -808,6 +808,8 @@ class GenericAgentRuntime:
                             request_id=run.request_id,
                             trace_id=run.trace_id,
                             actor_id=run.actor_id,
+                            org_id=run.org_id,
+                            permissions=run.permissions,
                             session_id=run.session_id,
                             run_id=run.run_id,
                             turn_id=turn.turn_id,

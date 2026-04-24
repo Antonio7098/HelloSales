@@ -19,6 +19,7 @@ from hello_sales_backend.platform.providers.llm.contracts import (
     ProviderToolDefinition,
     ToolCallCompletionResult,
 )
+from tests.support.auth import attach_test_session_cookie, build_test_auth_provider
 
 
 class FakeEntityMutationChatModel(ChatModelPort):
@@ -158,11 +159,18 @@ async def _wait_for_session_snapshot(
 async def test_entity_mutation_tools_create_then_edit_with_approval_boundaries(
     test_settings: Settings,
 ) -> None:
-    app = create_app(test_settings, overrides=AppOverrides(llm_provider=FakeEntityMutationChatModel()))
+    app = create_app(
+        test_settings,
+        overrides=AppOverrides(
+            auth_provider=build_test_auth_provider(),
+            llm_provider=FakeEntityMutationChatModel(),
+        ),
+    )
 
     async with app.router.lifespan_context(app):
         transport = ASGITransport(app=app, raise_app_exceptions=True)
         async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+            attach_test_session_cookie(client)
             start = await client.post(
                 "/api/sessions",
                 json={"input_text": "Create the company profile and then update the quarterly focus"},

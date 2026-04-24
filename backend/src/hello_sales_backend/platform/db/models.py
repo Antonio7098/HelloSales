@@ -52,6 +52,8 @@ class AgentRunRecord(Base):
     request_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     trace_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     actor_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    org_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    permissions_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     session_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     prompt_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     prompt_version: Mapped[str | None] = mapped_column(String(64), nullable=True)
