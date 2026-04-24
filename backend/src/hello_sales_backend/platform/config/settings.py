@@ -64,6 +64,7 @@ class Settings(BaseSettings):
     generic_agent_model: str = ""
     generic_agent_base_url: str = ""
     generic_agent_timeout_seconds: float = Field(default=30.0, gt=0)
+    agent_context_profile: str = "basic-session-v1"
     web_search_provider: str = ""
     web_search_api_key: str = ""
     tavily_api_key: str = ""
@@ -112,6 +113,7 @@ class Settings(BaseSettings):
         "generic_agent_provider",
         "generic_agent_model",
         "generic_agent_base_url",
+        "agent_context_profile",
         "web_search_provider",
         "web_search_api_key",
         "tavily_api_key",

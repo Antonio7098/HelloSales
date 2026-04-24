@@ -12,6 +12,12 @@ from stageflow.pipeline.dag import UnifiedStageExecutionError
 
 from hello_sales_backend.application.agents.registry import AgentRegistry
 from hello_sales_backend.platform.agents.config import AgentRuntimeConfig
+from hello_sales_backend.platform.agents.context import (
+    BASIC_CONTEXT_PROFILE_ID,
+    AgentContextAssembler,
+    AgentContextBuildRequest,
+    build_basic_context_assembler,
+)
 from hello_sales_backend.platform.agents.models import (
     AgentRun,
     AgentRunStatus,
@@ -36,9 +42,7 @@ from hello_sales_backend.platform.llm.contracts import LLMCallContext, LLMProvid
 from hello_sales_backend.platform.observability.events import OperationalEvent
 from hello_sales_backend.platform.observability.logging import get_logger
 from hello_sales_backend.platform.observability.runtime import ObservabilityRuntime
-from hello_sales_backend.platform.providers.llm.contracts import ChatMessage
 from hello_sales_backend.platform.sessions.attachment import SessionAttachmentStore
-from hello_sales_backend.platform.sessions.models import SessionItem, SessionItemType
 from hello_sales_backend.platform.sessions.persistence import SessionStorePort
 from hello_sales_backend.platform.workflows.pipeline import WorkflowStageKind, WorkflowStageSpec
 from hello_sales_backend.platform.workflows.runtime import WorkflowRuntime
@@ -75,10 +79,14 @@ class GenericAgentRuntime:
     observability: ObservabilityRuntime
     sessions: SessionAttachmentStore | None = None
     session_store: SessionStorePort | None = None
+    context_assembler: AgentContextAssembler | None = None
+    context_profile_id: str = BASIC_CONTEXT_PROFILE_ID
     _logger: Any = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
         self._logger = get_logger("hello_sales_backend.agent_runtime")
+        if self.context_assembler is None:
+            self.context_assembler = build_basic_context_assembler(self.session_store)
 
     async def process_turn(self, *, run_id: str, turn_id: str) -> None:
         run = await self.store.get_run(run_id)
@@ -243,13 +251,35 @@ class GenericAgentRuntime:
                 "model": "deterministic-noop",
             }
 
-        prompt_messages = definition.build_messages(turn.input_text)
-        session_context = await self._build_session_context_messages(run=run, turn=turn)
-        if prompt_messages and prompt_messages[0].role == "system":
-            contextual_messages = [prompt_messages[0], *session_context, *prompt_messages[1:]]
-        else:
-            contextual_messages = [*session_context, *prompt_messages]
-        messages = [item.model_dump(mode="json") for item in contextual_messages]
+        prompt_messages = tuple(definition.build_messages(turn.input_text))
+        if self.context_assembler is None:
+            raise app_error(
+                "Agent context assembler is not configured",
+                code="agent.context.assembler_missing",
+                category="internal",
+                status_code=500,
+                details={"run_id": run.run_id, "turn_id": turn.turn_id},
+                operation="agent.context.build",
+                component="agent",
+            )
+        context_result = await self.context_assembler.build(
+            AgentContextBuildRequest(
+                run=run,
+                turn=turn,
+                base_messages=prompt_messages,
+                effective_prompt=turn.prompt,
+                profile_id=self.context_profile_id,
+            )
+        )
+        await self._append_event(
+            run_id=run.run_id,
+            turn_id=turn.turn_id,
+            event_type="agent.context.assembled",
+            severity="info" if not context_result.skipped_sources else "warning",
+            code="agent.context.assembled",
+            payload=context_result.event_payload(),
+        )
+        messages = [item.model_dump(mode="json") for item in context_result.messages]
         existing_tool_calls = await self.store.list_tool_calls(run.run_id, turn.turn_id)
         messages.extend(self._replay_tool_messages(existing_tool_calls))
 
@@ -506,80 +536,6 @@ class GenericAgentRuntime:
             operation="agent.llm.complete_with_tools",
             component="agent",
         )
-
-    async def _build_session_context_messages(self, *, run: AgentRun, turn: AgentTurn) -> list[ChatMessage]:
-        if run.session_id is None or self.session_store is None:
-            return []
-
-        summary = await self.session_store.get_latest_summary(run.session_id)
-        items = await self.session_store.list_items(run.session_id)
-        prior_items = self._prior_message_items(items=items, current_input=turn.input_text)
-
-        messages: list[ChatMessage] = []
-        if summary is not None and summary.status.value == "completed" and summary.summary_text.strip():
-            messages.append(
-                ChatMessage(
-                    role="system",
-                    content=(
-                        "Conversation summary for older turns. Treat this as historical context, "
-                        "not as fresh evidence unless confirmed by tool results in this turn.\n"
-                        f"{summary.summary_text.strip()}"
-                    ),
-                )
-            )
-            prior_items = [
-                item for item in prior_items if item.sequence_no > summary.coverage_end_sequence
-            ]
-
-        recent_items = prior_items[-16:]
-        for item in recent_items:
-            if item.item_type == SessionItemType.USER_MESSAGE:
-                text = item.payload.get("text")
-                if isinstance(text, str) and text.strip():
-                    messages.append(ChatMessage(role="user", content=text))
-            elif item.item_type == SessionItemType.ASSISTANT_MESSAGE:
-                text = item.payload.get("text")
-                if isinstance(text, str) and text.strip():
-                    messages.append(ChatMessage(role="assistant", content=text))
-            elif item.item_type == SessionItemType.TOOL_RESULT:
-                result_payload = item.payload.get("result")
-                if isinstance(result_payload, dict):
-                    messages.append(
-                        ChatMessage(
-                            role="system",
-                            content=(
-                                "Recent tool result context from this session. Reuse any entity refs, "
-                                "versions, and bounded tool evidence it contains when relevant.\n"
-                                f"{json.dumps(result_payload, separators=(',', ':'), sort_keys=True)}"
-                            ),
-                        )
-                    )
-        return messages
-
-    @staticmethod
-    def _prior_message_items(*, items: list[SessionItem], current_input: str) -> list[SessionItem]:
-        message_items = [
-            item
-            for item in items
-            if item.item_type
-            in {
-                SessionItemType.USER_MESSAGE,
-                SessionItemType.ASSISTANT_MESSAGE,
-                SessionItemType.TOOL_RESULT,
-            }
-        ]
-        if not message_items:
-            return []
-
-        latest = message_items[-1]
-        latest_text = latest.payload.get("text")
-        if (
-            latest.item_type == SessionItemType.USER_MESSAGE
-            and isinstance(latest_text, str)
-            and latest_text == current_input
-        ):
-            return message_items[:-1]
-        return message_items
 
     async def _append_response_delta(self, *, run: AgentRun, turn: AgentTurn, delta: str) -> None:
         if not delta:

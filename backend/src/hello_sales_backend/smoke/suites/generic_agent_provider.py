@@ -663,26 +663,52 @@ class ProviderSmokeHarness:
         )
 
     async def scenario_approval_boundary(self, client: httpx.AsyncClient) -> tuple[SmokeScenarioResult, dict[str, object]]:
-        session_id = await self.start_run(
-            client,
-            input_text=(
+        prompts = [
+            (
                 "Use the run_diagnostic_job tool now with a prompt to verify scheduler health. "
                 "Do not answer from memory."
             ),
-            profile_name="generic",
-        )
-        payload = await wait_for_terminal_run_state(
-            client,
-            path=f"{self.settings.api_prefix}/sessions/{session_id}",
-            terminal_statuses={"awaiting_approval", "failed", "cancelled", "completed"},
-        )
-        if payload["status"] != "awaiting_approval":
+            (
+                "Call run_diagnostic_job now. Use prompt='Verify scheduler health for smoke test'. "
+                "This tool requires approval, so stop once approval is requested. Do not provide a final answer."
+            ),
+            (
+                "You must call the native tool run_diagnostic_job with exactly this argument: "
+                "prompt='Verify scheduler health for smoke test'. Do not call list_recent_tasks or get_task. "
+                "Do not answer without the tool. Wait for approval."
+            ),
+            (
+                "Call query_analytics_data with exactly these arguments and do not change the SQL. "
+                "catalog_id: scaffold_stage. "
+                "sql: SELECT lead_source, SUM(meetings_booked) AS total_meetings FROM analytics_daily_pipeline "
+                "GROUP BY lead_source ORDER BY total_meetings DESC. "
+                "reason: Verify approval boundary for smoke test. "
+                "max_rows: 5. "
+                "Do not answer without the tool. Wait for approval."
+            ),
+        ]
+        session_id: str | None = None
+        payload: dict[str, object] | None = None
+        for prompt in prompts:
+            session_id = await self.start_run(
+                client,
+                input_text=prompt,
+                profile_name="generic",
+            )
+            payload = await wait_for_terminal_run_state(
+                client,
+                path=f"{self.settings.api_prefix}/sessions/{session_id}",
+                terminal_statuses={"awaiting_approval", "failed", "cancelled", "completed"},
+            )
+            if payload["status"] == "awaiting_approval":
+                break
+        if session_id is None or payload is None or payload["status"] != "awaiting_approval":
             raise app_error(
                 "Approval-boundary provider smoke scenario did not pause for approval",
                 code="smoke.generic_agent_provider.approval_failed",
                 category="runtime",
                 status_code=500,
-                details={"session_id": session_id, "status": payload["status"]},
+                details={"session_id": session_id, "status": None if payload is None else payload["status"]},
                 operation="smoke.generic_agent_provider.approval_boundary",
                 component="smoke",
             )

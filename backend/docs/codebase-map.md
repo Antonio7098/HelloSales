@@ -92,6 +92,7 @@ Owns runtime infrastructure.
 #### `platform/agents/`
 Owns:
 - generic agent runtime mechanics
+- context profiles, context source contracts, source provenance, and default session context source
 - runtime config and models
 - persistence contracts
 - tool execution context/contracts
@@ -195,6 +196,7 @@ Owns:
 
 ### Generic Agent Runtime
 - `platform/agents/runtime.py`
+- `platform/agents/context.py`
 - `application/agents/bootstrap.py`
 
 ### Generic Worker Runtime

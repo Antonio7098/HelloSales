@@ -249,9 +249,11 @@ SessionService
 -> schedule background task
 -> GenericAgentRuntime.process_turn()
 -> Stageflow-backed pipeline
-   -> prepare_turn
-   -> execute_tools
-   -> generate_response
+   -> run_agent_loop
+      -> build concrete agent prompt messages
+      -> assemble context through the selected context profile
+      -> replay persisted tool-call messages
+      -> call provider / execute native tools until final response or approval pause
 -> mirror chronology into session items
 -> optionally schedule session summary generation
 -> persist run/turn/tool/event state
@@ -266,8 +268,12 @@ The combined session/agent runtime currently owns:
 - approval pause handling
 - governed analytics-query tool execution through the normal persisted tool-call lifecycle
 - actor, org, and permission propagation through long-lived execution
+- profile-driven context assembly with `basic-session-v1` as the default
 - summary task lifecycle and materialized summary state
 - completion / failure / cancellation transitions
+
+Context profile selection is configured in the composition root through `HELLO_SALES_AGENT_CONTEXT_PROFILE`.
+The default profile preserves completed session summary plus recent session item behavior while exposing profile, source, skip, and truncation metadata through `agent.context.assembled` events.
 
 ## Worker Execution Model
 

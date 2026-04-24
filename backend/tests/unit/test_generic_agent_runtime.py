@@ -8,6 +8,14 @@ from hello_sales_backend.application.agents.contracts import (
 )
 from hello_sales_backend.application.agents.registry import AgentRegistry
 from hello_sales_backend.platform.agents.config import AgentRuntimeConfig
+from hello_sales_backend.platform.agents.context import (
+    AgentContextProfile,
+    AgentContextSourceCategory,
+    AgentContextSourceRef,
+    AgentContextSourceScope,
+    FakeLongTermMemoryContextSource,
+    ProfiledAgentContextAssembler,
+)
 from hello_sales_backend.platform.agents.memory import InMemoryAgentStore
 from hello_sales_backend.platform.agents.models import (
     AgentRun,
@@ -45,6 +53,8 @@ from hello_sales_backend.platform.observability.runtime import (
     ObservabilityRuntime,
 )
 from hello_sales_backend.platform.providers.llm.contracts import ChatMessage
+from hello_sales_backend.platform.sessions.memory import InMemorySessionStore
+from hello_sales_backend.platform.sessions.models import SessionItem, SessionItemType
 from hello_sales_backend.platform.workflows.runtime import build_workflow_runtime
 from hello_sales_backend.shared.errors import AppError, app_error
 
@@ -145,6 +155,9 @@ def _build_runtime(
     store: InMemoryAgentStore,
     tools: AgentToolCatalog,
     llm_provider: LLMProviderPort | None = None,
+    context_assembler=None,
+    context_profile_id: str = "basic-session-v1",
+    session_store=None,
 ) -> GenericAgentRuntime:
     observability = ObservabilityRuntime(
         store=InMemoryOperationalStore(),
@@ -182,6 +195,9 @@ def _build_runtime(
             default_agent_id="generic",
         ),
         observability=observability,
+        session_store=session_store,
+        context_assembler=context_assembler,
+        context_profile_id=context_profile_id,
     )
 
 
@@ -254,6 +270,15 @@ async def _seed_run(store: InMemoryAgentStore, *, input_text: str) -> tuple[Agen
     return run, turn
 
 
+async def _seed_session_run(
+    store: InMemoryAgentStore, *, input_text: str, session_id: str = "session-1"
+) -> tuple[AgentRun, AgentTurn]:
+    run, turn = await _seed_run(store, input_text=input_text)
+    run.session_id = session_id
+    await store.update_run(run)
+    return run, turn
+
+
 @pytest.mark.asyncio
 async def test_generic_agent_runtime_completes_turn_with_native_tool_calling() -> None:
     store = InMemoryAgentStore()
@@ -314,6 +339,99 @@ async def test_generic_agent_runtime_completes_turn_with_native_tool_calling() -
     ]
     assert len(tool_messages) == 1
     assert tool_messages[0]["tool_call_id"] == "call-1"
+
+
+@pytest.mark.asyncio
+async def test_generic_agent_runtime_uses_basic_context_profile_and_emits_metadata() -> None:
+    store = InMemoryAgentStore()
+    session_store = InMemorySessionStore()
+    await _seed_session_run(store, input_text="current question")
+    await session_store.create_item(
+        SessionItem(
+            item_id="item-1",
+            session_id="session-1",
+            sequence_no=1,
+            item_type=SessionItemType.USER_MESSAGE,
+            payload={"text": "previous question"},
+        )
+    )
+    provider = ScriptedToolProvider(
+        completions=[
+            ToolCallCompletionResult(
+                provider="fake-runtime",
+                model="fake-model",
+                content="answer",
+            ),
+        ]
+    )
+    runtime = _build_runtime(
+        store=store,
+        session_store=session_store,
+        llm_provider=provider,
+        tools=AgentToolCatalog([]),
+    )
+
+    await runtime.process_turn(run_id="run-1", turn_id="turn-1")
+
+    provider_messages = provider.tool_requests[0]["messages"]
+    assert [message["content"] for message in provider_messages] == [
+        "previous question",
+        "current question",
+    ]
+    events = await store.list_events("run-1", limit=20)
+    context_event = next(event for event in events if event.event_type == "agent.context.assembled")
+    assert context_event.payload["context_profile_id"] == "basic-session-v1"
+    assert context_event.payload["context_source_count"] == 1
+    assert context_event.payload["context_message_count"] == 1
+
+
+@pytest.mark.asyncio
+async def test_same_agent_definition_runs_with_memory_enabled_context_profile() -> None:
+    store = InMemoryAgentStore()
+    await _seed_run(store, input_text="current question")
+    provider = ScriptedToolProvider(
+        completions=[
+            ToolCallCompletionResult(
+                provider="fake-runtime",
+                model="fake-model",
+                content="answer",
+            ),
+        ]
+    )
+    profile = AgentContextProfile(
+        profile_id="memory-enabled",
+        version="v1",
+        description="fake memory enabled",
+        sources=(
+            AgentContextSourceRef(
+                source_id="fake-long-term-memory",
+                category=AgentContextSourceCategory.SEMANTIC_MEMORY,
+                scope=AgentContextSourceScope.ACTOR,
+            ),
+        ),
+    )
+    runtime = _build_runtime(
+        store=store,
+        context_profile_id="memory-enabled",
+        context_assembler=ProfiledAgentContextAssembler(
+            profiles={"memory-enabled": profile},
+            sources={
+                "fake-long-term-memory": FakeLongTermMemoryContextSource(
+                    messages=(ChatMessage(role="system", content="memory context"),)
+                )
+            },
+        ),
+        llm_provider=provider,
+        tools=AgentToolCatalog([]),
+    )
+
+    await runtime.process_turn(run_id="run-1", turn_id="turn-1")
+
+    provider_messages = provider.tool_requests[0]["messages"]
+    assert [message["content"] for message in provider_messages] == [
+        "memory context",
+        "current question",
+    ]
 
 
 @pytest.mark.asyncio
