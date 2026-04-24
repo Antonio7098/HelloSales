@@ -18,7 +18,8 @@ It is a structured reasoning artifact whose job is to force deep analysis before
 
 1. **Governing contracts** - The contract documents currently in force for the work being reviewed
 2. **Relevant existing code** - Code and tests relevant to the sprint scope
-3. **Known dependencies or unfinished work** - Existing constraints that affect delivery
+3. **Current external guidance** - Latest relevant tools, technologies, options, best practices, and official guidance, researched when not already known from recent verified context
+4. **Known dependencies or unfinished work** - Existing constraints that affect delivery
 
 ## Output
 
@@ -52,7 +53,26 @@ Examine existing code and tests to understand:
 
 The reasoning must stay grounded in the actual codebase rather than idealised structure.
 
-### Step 3: Analyse Each Feature Against The Requirements
+### Step 3: Research Current Tools, Options, And Guidance
+
+If you have not already done so from recent verified context, research the latest relevant tools, technologies, implementation options, best practices, and official guidance that could affect the sprint.
+
+The research should establish:
+- which current tools or technologies are relevant to the sprint scope
+- whether any version-specific behavior, deprecation, security guidance, or recommended practice affects the design
+- what credible implementation options exist outside the current codebase
+- where current best practice conflicts with existing local patterns or governing contracts
+- which sources are authoritative enough to influence a delivery decision
+
+Record how the research affects reasoning:
+- **Relevant findings** - current guidance or options that shape the sprint
+- **Rejected findings** - researched options that are not applicable and why
+- **Source basis** - official docs, release notes, standards, or other authoritative sources used
+- **Impact on decisions** - which design choices, risks, or evidence expectations changed because of the research
+
+If no external research is needed, state why the existing verified context is sufficient.
+
+### Step 4: Analyse Each Feature Against The Requirements
 
 For each in-scope feature, analyse:
 - which requirements apply
@@ -66,7 +86,7 @@ For each in-scope feature, analyse:
 The emphasis is reasoning, not just listing components.
 The document should capture the chain of analysis that leads from requirement to decision.
 
-### Step 4: Justify Decisions Explicitly
+### Step 5: Justify Decisions Explicitly
 
 For every meaningful design or implementation decision, record:
 - **Requirement context** - which requirement or set of requirements drove the decision
@@ -76,7 +96,7 @@ For every meaningful design or implementation decision, record:
 - **Why not the alternatives** - what was rejected and why
 - **Evidence to verify later** - how review will know the decision was implemented correctly
 
-### Step 5: Record Deviations, Risks, Assumptions, and Unknowns
+### Step 6: Record Deviations, Risks, Assumptions, and Unknowns
 
 If the sprint cannot fully satisfy a governing rule or the preferred design, document a deviation explicitly.
 
@@ -93,7 +113,7 @@ Also record:
 - external dependencies that could block delivery
 - places where the contract language is too ambiguous to support a confident decision
 
-### Step 6: Write the Reasoning Document
+### Step 7: Write the Reasoning Document
 
 Write the document using the template, ensuring:
 1. **Readable prose format** - easy to read under delivery pressure
@@ -103,13 +123,16 @@ Write the document using the template, ensuring:
 5. **Complete coverage** - every in-scope feature is analysed
 6. **Explicit evidence expectations** - define what execution and review must later verify
 7. **Trade-offs documented** - any deviations or compromises are explicit
+8. **Current guidance reflected** - latest relevant research is either documented or explicitly deemed unnecessary
 
-### Step 7: Verify Exit Criteria
+### Step 8: Verify Exit Criteria
 
 Before completing, verify:
 - [ ] Sprint scope is covered
 - [ ] Applicable requirements are mapped
 - [ ] Non-applicable and ambiguous requirements are recorded when relevant
+- [ ] Latest relevant tools, technologies, options, best practices, and guidance were researched or explicitly deemed unnecessary
+- [ ] Research findings are tied to decisions, risks, alternatives, or evidence expectations where relevant
 - [ ] Important decisions are justified against the requirements
 - [ ] Alternatives are discussed where the choice is non-trivial
 - [ ] Deviations, assumptions, risks, and unknowns are documented
@@ -120,6 +143,7 @@ Before completing, verify:
 1. **Be thorough** - the document is a reasoning artifact, not a shallow checklist
 2. **Be requirement-driven** - map sprint scope to specific governing requirements
 3. **Stay grounded** - reference actual code patterns and seams
-4. **Justify decisions explicitly** - do not jump from requirement to conclusion without explanation
-5. **Record deviations explicitly** - do not bury them in prose
-6. **Design for reviewability** - define evidence that later review can verify
+4. **Stay current** - research latest relevant tools, technologies, options, best practices, and guidance when not already verified
+5. **Justify decisions explicitly** - do not jump from requirement to conclusion without explanation
+6. **Record deviations explicitly** - do not bury them in prose
+7. **Design for reviewability** - define evidence that later review can verify

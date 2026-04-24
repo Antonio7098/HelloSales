@@ -20,6 +20,7 @@ from hello_sales_backend.modules.system.bootstrap import build_system_module
 from hello_sales_backend.modules.web_search.bootstrap import build_web_search_module
 from hello_sales_backend.modules.worker_runs.bootstrap import build_worker_runs_module
 from hello_sales_backend.platform.agents.config import AgentRuntimeConfig
+from hello_sales_backend.platform.agents.context import build_basic_context_assembler
 from hello_sales_backend.platform.agents.contracts import AgentProfileCatalogPort
 from hello_sales_backend.platform.agents.memory import InMemoryAgentStore
 from hello_sales_backend.platform.agents.persistence import AgentStorePort
@@ -233,6 +234,11 @@ def build_app_container(settings: Settings, overrides: AppOverrides | None = Non
             settings=settings,
         ),
         session_store=session_store,
+        context_assembler=build_basic_context_assembler(
+            session_store,
+            profile_id=settings.agent_context_profile,
+        ),
+        context_profile_id=settings.agent_context_profile,
     )
     agent_runs_module = build_agent_runs_module(
         store=agent_store,

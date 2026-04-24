@@ -157,6 +157,7 @@ Relevant variables include:
 - `HELLO_SALES_GENERIC_AGENT_MODEL`
 - `HELLO_SALES_GENERIC_AGENT_BASE_URL`
 - `HELLO_SALES_GENERIC_AGENT_TIMEOUT_SECONDS`
+- `HELLO_SALES_AGENT_CONTEXT_PROFILE`
 - `HELLO_SALES_GROQ_API_KEY`
 - `HELLO_SALES_OPENROUTER_API_KEY`
 - `HELLO_SALES_OPENAI_API_KEY`
@@ -172,6 +173,9 @@ The settings name remains `generic_agent_*` because that path existed before the
 At runtime, the resolved provider now backs:
 - conversational response generation in the agent runtime
 - JSON generation and structured worker execution in the worker runtime
+
+`HELLO_SALES_AGENT_CONTEXT_PROFILE` selects the runtime context profile used by the generic agent.
+The default is `basic-session-v1`, which preserves completed session summary plus recent session item assembly.
 
 ### Provider Resolution
 The settings model computes resolved values through properties:

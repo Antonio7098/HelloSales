@@ -25,6 +25,7 @@ Owns:
 - runtime state models
 - persistence contracts
 - execution lifecycle
+- profile-driven context assembly contracts and default sources
 - tool execution context
 - event append behavior
 
@@ -63,6 +64,8 @@ It is not registered on the observer profile.
 The public web-search tool is also generic-agent-only in Sprint 6.
 It is for current or public internet information, not private customer data or internal-only analytics.
 Generic entity mutation tools were added in Sprint 7 and remain generic-agent-only with static approval required for every write.
+
+Context policy is not owned by concrete agent definitions. The runtime receives a named context profile from composition and asks the platform context assembler to insert selected context around the concrete agent prompt.
 
 ### 3. Operational Exposure Through A Module
 Location:
@@ -166,6 +169,7 @@ A run has an append-only ordered event stream.
 
 Events record lifecycle milestones such as:
 - turn started
+- context assembled
 - tool queued
 - approval requested
 - tool started
@@ -210,12 +214,40 @@ Responsibilities:
 - persist tool-call success or failure
 - emit tool lifecycle events
 
-### `generate_response`
+### Agent Loop
 Responsibilities:
 - if approval is still pending, return approval state
-- otherwise build prompt/messages from the agent definition
+- build base prompt messages from the concrete agent definition
+- assemble model-visible context through the configured context profile
+- replay persisted provider tool-call messages explicitly
 - call the configured LLM provider when available
 - fall back to deterministic response generation when no real provider is configured
+
+## Context Engineering
+
+The context engine lives in:
+- `platform/agents/context.py`
+
+It defines:
+- `AgentContextProfile` for named, versioned context policy
+- `AgentContextSource` for replaceable session, memory, or retrieval sources
+- `AgentContextBudget` for source-level message truncation
+- provenance, skipped-source, and truncation metadata
+
+The default composed profile is `basic-session-v1`.
+It preserves the previous behavior:
+- include a completed session summary as a system message
+- keep the warning that summaries are historical context, not fresh evidence
+- exclude session items covered by the summary
+- include the last 16 eligible user, assistant, and tool-result items
+- render recent tool results as compact JSON system context
+
+Profile selection is controlled by `HELLO_SALES_AGENT_CONTEXT_PROFILE`, defaulting to `basic-session-v1`.
+The default profile is assembled in the composition root with the current `SessionStorePort`.
+
+The context event `agent.context.assembled` records profile id/version, source counts, skipped sources, truncation decisions, and provenance metadata. It deliberately does not include raw memory, retrieval, or prompt text.
+
+Long-term memory and retrieval are represented as source seams only. The backend includes fake memory sources and a future retrieval port that accepts run/session/query metadata and returns ranked context blocks or refs; it does not implement vector stores, embeddings, chunking, indexing, or ranking.
 
 ## Tool Model
 
