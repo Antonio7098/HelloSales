@@ -647,13 +647,11 @@ class FakeLongTermMemoryContextSource(FakeAgentContextSource):
         messages: tuple[ChatMessage, ...] = (),
         fail_with: AppError | None = None,
     ) -> None:
-        super().__init__(
-            source_id=source_id,
-            category=AgentContextSourceCategory.SEMANTIC_MEMORY,
-            scope=AgentContextSourceScope.ACTOR,
-            messages=messages,
-            fail_with=fail_with,
-        )
+        self.source_id = source_id
+        self.category = AgentContextSourceCategory.SEMANTIC_MEMORY
+        self.scope = AgentContextSourceScope.ACTOR
+        self.messages = messages
+        self.fail_with = fail_with
 
 
 def basic_session_context_profile(
