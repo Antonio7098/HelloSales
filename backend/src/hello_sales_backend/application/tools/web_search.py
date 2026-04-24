@@ -10,6 +10,7 @@ from hello_sales_backend.platform.agents.tools import (
     AgentToolDefinition,
     AgentToolExecutionContext,
 )
+from hello_sales_backend.shared.auth import WEB_SEARCH_USE_PERMISSION
 from hello_sales_backend.shared.errors import AppError
 
 SEARCH_WEB_MAX_ATTEMPTS = 3
@@ -70,4 +71,5 @@ def build_search_web_tool(
         arguments_model=SearchWebToolArgs,
         execute=search_web,
         requires_approval=requires_approval,
+        required_permissions=(WEB_SEARCH_USE_PERMISSION,),
     )

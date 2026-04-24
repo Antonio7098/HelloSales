@@ -16,6 +16,7 @@ from hello_sales_backend.platform.providers.llm.contracts import (
     ProviderToolCall,
     ToolCallCompletionResult,
 )
+from tests.support.auth import attach_test_session_cookie, build_test_auth_provider
 
 _call_count = 0
 
@@ -136,11 +137,15 @@ async def test_agent_run_executes_tools_and_completes(test_settings: Settings) -
     _reset_call_count()
     app = create_app(
         test_settings,
-        overrides=AppOverrides(llm_provider=FakeChatModel()),
+        overrides=AppOverrides(
+            auth_provider=build_test_auth_provider(),
+            llm_provider=FakeChatModel(),
+        ),
     )
     async with app.router.lifespan_context(app):
         transport = ASGITransport(app=app, raise_app_exceptions=True)
         async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+            attach_test_session_cookie(client)
             start_response = await client.post(
                 "/api/sessions",
                 json={"input_text": "show me the current system status"},
@@ -163,11 +168,15 @@ async def test_agent_run_supports_approval_flow(test_settings: Settings) -> None
     _reset_call_count()
     app = create_app(
         test_settings,
-        overrides=AppOverrides(llm_provider=FakeChatModel()),
+        overrides=AppOverrides(
+            auth_provider=build_test_auth_provider(),
+            llm_provider=FakeChatModel(),
+        ),
     )
     async with app.router.lifespan_context(app):
         transport = ASGITransport(app=app, raise_app_exceptions=True)
         async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+            attach_test_session_cookie(client)
             start_response = await client.post(
                 "/api/sessions",
                 json={"input_text": "please run diagnostic job now"},

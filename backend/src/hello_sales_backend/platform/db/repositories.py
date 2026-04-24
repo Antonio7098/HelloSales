@@ -98,6 +98,15 @@ def _load_json(payload: str | None) -> dict[str, object] | None:
     return loaded if isinstance(loaded, dict) else None
 
 
+def _load_string_list(payload: str | None) -> tuple[str, ...]:
+    if payload is None:
+        return ()
+    loaded = json.loads(payload)
+    if not isinstance(loaded, list):
+        return ()
+    return tuple(str(item) for item in loaded)
+
+
 def _prompt_kwargs(prompt: EffectivePromptRef | None) -> dict[str, object]:
     return {
         "prompt_id": None if prompt is None else prompt.prompt_id,
@@ -177,6 +186,7 @@ class SqlAlchemyAgentStore:
                 request_id=run.request_id,
                 trace_id=run.trace_id,
                 actor_id=run.actor_id,
+                org_id=run.org_id,
                 session_id=run.session_id,
                 **_prompt_kwargs(run.prompt),
                 latest_turn_id=run.latest_turn_id,
@@ -188,6 +198,7 @@ class SqlAlchemyAgentStore:
                 started_at=run.started_at,
                 completed_at=run.completed_at,
             )
+            record.permissions_json = json.dumps(list(run.permissions), sort_keys=True)
             record.set_error_details(run.error_details)
             session.add(record)
             await session.commit()
@@ -207,6 +218,8 @@ class SqlAlchemyAgentStore:
             record.request_id = run.request_id
             record.trace_id = run.trace_id
             record.actor_id = run.actor_id
+            record.org_id = run.org_id
+            record.permissions_json = json.dumps(list(run.permissions), sort_keys=True)
             record.session_id = run.session_id
             record.prompt_id = run.prompt.prompt_id if run.prompt else None
             record.prompt_version = run.prompt.version if run.prompt else None
@@ -474,6 +487,8 @@ class SqlAlchemyAgentStore:
             request_id=record.request_id,
             trace_id=record.trace_id,
             actor_id=record.actor_id,
+            org_id=record.org_id,
+            permissions=_load_string_list(record.permissions_json),
             session_id=record.session_id,
             prompt=_map_prompt(
                 prompt_id=record.prompt_id,

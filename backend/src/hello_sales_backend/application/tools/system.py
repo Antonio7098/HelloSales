@@ -8,6 +8,7 @@ from hello_sales_backend.platform.agents.tools import (
     AgentToolExecutionContext,
     EmptyToolArguments,
 )
+from hello_sales_backend.shared.auth import SYSTEM_READ_PERMISSION
 
 
 def build_get_runtime_status_tool(*, system_service: SystemService) -> AgentToolDefinition:
@@ -24,4 +25,5 @@ def build_get_runtime_status_tool(*, system_service: SystemService) -> AgentTool
         description="Return top-level runtime status information.",
         arguments_model=EmptyToolArguments,
         execute=get_runtime_status,
+        required_permissions=(SYSTEM_READ_PERMISSION,),
     )

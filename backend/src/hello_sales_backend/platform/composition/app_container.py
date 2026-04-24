@@ -10,6 +10,7 @@ from hello_sales_backend.application.agents.bootstrap import build_agent_registr
 from hello_sales_backend.application.workers.bootstrap import build_worker_registry
 from hello_sales_backend.modules.agent_runs.bootstrap import build_agent_runs_module
 from hello_sales_backend.modules.analytics_query.bootstrap import build_analytics_query_module
+from hello_sales_backend.modules.auth.bootstrap import build_auth_module
 from hello_sales_backend.modules.company_profile.bootstrap import build_company_profile_module
 from hello_sales_backend.modules.entity_operations.bootstrap import build_entity_operations_module
 from hello_sales_backend.modules.jobs.bootstrap import build_jobs_module
@@ -130,6 +131,7 @@ def build_app_container(settings: Settings, overrides: AppOverrides | None = Non
     )
     providers = build_provider_registry(
         settings=settings,
+        auth_provider=resolved_overrides.auth_provider,
         llm_provider=resolved_overrides.llm_provider,
         web_search_provider=resolved_overrides.web_search_provider,
     )
@@ -149,6 +151,12 @@ def build_app_container(settings: Settings, overrides: AppOverrides | None = Non
     workflow_runtime = resolved_overrides.workflow_runtime or build_workflow_runtime(settings)
     workflow_executor = WorkflowExecutor(runtime=workflow_runtime)
     workflow_registry = WorkflowRegistry()
+    auth_module = build_auth_module(
+        provider=providers.auth,
+        session_cookie_name=settings.auth_session_cookie_name,
+        session_cookie_secure=settings.auth_session_cookie_secure,
+        session_cookie_domain=settings.resolved_auth_cookie_domain,
+    )
     health_service = HealthService(
         settings=settings,
         session_factory=session_factory,
@@ -246,6 +254,7 @@ def build_app_container(settings: Settings, overrides: AppOverrides | None = Non
     modules = ModuleRegistry(
         analytics_query=analytics_query_module,
         agent_runs=agent_runs_module,
+        auth=auth_module,
         company_profile=company_profile_module,
         entity_operations=entity_operations_module,
         jobs=jobs_module,

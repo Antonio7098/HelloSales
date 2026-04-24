@@ -14,6 +14,7 @@ from hello_sales_backend.platform.agents.tools import (
     AgentToolDefinition,
     AgentToolExecutionContext,
 )
+from hello_sales_backend.shared.auth import ANALYTICS_READ_PERMISSION
 
 
 class QueryAnalyticsDataToolArgs(BaseModel):
@@ -55,4 +56,5 @@ def build_query_analytics_data_tool(
         arguments_model=QueryAnalyticsDataToolArgs,
         execute=query_analytics_data,
         requires_approval=True,
+        required_permissions=(ANALYTICS_READ_PERMISSION,),
     )

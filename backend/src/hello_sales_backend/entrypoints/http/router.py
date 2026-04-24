@@ -3,6 +3,7 @@
 from fastapi import APIRouter
 
 from hello_sales_backend.entrypoints.http.routes import (
+    auth,
     company_profile,
     health,
     jobs,
@@ -13,6 +14,7 @@ from hello_sales_backend.entrypoints.http.routes import (
 
 api_router = APIRouter()
 api_router.include_router(health.router, prefix="/health", tags=["health"])
+api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
 api_router.include_router(company_profile.router, tags=["company-profile"])
 api_router.include_router(sessions.router, prefix="/sessions", tags=["sessions"])
 api_router.include_router(worker_runs.router, prefix="/worker-runs", tags=["worker-runs"])

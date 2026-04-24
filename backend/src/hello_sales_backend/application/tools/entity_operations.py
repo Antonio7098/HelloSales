@@ -14,6 +14,7 @@ from hello_sales_backend.platform.agents.tools import (
     AgentToolDefinition,
     AgentToolExecutionContext,
 )
+from hello_sales_backend.shared.auth import ENTITY_OPERATIONS_WRITE_PERMISSION
 
 ScalarValue = str | int | float | bool | None
 
@@ -74,6 +75,7 @@ def build_create_entity_tool(*, entity_operations_service: EntityOperationsServi
         arguments_model=CreateEntityToolArgs,
         execute=create_entity,
         requires_approval=True,
+        required_permissions=(ENTITY_OPERATIONS_WRITE_PERMISSION,),
     )
 
 
@@ -100,4 +102,5 @@ def build_edit_entity_tool(*, entity_operations_service: EntityOperationsService
         arguments_model=EditEntityToolArgs,
         execute=edit_entity,
         requires_approval=True,
+        required_permissions=(ENTITY_OPERATIONS_WRITE_PERMISSION,),
     )

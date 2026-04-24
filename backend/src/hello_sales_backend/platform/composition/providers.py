@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from hello_sales_backend.platform.auth.contracts import AuthProviderPort
+from hello_sales_backend.platform.auth.providers import NoopAuthProvider, WorkOSAuthProvider
 from hello_sales_backend.platform.config.settings import Settings
 from hello_sales_backend.platform.llm.contracts import LLMProviderPort
 from hello_sales_backend.platform.llm.providers import NoopLLMProvider, OpenAICompatibleLLMProvider
@@ -29,12 +31,21 @@ class ProviderStatus:
 class ProviderRegistry:
     """Shared provider registry."""
 
+    auth: AuthProviderPort
     llm: LLMProviderPort
     web_search: WebSearchProviderPort
+    auth_required: bool = False
     web_search_required: bool = False
 
     def diagnostics(self) -> list[ProviderStatus]:
         return [
+            ProviderStatus(
+                name=self.auth.provider_name,
+                kind="auth",
+                available=self.auth.is_configured(),
+                required=self.auth_required,
+                degraded=self.auth_required and not self.auth.is_configured(),
+            ),
             ProviderStatus(name=self.llm.provider_name, kind="llm", available=self.llm.is_configured()),
             ProviderStatus(
                 name=self.web_search.provider_name,
@@ -46,7 +57,7 @@ class ProviderRegistry:
         ]
 
     async def aclose(self) -> None:
-        for provider in (self.llm, self.web_search):
+        for provider in (self.auth, self.llm, self.web_search):
             close = getattr(provider, "aclose", None)
             if callable(close):
                 await close()
@@ -55,10 +66,25 @@ class ProviderRegistry:
 def build_provider_registry(
     *,
     settings: Settings | None = None,
+    auth_provider: AuthProviderPort | None = None,
     llm_provider: LLMProviderPort | None = None,
     web_search_provider: WebSearchProviderPort | None = None,
 ) -> ProviderRegistry:
     """Build the shared provider registry."""
+
+    resolved_auth_provider: AuthProviderPort = NoopAuthProvider()
+    if settings is not None and settings.resolved_auth_provider == "workos":
+        resolved_auth_provider = WorkOSAuthProvider(
+            api_key=settings.workos_api_key,
+            client_id=settings.workos_client_id,
+            cookie_password=settings.workos_cookie_password,
+            redirect_uri=settings.workos_redirect_uri,
+            logout_return_to=settings.frontend_app_url,
+            base_url=settings.workos_base_url or None,
+            request_timeout=settings.workos_request_timeout_seconds,
+        )
+    if auth_provider is not None:
+        resolved_auth_provider = auth_provider
 
     resolved_llm_provider: LLMProviderPort
     if settings is not None and settings.resolved_generic_agent_api_key:
@@ -87,7 +113,9 @@ def build_provider_registry(
     if web_search_provider is not None:
         resolved_web_search_provider = web_search_provider
     return ProviderRegistry(
+        auth=resolved_auth_provider,
         llm=resolved_llm_provider,
         web_search=resolved_web_search_provider,
+        auth_required=settings.auth_required if settings is not None else False,
         web_search_required=settings.web_search_required if settings is not None else False,
     )

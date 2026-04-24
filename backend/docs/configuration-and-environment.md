@@ -7,6 +7,7 @@ It describes:
 - how settings are loaded
 - which settings matter most operationally
 - how provider configuration is resolved
+- how auth configuration is resolved
 - how observability is configured
 - which startup checks enforce configuration correctness
 
@@ -39,8 +40,59 @@ High-signal settings include:
 - `HELLO_SALES_CORS_ALLOWED_ORIGINS`
 - `HELLO_SALES_STAGEFLOW_REQUIRED`
 - `HELLO_SALES_STAGEFLOW_EVENT_QUEUE_SIZE`
+- `HELLO_SALES_AUTH_PROVIDER`
+- `HELLO_SALES_AUTH_REQUIRED`
+- `HELLO_SALES_FRONTEND_APP_URL`
 
-These shape the app identity, routing prefix, logging, database connection, and workflow expectations.
+These shape the app identity, routing prefix, logging, database connection, workflow expectations, and API auth posture.
+
+## Auth Configuration Model
+
+The backend has an app-owned auth boundary in:
+- `platform/auth/`
+- `modules/auth/`
+
+Relevant variables include:
+- `HELLO_SALES_AUTH_PROVIDER`
+- `HELLO_SALES_AUTH_REQUIRED`
+- `HELLO_SALES_AUTH_SESSION_COOKIE_NAME`
+- `HELLO_SALES_AUTH_SESSION_COOKIE_SECURE`
+- `HELLO_SALES_AUTH_SESSION_COOKIE_DOMAIN`
+- `HELLO_SALES_FRONTEND_APP_URL`
+- `HELLO_SALES_WORKOS_API_KEY`
+- `HELLO_SALES_WORKOS_CLIENT_ID`
+- `HELLO_SALES_WORKOS_COOKIE_PASSWORD`
+- `HELLO_SALES_WORKOS_REDIRECT_URI`
+- `HELLO_SALES_WORKOS_BASE_URL`
+- `HELLO_SALES_WORKOS_REQUEST_TIMEOUT_SECONDS`
+
+Behavior:
+- empty `HELLO_SALES_AUTH_PROVIDER` selects the no-op auth provider for local/test-only assembly
+- `HELLO_SALES_AUTH_PROVIDER=workos` selects the WorkOS adapter
+- `HELLO_SALES_AUTH_REQUIRED=true` requires a configured provider at startup
+- the backend owns the sealed session cookie name, security attributes, and clear/set behavior
+- `HELLO_SALES_FRONTEND_APP_URL` is used after successful auth callback redirects and logout return paths
+- bearer tokens and session cookies both resolve through the provider-neutral auth port
+
+The WorkOS adapter expects the provider to issue roles and permission claims. Backend routes authorize against permission slugs rather than binary `admin` / `user` checks, so provider-side role design can evolve without changing route code.
+
+Current backend permission slugs include:
+- `app.access`
+- `sessions.read`
+- `sessions.write`
+- `sessions.read:any`
+- `sessions.write:any`
+- `company_profile.read`
+- `company_profile.write`
+- `jobs.read`
+- `jobs.run`
+- `workers.read`
+- `workers.run`
+- `workers.cancel`
+- `system.read`
+- `analytics.read`
+- `web_search.use`
+- `entity_operations.write`
 
 ## Observability Configuration Model
 
@@ -164,6 +216,9 @@ Startup validation lives in:
 
 Current startup validation checks:
 - environment must be one of `development`, `test`, `staging`, `production`
+- auth provider must be supported
+- auth-required deployments must configure a provider
+- WorkOS configuration must be complete when WorkOS is selected
 - configured generic-agent provider must be supported
 - provider config must not be partial
 - required web-search readiness fails when the selected search provider has no usable credentials
@@ -172,6 +227,8 @@ Current startup validation checks:
 The backend treats partial provider configuration as a startup error.
 
 Examples of invalid shapes:
+- auth required without `HELLO_SALES_AUTH_PROVIDER`
+- `HELLO_SALES_AUTH_PROVIDER=workos` without API key, client id, cookie password, or redirect URI
 - provider/model/base-url hints without a usable API key
 - API key present but model/base-url shape incomplete when required
 

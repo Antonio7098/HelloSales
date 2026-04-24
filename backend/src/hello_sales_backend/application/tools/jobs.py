@@ -10,6 +10,7 @@ from hello_sales_backend.platform.agents.tools import (
     AgentToolDefinition,
     AgentToolExecutionContext,
 )
+from hello_sales_backend.shared.auth import JOBS_READ_PERMISSION, JOBS_RUN_PERMISSION
 from hello_sales_backend.shared.errors import app_error
 
 
@@ -42,6 +43,7 @@ def build_list_recent_tasks_tool(*, jobs_service: JobsService) -> AgentToolDefin
         description="List recent operational background tasks.",
         arguments_model=ListRecentTasksToolArgs,
         execute=list_recent_tasks,
+        required_permissions=(JOBS_READ_PERMISSION,),
     )
 
 
@@ -71,6 +73,7 @@ def build_get_task_tool(*, jobs_service: JobsService) -> AgentToolDefinition:
         description="Fetch one operational background task by id.",
         arguments_model=GetTaskToolArgs,
         execute=get_task,
+        required_permissions=(JOBS_READ_PERMISSION,),
     )
 
 
@@ -96,4 +99,5 @@ def build_run_diagnostic_job_tool(*, jobs_service: JobsService) -> AgentToolDefi
         arguments_model=RunDiagnosticJobToolArgs,
         execute=run_diagnostic_job,
         requires_approval=True,
+        required_permissions=(JOBS_RUN_PERMISSION,),
     )

@@ -7,7 +7,9 @@ from fastapi import APIRouter
 from httpx import ASGITransport, AsyncClient
 
 from hello_sales_backend.app import create_app
+from hello_sales_backend.platform.composition.overrides import AppOverrides
 from hello_sales_backend.platform.config.settings import Settings
+from tests.support.auth import attach_test_session_cookie, build_test_auth_provider
 
 
 @pytest.mark.asyncio
@@ -22,12 +24,14 @@ async def test_metrics_endpoint_is_operational_and_observability_state_is_visibl
             observability_metrics_endpoint_enabled=True,
             observability_tracing_enabled=True,
             observability_tracing_exporter="none",
-        )
+        ),
+        overrides=AppOverrides(auth_provider=build_test_auth_provider()),
     )
 
     async with app.router.lifespan_context(app):
         transport = ASGITransport(app=app, raise_app_exceptions=True)
         async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+            attach_test_session_cookie(client)
             readiness = await client.get("/api/health/readiness")
             diagnostics = await client.get("/api/system/diagnostics")
             metrics = await client.get("/metrics")
@@ -58,12 +62,14 @@ async def test_observability_diagnostics_show_otlp_exporter_configuration(tmp_pa
             observability_tracing_otlp_endpoint="http://collector.test:4318/v1/traces",
             observability_tracing_otlp_headers="authorization=Bearer test",
             observability_tracing_otlp_timeout_seconds=5,
-        )
+        ),
+        overrides=AppOverrides(auth_provider=build_test_auth_provider()),
     )
 
     async with app.router.lifespan_context(app):
         transport = ASGITransport(app=app, raise_app_exceptions=True)
         async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+            attach_test_session_cookie(client)
             diagnostics = await client.get("/api/system/diagnostics")
 
     assert diagnostics.status_code == 200
@@ -84,7 +90,8 @@ async def test_metrics_endpoint_records_http_failures(tmp_path: Path) -> None:
             database_url=f"sqlite+aiosqlite:///{tmp_path / 'failure-metrics.db'}",
             observability_metrics_enabled=True,
             observability_metrics_endpoint_enabled=True,
-        )
+        ),
+        overrides=AppOverrides(auth_provider=build_test_auth_provider()),
     )
     router = APIRouter()
 

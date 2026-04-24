@@ -11,6 +11,7 @@ from fastapi.responses import Response
 
 from hello_sales_backend.entrypoints.http.error_handlers import register_error_handlers
 from hello_sales_backend.entrypoints.http.router import api_router
+from hello_sales_backend.platform.auth.middleware import AuthenticationMiddleware
 from hello_sales_backend.platform.composition.app_container import AppContainer, build_app_container
 from hello_sales_backend.platform.composition.overrides import AppOverrides
 from hello_sales_backend.platform.composition.startup import bootstrap_container, shutdown_container
@@ -53,6 +54,7 @@ def create_app(
         allow_headers=["*"],
     )
     app.add_middleware(RequestContextMiddleware, observability=resolved_container.observability)
+    app.add_middleware(AuthenticationMiddleware)
     register_error_handlers(app)
     app.include_router(api_router, prefix=resolved_settings.api_prefix)
 

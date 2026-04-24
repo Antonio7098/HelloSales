@@ -15,6 +15,7 @@ from hello_sales_backend.platform.agents.models import (
 )
 from hello_sales_backend.platform.tasks.runner import BackgroundTaskRunner
 from hello_sales_backend.shared.errors import AppError
+from tests.support.auth import build_test_auth_context
 
 
 class _NoopRuntime:
@@ -62,7 +63,7 @@ async def test_append_turn_recovers_orphaned_running_run() -> None:
         run_id=run.run_id,
         request_id="req-2",
         trace_id="trace-2",
-        actor_id=None,
+        auth_context=build_test_auth_context(),
         command=AppendAgentTurnCommand(input_text="second"),
     )
 
@@ -109,7 +110,7 @@ async def test_append_turn_rejects_awaiting_approval_run() -> None:
             run_id=run.run_id,
             request_id="req-2",
             trace_id="trace-2",
-            actor_id=None,
+            auth_context=build_test_auth_context(),
             command=AppendAgentTurnCommand(input_text="second"),
         )
 

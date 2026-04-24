@@ -15,6 +15,7 @@ dependencies = [
     "pydantic>=2.10.0",
     "pydantic-settings>=2.6.0",
     "pyyaml>=6.0.2",
+    "workos>=5.19.0",
     "prometheus-client>=0.21.0",
     "stageflow-core>=1.2.0",
     "structlog>=24.4.0",

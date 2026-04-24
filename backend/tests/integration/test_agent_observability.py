@@ -19,6 +19,7 @@ from hello_sales_backend.platform.providers.llm.contracts import (
     ProviderToolDefinition,
     ToolCallCompletionResult,
 )
+from tests.support.auth import attach_test_session_cookie, build_test_auth_provider
 
 
 class FakeChatModel(ChatModelPort):
@@ -137,12 +138,16 @@ async def test_agent_runs_are_visible_in_metrics_and_diagnostics(tmp_path: Path)
             observability_metrics_enabled=True,
             observability_metrics_endpoint_enabled=True,
         ),
-        overrides=AppOverrides(llm_provider=FakeChatModel()),
+        overrides=AppOverrides(
+            auth_provider=build_test_auth_provider(),
+            llm_provider=FakeChatModel(),
+        ),
     )
 
     async with app.router.lifespan_context(app):
         transport = ASGITransport(app=app, raise_app_exceptions=True)
         async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+            attach_test_session_cookie(client)
             completed_start = await client.post(
                 "/api/sessions",
                 json={"input_text": "show me the current system status"},

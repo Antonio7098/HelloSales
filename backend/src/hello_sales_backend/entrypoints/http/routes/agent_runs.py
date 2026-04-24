@@ -9,7 +9,10 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import StreamingResponse
 
-from hello_sales_backend.entrypoints.http.dependencies import get_agent_run_service
+from hello_sales_backend.entrypoints.http.dependencies import (
+    get_agent_run_service,
+    require_permissions,
+)
 from hello_sales_backend.entrypoints.http.schemas import ApiEnvelope, ok_response
 from hello_sales_backend.modules.agent_runs import AgentRunService
 from hello_sales_backend.modules.agent_runs.use_cases.commands import (
@@ -17,10 +20,24 @@ from hello_sales_backend.modules.agent_runs.use_cases.commands import (
     ApprovalDecisionCommand,
     StartAgentRunCommand,
 )
+from hello_sales_backend.shared.auth import (
+    APP_ACCESS_PERMISSION,
+    SESSIONS_READ_PERMISSION,
+    SESSIONS_WRITE_PERMISSION,
+    AuthContext,
+)
 from hello_sales_backend.shared.errors import app_error
 
 router = APIRouter()
 AgentRunServiceDep = Annotated[AgentRunService, Depends(get_agent_run_service)]
+ReadDep = Annotated[
+    AuthContext,
+    Depends(require_permissions(APP_ACCESS_PERMISSION, SESSIONS_READ_PERMISSION)),
+]
+WriteDep = Annotated[
+    AuthContext,
+    Depends(require_permissions(APP_ACCESS_PERMISSION, SESSIONS_WRITE_PERMISSION)),
+]
 
 
 @router.post("", response_model=ApiEnvelope)
@@ -28,12 +45,13 @@ async def start_agent_run(
     request: Request,
     command: StartAgentRunCommand,
     service: AgentRunServiceDep,
+    auth_context: WriteDep,
 ) -> ApiEnvelope:
     return ok_response(
         await service.start_run(
             request_id=getattr(request.state, "request_id", None),
             trace_id=getattr(request.state, "trace_id", None),
-            actor_id=None,
+            auth_context=auth_context,
             session_id=None,
             command=command,
         )
@@ -41,7 +59,11 @@ async def start_agent_run(
 
 
 @router.get("/{run_id}", response_model=ApiEnvelope)
-async def get_agent_run(run_id: str, service: AgentRunServiceDep) -> ApiEnvelope:
+async def get_agent_run(
+    run_id: str,
+    service: AgentRunServiceDep,
+    _auth_context: ReadDep,
+) -> ApiEnvelope:
     return ok_response(await service.get_run(run_id))
 
 
@@ -51,20 +73,25 @@ async def append_agent_turn(
     request: Request,
     command: AppendAgentTurnCommand,
     service: AgentRunServiceDep,
+    auth_context: WriteDep,
 ) -> ApiEnvelope:
     return ok_response(
         await service.append_turn(
             run_id=run_id,
             request_id=getattr(request.state, "request_id", None),
             trace_id=getattr(request.state, "trace_id", None),
-            actor_id=None,
+            auth_context=auth_context,
             command=command,
         )
     )
 
 
 @router.get("/{run_id}/events", response_model=ApiEnvelope)
-async def get_agent_run_events(run_id: str, service: AgentRunServiceDep) -> ApiEnvelope:
+async def get_agent_run_events(
+    run_id: str,
+    service: AgentRunServiceDep,
+    _auth_context: ReadDep,
+) -> ApiEnvelope:
     return ok_response(await service.list_events(run_id))
 
 
@@ -72,6 +99,7 @@ async def get_agent_run_events(run_id: str, service: AgentRunServiceDep) -> ApiE
 async def stream_agent_run_events(
     run_id: str,
     service: AgentRunServiceDep,
+    _auth_context: ReadDep,
     after_sequence: int = Query(default=0, ge=0),
 ) -> StreamingResponse:
     if await service.get_run(run_id) is None:
@@ -104,7 +132,11 @@ async def stream_agent_run_events(
 
 
 @router.post("/{run_id}/cancel", response_model=ApiEnvelope)
-async def cancel_agent_run(run_id: str, service: AgentRunServiceDep) -> ApiEnvelope:
+async def cancel_agent_run(
+    run_id: str,
+    service: AgentRunServiceDep,
+    _auth_context: WriteDep,
+) -> ApiEnvelope:
     return ok_response(await service.cancel_run(run_id))
 
 
@@ -114,13 +146,14 @@ async def decide_agent_approval(
     request: Request,
     command: ApprovalDecisionCommand,
     service: AgentRunServiceDep,
+    auth_context: WriteDep,
 ) -> ApiEnvelope:
     return ok_response(
         await service.decide_approval(
             approval_id=approval_id,
             request_id=getattr(request.state, "request_id", None),
             trace_id=getattr(request.state, "trace_id", None),
-            actor_id=None,
+            auth_context=auth_context,
             command=command,
         )
     )

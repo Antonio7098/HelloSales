@@ -13,6 +13,7 @@ from hello_sales_backend.platform.web_search.contracts import (
     WebSearchResponse,
     WebSearchResult,
 )
+from tests.support.auth import attach_test_session_cookie, build_test_auth_provider
 
 
 class FakeWebSearchProvider:
@@ -49,7 +50,13 @@ async def test_web_search_tool_is_registered_and_executes_through_catalog(tmp_pa
         database_url=f"sqlite+aiosqlite:///{tmp_path / 'test.db'}",
         web_search_requires_approval=True,
     )
-    app = create_app(settings, overrides=AppOverrides(web_search_provider=FakeWebSearchProvider()))
+    app = create_app(
+        settings,
+        overrides=AppOverrides(
+            auth_provider=build_test_auth_provider(),
+            web_search_provider=FakeWebSearchProvider(),
+        ),
+    )
     catalog = app.state.container.agent_runtime.agents.require("generic").tools
     tool = catalog.require("search_web")
 
@@ -64,6 +71,7 @@ async def test_web_search_tool_is_registered_and_executes_through_catalog(tmp_pa
             request_id="request-1",
             trace_id="trace-1",
             actor_id="actor-1",
+            permissions=("web_search.use",),
         ),
     )
 
@@ -79,11 +87,18 @@ async def test_system_diagnostics_include_web_search_provider(tmp_path) -> None:
         api_prefix="/api",
         database_url=f"sqlite+aiosqlite:///{tmp_path / 'test.db'}",
     )
-    app = create_app(settings, overrides=AppOverrides(web_search_provider=FakeWebSearchProvider()))
+    app = create_app(
+        settings,
+        overrides=AppOverrides(
+            auth_provider=build_test_auth_provider(),
+            web_search_provider=FakeWebSearchProvider(),
+        ),
+    )
 
     async with app.router.lifespan_context(app):
         transport = httpx.ASGITransport(app=app)
         async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+            attach_test_session_cookie(client)
             response = await client.get("/api/system/diagnostics")
 
     response.raise_for_status()

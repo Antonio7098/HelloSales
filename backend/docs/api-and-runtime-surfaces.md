@@ -10,6 +10,23 @@ Top-level router:
 
 Mounted route groups:
 
+### `/auth`
+Purpose:
+- redirect to the configured hosted auth provider
+- accept provider callbacks and establish the app session cookie
+- expose the current authenticated session
+- clear the app session and return the provider logout redirect
+
+Backed by:
+- `modules/auth/use_cases/auth_service.py`
+- `platform/auth/`
+
+Auth endpoints:
+- `GET /auth/login`
+- `GET /auth/callback`
+- `GET /auth/session`
+- `POST /auth/logout`
+
 ### `/health`
 Purpose:
 - liveness and readiness-style operational checks
@@ -38,6 +55,12 @@ Backed by:
 - `modules/agent_runs/use_cases/agent_run_service.py`
 - `platform/agents/runtime.py`
 
+Authorization:
+- requires `app.access`
+- read operations require `sessions.read`
+- write, approval, and cancellation operations require `sessions.write`
+- elevated cross-session access uses `sessions.read:any` and `sessions.write:any`
+
 ### `/worker-runs`
 Purpose:
 - start a worker run
@@ -49,6 +72,11 @@ Backed by:
 - `modules/worker_runs/use_cases/worker_run_service.py`
 - `platform/workers/runtime.py`
 
+Authorization:
+- read operations require `workers.read`
+- run creation requires `workers.run`
+- cancellation requires `workers.cancel`
+
 ### `/jobs`
 Purpose:
 - start lightweight operational jobs
@@ -59,6 +87,10 @@ Backed by:
 - `platform/tasks/runner.py`
 - `platform/workflows/executor.py`
 
+Authorization:
+- read operations require `jobs.read`
+- diagnostic job creation requires `jobs.run`
+
 ### `/system`
 Purpose:
 - system status
@@ -66,6 +98,10 @@ Purpose:
 
 Backed by:
 - `modules/system/use_cases/system_service.py`
+
+Authorization:
+- requires `app.access`
+- requires `system.read`
 
 ## Internal Runtime Surfaces
 
@@ -86,9 +122,11 @@ Owns:
 
 ### Provider Surface
 - `platform/composition/providers.py`
+- `platform/auth/`
 - `platform/llm/`
 
 Current provider surface is centered on the neutral shared LLM contract.
+Auth provider resolution follows the same app-owned composition pattern, with WorkOS as the first real adapter and a no-op provider for test/local assembly.
 
 ### Agent Runtime Surface
 - `platform/agents/runtime.py`
@@ -150,7 +188,9 @@ This is the app-owned boundary around Stageflow.
 
 ```text
 HTTP route
+-> auth middleware resolves current session into request state
 -> dependency resolution
+-> permission dependency checks route capabilities
 -> module service
 -> platform/runtime collaborators
 -> persistence / provider / workflow execution
@@ -161,11 +201,13 @@ HTTP route
 
 ```text
 POST /sessions
+-> auth dependency validates app/session write permissions
 -> SessionService.create_session()
 -> persist session + first user message
--> AgentRunService.start_run(session_id=...)
+-> AgentRunService.start_run(session_id=..., auth_context=...)
 -> BackgroundTaskRunner.start()
 -> GenericAgentRuntime.process_turn()
+-> tool execution receives actor/org/permission snapshot
 -> persist session items + events + final attached run state
 ```
 
@@ -214,6 +256,7 @@ GET /system/...
 
 High-signal extension points today:
 - add a new module under `modules/`
+- add a new auth provider implementation under `platform/auth/providers/`
 - add a new provider implementation under `platform/llm/providers/`
 - add a new agent definition under `application/agents/definitions/`
 - add a new worker definition under `application/workers/definitions/`

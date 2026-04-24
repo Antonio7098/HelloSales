@@ -13,6 +13,7 @@ from hello_sales_backend.platform.providers.llm.contracts import (
     ChatModelPort,
     JSONGenerationResult,
 )
+from tests.support.auth import attach_test_session_cookie, build_test_auth_provider
 
 
 class FakeChatModel(ChatModelPort):
@@ -47,12 +48,16 @@ class FakeChatModel(ChatModelPort):
 async def test_jobs_diagnostic_workflow_runs(client: AsyncClient, test_settings: Settings) -> None:
     app = create_app(
         test_settings,
-        overrides=AppOverrides(llm_provider=FakeChatModel()),
+        overrides=AppOverrides(
+            auth_provider=build_test_auth_provider(),
+            llm_provider=FakeChatModel(),
+        ),
     )
 
     async with app.router.lifespan_context(app):
         transport = ASGITransport(app=app, raise_app_exceptions=True)
         async with AsyncClient(transport=transport, base_url="http://testserver") as local_client:
+            attach_test_session_cookie(local_client)
             response = await local_client.post("/api/jobs/diagnostic", json={"prompt": "Say OK"})
             assert response.status_code == 200
             task_id = response.json()["data"]["task_id"]
