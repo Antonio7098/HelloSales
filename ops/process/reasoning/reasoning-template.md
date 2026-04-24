@@ -39,6 +39,30 @@
 - [Question 1]
 - [Question 2]
 
+## Current Research
+
+**Research Status:** [Completed / Not needed because recent verified context is sufficient / Deferred with reason]
+
+### Sources Consulted
+
+- [Official docs, release notes, standards, or authoritative source]: [Why it matters]
+- [Official docs, release notes, standards, or authoritative source]: [Why it matters]
+
+### Relevant Current Guidance
+
+- **[Tool / technology / option / practice]:** [Latest finding and how it affects this sprint]
+- **[Tool / technology / option / practice]:** [Latest finding and how it affects this sprint]
+
+### Options Or Guidance Rejected
+
+- **[Option or guidance]:** [Why it is not applicable in this codebase or sprint]
+- **[Option or guidance]:** [Why it is not applicable in this codebase or sprint]
+
+### Impact On Reasoning
+
+- [Decision, risk, alternative, or evidence expectation changed or confirmed by current research]
+- [Decision, risk, alternative, or evidence expectation changed or confirmed by current research]
+
 ## Feature Analysis
 
 ### Feature 1: [Feature Name]
@@ -57,6 +81,10 @@
 **Current-System Analysis**
 - [Relevant existing code, seams, or constraints]
 - [What must remain true]
+
+**Current Research Applied**
+- [Latest relevant tools, technologies, options, best practices, or guidance that affect this feature]
+- [If no external research affects this feature, explain why current verified context is sufficient]
 
 **Options Considered**
 - **Option A:** [Description]
@@ -98,6 +126,10 @@
 **Current-System Analysis**
 - [Relevant existing code, seams, or constraints]
 - [What must remain true]
+
+**Current Research Applied**
+- [Latest relevant tools, technologies, options, best practices, or guidance that affect this feature]
+- [If no external research affects this feature, explain why current verified context is sufficient]
 
 **Options Considered**
 - **Option A:** [Description]
@@ -152,6 +184,7 @@
 ### Evidence Review Checklist
 
 - [Review can trace every feature decision back to explicit requirement IDs]
+- [Review can trace relevant latest research to decisions, alternatives, risks, or evidence expectations]
 - [Review can verify the planned tests and runtime evidence exist]
 - [Review can identify any planned or unplanned deviations by requirement ID]
 
@@ -160,6 +193,8 @@
 - [ ] Tracker scope is fully covered
 - [ ] Applicable requirements are mapped
 - [ ] Ambiguous and non-applicable requirements are recorded where relevant
+- [ ] Latest relevant tools, technologies, options, best practices, and guidance were researched or explicitly deemed unnecessary
+- [ ] Research findings are tied to decisions, risks, alternatives, or evidence expectations where relevant
 - [ ] Important decisions are explicitly justified
 - [ ] Non-trivial alternatives are discussed
 - [ ] Deviations, assumptions, risks, and unknowns are documented
