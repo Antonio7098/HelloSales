@@ -20,17 +20,18 @@ export function ChatWorkspace() {
     approvalDecisionById,
     error,
   } = chat;
-  const busy =
+  const statusBusy =
     isConnecting ||
     isSending ||
     session?.status === "active" ||
     session?.status === "awaiting_approval";
+  const composerBusy = isConnecting || isSending;
 
   async function handleSubmit(text: string) {
     await chat.sendMessage(text);
   }
 
-  const tone = error ? "danger" : busy ? "warn" : session ? "success" : "neutral";
+  const tone = error ? "danger" : statusBusy ? "warn" : session ? "success" : "neutral";
 
   return (
     <>
@@ -44,10 +45,10 @@ export function ChatWorkspace() {
         description="A governed dashboard analyst. It reads only the approved SQL tool and streams answers as it thinks."
         actions={
           <Badge tone={tone}>
-            <StatusDot tone={tone} pulse={busy} />
+            <StatusDot tone={tone} pulse={statusBusy} />
             {error
               ? "Error"
-              : busy
+              : statusBusy
                 ? isSending
                   ? "Replying"
                   : session?.status === "awaiting_approval"
@@ -97,7 +98,11 @@ export function ChatWorkspace() {
             }}
           />
 
-          <Composer onSubmit={handleSubmit} busy={busy} disabled={Boolean(error) && !session} />
+          <Composer
+            onSubmit={handleSubmit}
+            busy={composerBusy}
+            disabled={Boolean(error) && !session}
+          />
         </Surface>
 
         <SessionSummaryPanel

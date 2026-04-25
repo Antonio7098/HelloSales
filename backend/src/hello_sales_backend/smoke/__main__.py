@@ -22,6 +22,12 @@ from .suites.generic_agent_provider import (
     GenericAgentWebSearchSmoke,
     ObserverAgentProviderSmoke,
 )
+from .suites.voice_primitives import (
+    VoiceDuplexSmoke,
+    VoiceLLMToTTSSmoke,
+    VoiceSTTSmoke,
+    VoiceTTSSmoke,
+)
 from .suites.worker_provider import WorkerCampaignWorkflowSmoke, WorkerProviderBaselineSmoke
 
 
@@ -39,6 +45,10 @@ def build_registry() -> SmokeRegistry:
             GenericAgentWebSearchSmoke(),
             GenericAgentSemanticCatalogReadSmoke(),
             GenericAgentEntityMutationSmoke(),
+            VoiceSTTSmoke(),
+            VoiceTTSSmoke(),
+            VoiceLLMToTTSSmoke(),
+            VoiceDuplexSmoke(),
             WorkerProviderBaselineSmoke(),
             WorkerCampaignWorkflowSmoke(),
         ]

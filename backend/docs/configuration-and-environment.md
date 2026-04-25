@@ -151,12 +151,17 @@ For the self-hosted stack introduced in Sprint 3, the intended endpoint is the O
 
 The backend currently resolves one shared LLM provider path that both the conversational agent runtime and the worker runtime consume.
 It also resolves an optional public web-search provider path for the generic agent's `search_web` tool and the reusable `modules/web_search` service.
+Voice primitives resolve separate STT, TTS, realtime voice, and turn-detection provider paths.
 
 Relevant variables include:
 - `HELLO_SALES_GENERIC_AGENT_PROVIDER`
 - `HELLO_SALES_GENERIC_AGENT_MODEL`
 - `HELLO_SALES_GENERIC_AGENT_BASE_URL`
 - `HELLO_SALES_GENERIC_AGENT_TIMEOUT_SECONDS`
+- `HELLO_SALES_GENERIC_AGENT_PROVIDER_MAX_RETRIES`
+- `HELLO_SALES_GENERIC_AGENT_PROVIDER_RETRY_BACKOFF_SECONDS`
+- `HELLO_SALES_GENERIC_AGENT_BACKUP_MODEL`
+- `HELLO_SALES_GENERIC_AGENT_BACKUP_MODEL_ATTEMPT`
 - `HELLO_SALES_AGENT_CONTEXT_PROFILE`
 - `HELLO_SALES_GROQ_API_KEY`
 - `HELLO_SALES_OPENROUTER_API_KEY`
@@ -168,6 +173,17 @@ Relevant variables include:
 - `HELLO_SALES_WEB_SEARCH_DEFAULT_MAX_RESULTS`
 - `HELLO_SALES_WEB_SEARCH_REQUIRED`
 - `HELLO_SALES_WEB_SEARCH_REQUIRES_APPROVAL`
+- `HELLO_SALES_VOICE_STT_PROVIDER`
+- `HELLO_SALES_VOICE_TTS_PROVIDER`
+- `HELLO_SALES_VOICE_REALTIME_PROVIDER`
+- `HELLO_SALES_VOICE_TURN_DETECTION_PROVIDER`
+- `HELLO_SALES_VOICE_TRANSPORT_PROVIDER`
+- `HELLO_SALES_VOICE_REQUIRED`
+- `HELLO_SALES_VOICE_STT_MODEL`
+- `HELLO_SALES_VOICE_TTS_MODEL`
+- `HELLO_SALES_VOICE_DEFAULT_TTS_VOICE`
+- `HELLO_SALES_VOICE_MAX_AUDIO_BYTES`
+- `HELLO_SALES_VOICE_PERSIST_RAW_AUDIO`
 
 The settings name remains `generic_agent_*` because that path existed before the neutral `platform/llm/` extraction.
 At runtime, the resolved provider now backs:
@@ -194,6 +210,9 @@ Resolution behavior is:
 - explicit custom base URL wins when provided
 - otherwise known providers get their default base URL
 - API key is chosen based on the resolved provider name
+- retryable provider transport failures are retried up to `HELLO_SALES_GENERIC_AGENT_PROVIDER_MAX_RETRIES`
+- retry backoff is linear and controlled by `HELLO_SALES_GENERIC_AGENT_PROVIDER_RETRY_BACKOFF_SECONDS`
+- when configured, `HELLO_SALES_GENERIC_AGENT_BACKUP_MODEL` is selected starting at `HELLO_SALES_GENERIC_AGENT_BACKUP_MODEL_ATTEMPT`
 
 ### Public Web Search Provider Resolution
 
@@ -212,6 +231,22 @@ Readiness behavior:
 - web search is optional by default and appears as disabled or degraded in readiness/diagnostics when not configured
 - `HELLO_SALES_WEB_SEARCH_REQUIRED=true` makes readiness fail if a provider is selected without usable credentials
 - diagnostics expose provider `kind=web_search`, availability, required state, and degraded state
+
+### Voice Provider Resolution
+
+The current built-in voice adapter is deterministic fake-only:
+- `fake`
+
+Resolution behavior:
+- `HELLO_SALES_VOICE_STT_PROVIDER=fake` selects `fake-stt`
+- `HELLO_SALES_VOICE_TTS_PROVIDER=fake` selects `fake-tts`
+- `HELLO_SALES_VOICE_REALTIME_PROVIDER=fake` selects `fake-realtime-voice`
+- `HELLO_SALES_VOICE_TURN_DETECTION_PROVIDER=fake` selects `fake-turn-detection`
+- empty provider settings resolve to disabled providers
+- `HELLO_SALES_VOICE_REQUIRED=true` makes readiness fail unless STT, TTS, and turn detection are configured
+
+Raw audio persistence remains disabled unless `HELLO_SALES_VOICE_PERSIST_RAW_AUDIO=true`.
+The default maximum audio payload is 25 MB through `HELLO_SALES_VOICE_MAX_AUDIO_BYTES`.
 
 ## Startup Validation
 

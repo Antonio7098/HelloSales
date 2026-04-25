@@ -77,6 +77,20 @@ def _validate_settings(container: AppContainer) -> None:
             operation="startup.validate_settings",
             component="config",
         )
+    if settings.resolved_auth_provider == "dev" and settings.environment != "development":
+        raise app_error(
+            "Development auth provider can only run in development",
+            code="config.auth_provider.dev_only",
+            category="config",
+            status_code=500,
+            severity="critical",
+            details={
+                "provider": settings.resolved_auth_provider,
+                "environment": settings.environment,
+            },
+            operation="startup.validate_settings",
+            component="config",
+        )
     auth_settings_present = any(
         (
             settings.auth_provider,

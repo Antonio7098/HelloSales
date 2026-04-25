@@ -107,6 +107,49 @@ function resolveSessionError(
   return null;
 }
 
+function readCompletedAssistantItem(event: SessionEvent): SessionItem | null {
+  if (event.event_type !== "agent.turn.completed") {
+    return null;
+  }
+  const value = event.payload.assistant_item;
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+  const item = value as Partial<SessionItem>;
+  if (
+    typeof item.item_id !== "string" ||
+    typeof item.sequence_no !== "number" ||
+    item.item_type !== "assistant_message" ||
+    typeof item.created_at !== "string" ||
+    item.payload === null ||
+    typeof item.payload !== "object" ||
+    Array.isArray(item.payload)
+  ) {
+    return null;
+  }
+  return {
+    item_id: item.item_id,
+    sequence_no: item.sequence_no,
+    item_type: item.item_type,
+    actor_id: typeof item.actor_id === "string" ? item.actor_id : null,
+    run_id: typeof item.run_id === "string" ? item.run_id : null,
+    turn_id: typeof item.turn_id === "string" ? item.turn_id : null,
+    tool_call_id: typeof item.tool_call_id === "string" ? item.tool_call_id : null,
+    payload: item.payload as Record<string, unknown>,
+    created_at: item.created_at,
+  };
+}
+
+function upsertSessionItem(items: SessionItem[], item: SessionItem): SessionItem[] {
+  const existingIndex = items.findIndex((candidate) => candidate.item_id === item.item_id);
+  if (existingIndex >= 0) {
+    const next = [...items];
+    next[existingIndex] = item;
+    return next;
+  }
+  return [...items, item].sort((left, right) => left.sequence_no - right.sequence_no);
+}
+
 export function useAgentChat() {
   const [state, setState] = useState<AgentChatState>(initialState);
 
@@ -122,14 +165,14 @@ export function useAgentChat() {
     const lastSequence = state.events.at(-1)?.sequence_no ?? 0;
     let isClosed = false;
 
-    async function refreshSessionState() {
+    async function refreshSessionState({ force = false }: { force?: boolean } = {}) {
       try {
         const [session, items, events] = await Promise.all([
           getSession(sessionId),
           getSessionItems(sessionId),
           getSessionEvents(sessionId),
         ]);
-        if (isClosed) {
+        if (isClosed && !force) {
           return;
         }
         setState((current) => {
@@ -164,8 +207,13 @@ export function useAgentChat() {
         }
 
         const eventTurnId = typeof event.payload.turn_id === "string" ? event.payload.turn_id : event.turn_id;
+        const completedAssistantItem = readCompletedAssistantItem(event);
+        const items =
+          completedAssistantItem === null
+            ? current.items
+            : upsertSessionItem(current.items, completedAssistantItem);
         const hasPersistedTurn =
-          eventTurnId != null && current.items.some((item) => item.turn_id === eventTurnId && item.item_type === "assistant_message");
+          eventTurnId != null && items.some((item) => item.turn_id === eventTurnId && item.item_type === "assistant_message");
 
         let streamedAssistantDraft = current.streamedAssistantDraft;
         if (event.event_type === "agent.turn.started") {
@@ -193,6 +241,7 @@ export function useAgentChat() {
 
         return {
           ...current,
+          items,
           events: [...current.events, event],
           streamedAssistantDraft,
           error:
@@ -216,7 +265,7 @@ export function useAgentChat() {
         event.event_type === "agent.tool.completed" ||
         event.event_type === "agent.tool.failed"
       ) {
-        void refreshSessionState();
+        void refreshSessionState({ force: terminalEventTypes.has(event.event_type) });
       }
 
       if (terminalEventTypes.has(event.event_type)) {
@@ -332,6 +381,10 @@ export function useAgentChat() {
   }
 
   async function respondToApproval(approvalId: string, approved: boolean) {
+    const sessionId = state.session?.session_id;
+    if (!sessionId) {
+      throw new Error("Cannot submit an approval decision without an active session");
+    }
     setState((current) => ({
       ...current,
       approvalDecisionById: {
@@ -341,8 +394,12 @@ export function useAgentChat() {
       error: null,
     }));
     try {
-      const session = await decideSessionApproval(approvalId, { approved });
-      const items = await getSessionItems(session.session_id);
+      await decideSessionApproval(approvalId, { approved });
+      const [session, items, events] = await Promise.all([
+        getSession(sessionId),
+        getSessionItems(sessionId),
+        getSessionEvents(sessionId),
+      ]);
       setState((current) => {
         const nextDecisionState = { ...current.approvalDecisionById };
         delete nextDecisionState[approvalId];
@@ -350,9 +407,10 @@ export function useAgentChat() {
           ...current,
           session,
           items,
+          events,
           subscriptionNonce: current.subscriptionNonce + 1,
           approvalDecisionById: nextDecisionState,
-          error: resolveSessionError(session, items, current.events, null),
+          error: resolveSessionError(session, items, events, null),
         };
       });
       return session;

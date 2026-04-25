@@ -119,6 +119,12 @@ class WorkerRuntime:
                                 "issue_code": (
                                     last_retry_issue.code if last_retry_issue is not None else None
                                 ),
+                                "retryable": (
+                                    last_retry_issue.retryable
+                                    if last_retry_issue is not None
+                                    else None
+                                ),
+                                "previous_attempt": attempt - 1,
                             },
                         )
                     run.status = WorkerRunStatus.RUNNING
@@ -189,7 +195,17 @@ class WorkerRuntime:
                                 event_type="worker.attempt.timeout",
                                 severity="warning",
                                 code=structured.code,
-                                payload={"attempt": attempt, "error": structured.to_dict()},
+                                payload={
+                                    "attempt": attempt,
+                                    "max_attempts": run.max_attempts,
+                                    "issue_kind": decision.issue.kind.value,
+                                    "issue_code": decision.issue.code,
+                                    "retryable": decision.issue.retryable,
+                                    "should_retry": decision.should_retry,
+                                    "next_attempt": decision.next_attempt,
+                                    "remaining_attempts": decision.remaining_attempts,
+                                    "error": structured.to_dict(),
+                                },
                             )
                             continue
                         raise structured from exc
@@ -216,9 +232,41 @@ class WorkerRuntime:
                                 event_type="worker.attempt.provider_failed",
                                 severity="warning",
                                 code=exc.code,
-                                payload={"attempt": attempt, "error": exc.to_dict()},
+                                payload={
+                                    "attempt": attempt,
+                                    "max_attempts": run.max_attempts,
+                                    "issue_kind": decision.issue.kind.value,
+                                    "issue_code": decision.issue.code,
+                                    "retryable": decision.issue.retryable,
+                                    "should_retry": decision.should_retry,
+                                    "next_attempt": decision.next_attempt,
+                                    "remaining_attempts": decision.remaining_attempts,
+                                    "error": exc.to_dict(),
+                                },
                             )
                             continue
+                        if decision.issue.retryable:
+                            raise app_error(
+                                exc.message,
+                                code=exc.code,
+                                category=exc.category,
+                                status_code=exc.status_code,
+                                severity=exc.severity,
+                                retryable=False,
+                                details={
+                                    **exc.details,
+                                    "run_id": run.run_id,
+                                    "worker_name": run.worker_name,
+                                    "attempt": attempt,
+                                    "max_attempts": run.max_attempts,
+                                    "provider": provider_name,
+                                    "issue_kind": decision.issue.kind.value,
+                                    "retry_exhausted": True,
+                                },
+                                operation=exc.operation,
+                                component=exc.component,
+                                exc=exc,
+                            ) from exc
                         raise
                     if result.output_json is None:
                         last_issue = f"provider returned non-JSON output: {result.raw_text[:500]}"
@@ -241,7 +289,17 @@ class WorkerRuntime:
                             event_type="worker.attempt.validation_failed",
                             severity="warning",
                             code="worker.output.invalid_json",
-                            payload={"attempt": attempt, "raw_text": result.raw_text[:500]},
+                            payload={
+                                "attempt": attempt,
+                                "max_attempts": run.max_attempts,
+                                "issue_kind": decision.issue.kind.value,
+                                "issue_code": decision.issue.code,
+                                "retryable": decision.issue.retryable,
+                                "should_retry": decision.should_retry,
+                                "next_attempt": decision.next_attempt,
+                                "remaining_attempts": decision.remaining_attempts,
+                                "raw_text": result.raw_text[:500],
+                            },
                         )
                         if decision.should_retry:
                             last_retry_issue = issue
@@ -294,7 +352,17 @@ class WorkerRuntime:
                             event_type="worker.attempt.validation_failed",
                             severity="warning",
                             code=issue_code,
-                            payload={"attempt": attempt, "error": issue_payload},
+                            payload={
+                                "attempt": attempt,
+                                "max_attempts": run.max_attempts,
+                                "issue_kind": decision.issue.kind.value,
+                                "issue_code": decision.issue.code,
+                                "retryable": decision.issue.retryable,
+                                "should_retry": decision.should_retry,
+                                "next_attempt": decision.next_attempt,
+                                "remaining_attempts": decision.remaining_attempts,
+                                "error": issue_payload,
+                            },
                         )
                         if decision.should_retry:
                             last_retry_issue = issue

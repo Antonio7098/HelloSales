@@ -43,6 +43,7 @@ If a rule includes mode-specific expectations, only apply those branches when th
 | LLM-TOOL-001 | Tool execution boundaries must stay explicit and mode-scoped | tool-capable LLM runtimes | High |
 | LLM-IO-001 | Structured input and output boundaries must stay explicit when used | structured-output LLM runtimes | High |
 | LLM-LIFECYCLE-001 | Lifecycle controls must stay explicit and inspectable | all LLM-backed runtime code with lifecycle controls | High |
+| LLM-RETRY-001 | LLM retry policy must be shared, bounded, mode-aware, and inspectable | provider-backed LLM execution | High |
 | LLM-RUN-001 | Runs and events must be durable or inspectable | long-lived or background LLM execution | High |
 | LLM-PROMPT-001 | Prompts must be explicitly versioned and version propagation must stay observable | all LLM-backed runtime code with concrete prompts | High |
 | LLM-EXPOSE-001 | Operational exposure must flow through application modules | routes and operational APIs | High |
@@ -147,6 +148,59 @@ If an LLM-backed runtime supports approval, resume, cancellation, retry, timeout
 **Evidence**
 - lifecycle actions and transitions are represented explicitly in code and runtime state
 
+### LLM-RETRY-001: LLM Retry Policy Must Be Shared, Bounded, Mode-Aware, And Inspectable
+
+**Rule**
+Provider-backed LLM retries must use the shared LLM execution policy, must retry retryable issues only within an explicit attempt budget, and must preserve mode-specific safety rules for conversational agents and structured workers.
+
+**Shared retry policy**
+- normalize retry-relevant issues before deciding whether to retry
+- classify issue kind with stable values such as provider error, timeout, empty completion, invalid JSON, and output validation
+- retry only when the normalized issue is retryable and the current attempt is below the configured maximum attempts
+- preserve attempt, max attempts, remaining or next attempt, issue kind, issue code, and retryable outcome in inspectable state or events
+- fail terminally with the original structured error or a structured retry-exhaustion error when no retry remains
+- allow provider adapters to own bounded transport/protocol retries with explicit backoff and backup-model selection
+- keep provider adapters responsible for classifying remote failures, while higher-level runtimes own semantic retries and run/turn terminal state
+
+**Provider classification**
+- provider timeouts and connection errors are retryable
+- remote HTTP `408`, `409`, `425`, `429`, `500`, `502`, `503`, and `504` are retryable provider failures
+- provider `429` must be classified distinctly from other HTTP failures
+- provider authentication and authorization failures are not retryable unless a future credential-refresh contract explicitly owns recovery
+- provider failure details must include provider name, model or endpoint, timeout configuration, remote status code when available, provider request id when available, operation, and redacted remote context
+- provider retry details must include attempt, max attempts, attempts remaining, active model, primary model, backup model when configured, and retry-after header when available
+- provider adapters may retry malformed provider payloads only when no caller-visible partial output has been emitted
+
+**Conversational mode specifics**
+- agent LLM completion retries must be bounded by `max_llm_completion_retries + 1` total attempts
+- provider failures are retryable only if the provider error is retryable and no response text has already streamed to the caller-visible event history
+- empty completions with no tool calls and no final answer are retryable within the same LLM attempt budget
+- corrective retry prompts may be appended for empty completions when they are recorded as part of the conversation context
+- governed tool execution retries must be bounded by `max_tool_execution_retries`, and budget exhaustion must be represented as an explicit tool result and event
+- exceeding native tool-calling iteration limits must fail with a structured workflow error, not an unbounded retry loop
+
+**Structured mode specifics**
+- worker retries must be bounded by the run's `max_attempts`
+- every worker attempt must run within the run's `timeout_seconds`
+- worker timeouts, retryable provider failures, invalid JSON output, and local output validation failures are retryable while attempts remain
+- retry prompts or retry issue context must be derived from the last failed attempt and passed through the worker definition's message builder
+- worker run status must move through explicit running, retrying, completed, failed, or cancelled states
+- backup-provider fallback may be selected only by explicit worker policy, and current behavior is final-attempt fallback when `use_backup_on_final_attempt` is enabled and a backup provider exists
+- final worker failure must preserve the terminal structured error on the run record and emit a failed event
+
+**Forbidden**
+- mode-local retry loops that bypass the shared LLM execution policy
+- provider adapters silently retrying without an explicit provider retry budget, backoff policy, and observable retry signal
+- retrying conversational completions after visible streamed text has been emitted
+- treating provider-side schema strictness as a substitute for local validation and retry classification
+- hiding fallback-provider selection or retry exhaustion from run, turn, event, log, or observability surfaces
+- converting repeated empty, invalid, or unvalidated LLM output into successful empty output
+
+**Evidence**
+- retry decisions flow through the shared LLM retry decision contract
+- agent and worker events expose retry scheduling, issue code, issue kind, attempt number, and maximum attempts
+- terminal run or turn state distinguishes success, cancellation, retry exhaustion, provider failure, timeout, and validation failure
+
 ### LLM-RUN-001: Runs And Events Must Be Durable Or Inspectable
 
 **Rule**
@@ -246,6 +300,8 @@ Reject a change if it:
 - smuggles tool execution into a mode that does not explicitly support it
 - claims structured output without explicit local validation
 - introduces hidden approval, resume, retry, fallback, timeout, or cancellation behavior
+- adds LLM retries outside the shared bounded retry policy
+- retries conversational completion after caller-visible streamed text has been emitted
 - adds or edits a concrete prompt without an explicit version
 - fails to propagate effective prompt version through inspectable runtime state, logging, or observability
 - exposes agent or worker runtime directly from transport adapters

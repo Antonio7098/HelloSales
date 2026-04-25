@@ -80,6 +80,21 @@ class HealthService:
                 required=self._settings.web_search_required,
                 details={"provider": self._settings.resolved_web_search_provider or "noop"},
             ),
+            "voice_stt": HealthCheckView(
+                status="disabled",
+                required=self._settings.voice_required,
+                details={"provider": self._settings.voice_stt_provider or "noop"},
+            ),
+            "voice_tts": HealthCheckView(
+                status="disabled",
+                required=self._settings.voice_required,
+                details={"provider": self._settings.voice_tts_provider or "noop"},
+            ),
+            "voice_turn_detection": HealthCheckView(
+                status="disabled",
+                required=self._settings.voice_required,
+                details={"provider": self._settings.voice_turn_detection_provider or "noop"},
+            ),
         }
         if self._settings.resolved_web_search_provider:
             if self._settings.resolved_web_search_api_key:
@@ -119,6 +134,51 @@ class HealthService:
                     status="missing_credentials",
                     required=False,
                     details={"provider": self._settings.resolved_web_search_provider},
+                )
+
+        voice_checks = {
+            "voice_stt": self._settings.voice_stt_provider,
+            "voice_tts": self._settings.voice_tts_provider,
+            "voice_turn_detection": self._settings.voice_turn_detection_provider,
+        }
+        for check_name, provider_name in voice_checks.items():
+            if provider_name == "fake":
+                checks[check_name] = HealthCheckView(
+                    status="configured",
+                    required=self._settings.voice_required,
+                    details={"provider": provider_name},
+                )
+            elif self._settings.voice_required:
+                checks[check_name] = HealthCheckView(
+                    status="not_ready",
+                    required=True,
+                    details={"provider": provider_name or "noop"},
+                )
+                self._record_metrics(
+                    kind="readiness",
+                    payload=HealthReadinessView(
+                        status="not_ready",
+                        database=database_status,
+                        workflows=workflow_status,
+                        checks=checks,
+                    ),
+                )
+                raise app_error(
+                    "Required voice provider is not configured",
+                    code=f"dependency.{check_name}.not_configured",
+                    category="dependency",
+                    status_code=503,
+                    severity="critical",
+                    details={"provider": provider_name or "noop", "check": check_name},
+                    operation="health.readiness",
+                    component="provider",
+                )
+            elif provider_name:
+                overall_status = "degraded"
+                checks[check_name] = HealthCheckView(
+                    status="missing_credentials",
+                    required=False,
+                    details={"provider": provider_name},
                 )
 
         if database_required:

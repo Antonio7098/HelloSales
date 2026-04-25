@@ -140,6 +140,143 @@ async def test_openai_compatible_provider_maps_remote_5xx_failures() -> None:
 
 
 @pytest.mark.asyncio
+async def test_openai_compatible_provider_retries_transient_http_error_then_completes() -> None:
+    calls = 0
+
+    async def handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return httpx.Response(503, json={"error": {"message": "unavailable"}})
+        return httpx.Response(
+            200,
+            json={"model": "test-model", "choices": [{"message": {"content": "OK"}}]},
+        )
+
+    client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    provider = OpenAICompatibleChatModel(
+        provider_name="test-provider",
+        base_url="https://example.test/v1",
+        api_key="secret",
+        model="test-model",
+        timeout_seconds=5.0,
+        max_retries=1,
+        retry_backoff_seconds=0.0,
+        http_client=client,
+    )
+
+    result = await provider.generate([ChatMessage(role="user", content="hello")])
+
+    assert result.output_text == "OK"
+    assert calls == 2
+    await client.aclose()
+
+
+@pytest.mark.asyncio
+async def test_openai_compatible_provider_uses_backup_model_on_retry_attempt() -> None:
+    requested_models: list[str] = []
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        payload = json.loads(request.read().decode())
+        requested_models.append(payload["model"])
+        if len(requested_models) == 1:
+            return httpx.Response(503, json={"error": {"message": "unavailable"}})
+        return httpx.Response(
+            200,
+            json={"model": payload["model"], "choices": [{"message": {"content": "OK"}}]},
+        )
+
+    client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    provider = OpenAICompatibleChatModel(
+        provider_name="test-provider",
+        base_url="https://example.test/v1",
+        api_key="secret",
+        model="primary-model",
+        timeout_seconds=5.0,
+        max_retries=1,
+        retry_backoff_seconds=0.0,
+        backup_model="backup-model",
+        backup_model_attempt=2,
+        http_client=client,
+    )
+
+    result = await provider.generate([ChatMessage(role="user", content="hello")])
+
+    assert requested_models == ["primary-model", "backup-model"]
+    assert result.model == "backup-model"
+    await client.aclose()
+
+
+@pytest.mark.asyncio
+async def test_openai_compatible_provider_retries_structured_output_400_then_completes() -> None:
+    calls = 0
+
+    async def handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return httpx.Response(
+                400,
+                json={"error": {"message": "failed to generate JSON matching schema"}},
+            )
+        return httpx.Response(
+            200,
+            json={
+                "model": "test-model",
+                "choices": [{"message": {"content": '{"brief":"ok","key_points":[],"priority":"low"}'}}],
+            },
+        )
+
+    client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    provider = OpenAICompatibleChatModel(
+        provider_name="test-provider",
+        base_url="https://example.test/v1",
+        api_key="secret",
+        model="test-model",
+        timeout_seconds=5.0,
+        max_retries=1,
+        retry_backoff_seconds=0.0,
+        http_client=client,
+    )
+
+    result = await provider.generate_json([ChatMessage(role="user", content="hello")])
+
+    assert result.output_json == {"brief": "ok", "key_points": [], "priority": "low"}
+    assert calls == 2
+    await client.aclose()
+
+
+@pytest.mark.asyncio
+async def test_openai_compatible_provider_does_not_retry_authentication_failure() -> None:
+    calls = 0
+
+    async def handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(401, json={"error": {"message": "unauthorized"}})
+
+    client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    provider = OpenAICompatibleChatModel(
+        provider_name="test-provider",
+        base_url="https://example.test/v1",
+        api_key="secret",
+        model="test-model",
+        timeout_seconds=5.0,
+        max_retries=2,
+        retry_backoff_seconds=0.0,
+        http_client=client,
+    )
+
+    with pytest.raises(AppError) as exc_info:
+        await provider.generate([ChatMessage(role="user", content="hello")])
+
+    assert exc_info.value.code == "provider.authentication_failed"
+    assert exc_info.value.retryable is False
+    assert calls == 1
+    await client.aclose()
+
+
+@pytest.mark.asyncio
 async def test_openai_compatible_provider_requests_json_object_mode() -> None:
     async def handler(request: httpx.Request) -> httpx.Response:
         payload = request.read().decode()
@@ -303,6 +440,93 @@ async def test_openai_compatible_provider_streams_text_deltas_to_callback() -> N
     assert deltas == ["Hello", " world"]
     assert result.content == "Hello world"
     assert result.tool_calls == []
+    await client.aclose()
+
+
+@pytest.mark.asyncio
+async def test_openai_compatible_provider_retries_empty_stream_then_completes() -> None:
+    calls = 0
+
+    async def handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return httpx.Response(
+                200,
+                text="data: [DONE]\n\n",
+                headers={"content-type": "text/event-stream"},
+            )
+        return httpx.Response(
+            200,
+            text=(
+                'data: {"model":"test-model","choices":[{"delta":{"content":"Recovered"}}]}\n\n'
+                "data: [DONE]\n\n"
+            ),
+            headers={"content-type": "text/event-stream"},
+        )
+
+    client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    provider = OpenAICompatibleChatModel(
+        provider_name="test-provider",
+        base_url="https://example.test/v1",
+        api_key="secret",
+        model="test-model",
+        timeout_seconds=5.0,
+        max_retries=1,
+        retry_backoff_seconds=0.0,
+        http_client=client,
+    )
+
+    result = await provider.complete_with_tools(
+        [{"role": "user", "content": "hello"}],
+        tools=[],
+    )
+
+    assert result.content == "Recovered"
+    assert calls == 2
+    await client.aclose()
+
+
+@pytest.mark.asyncio
+async def test_openai_compatible_provider_does_not_retry_stream_after_text_delta() -> None:
+    calls = 0
+
+    async def handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(
+            200,
+            text=(
+                'data: {"model":"test-model","choices":[{"delta":{"content":"Partial"}}]}\n\n'
+                "data: {not-json}\n\n"
+            ),
+            headers={"content-type": "text/event-stream"},
+        )
+
+    client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    provider = OpenAICompatibleChatModel(
+        provider_name="test-provider",
+        base_url="https://example.test/v1",
+        api_key="secret",
+        model="test-model",
+        timeout_seconds=5.0,
+        max_retries=1,
+        retry_backoff_seconds=0.0,
+        http_client=client,
+    )
+    deltas: list[str] = []
+
+    with pytest.raises(AppError) as exc_info:
+        await provider.complete_with_tools(
+            [{"role": "user", "content": "hello"}],
+            tools=[],
+            on_text_delta=lambda delta: _record_delta(deltas, delta),
+        )
+
+    assert exc_info.value.code == "provider.stream.invalid_json_event"
+    assert exc_info.value.retryable is False
+    assert deltas == ["Partial"]
+    assert calls == 1
     await client.aclose()
 
 

@@ -121,7 +121,7 @@ The desired design property is modularity. STT, TTS, realtime speech-to-speech, 
 
 ## Current Research
 
-**Research Status:** Completed on 2026-04-24.
+**Research Status:** Completed on 2026-04-24 and refreshed during execution on 2026-04-24.
 
 ### Sources Consulted
 
@@ -133,6 +133,10 @@ The desired design property is modularity. STT, TTS, realtime speech-to-speech, 
 - [Pipecat Pipeline and Frame Processing](https://docs.pipecat.ai/guides/learn/pipeline): Provides a frame-based model separating input audio, transcription, LLM text, TTS text, output audio, interruptions, and errors.
 - [Deepgram Endpointing and Interim Results](https://developers.deepgram.com/docs/understand-endpointing-interim-results): Shows how endpointing and interim transcripts can drive turn segmentation and downstream processing.
 - [ElevenLabs Realtime TTS WebSockets](https://elevenlabs.io/docs/websockets): Documents bidirectional TTS streaming, audio chunks, buffering, and TTFB/quality latency trade-offs.
+- [OpenAI Realtime API with WebRTC](https://platform.openai.com/docs/guides/realtime-webrtc): Refreshed during execution; confirms WebRTC is recommended for browser/client realtime voice and that server-mediated session setup or ephemeral keys are the relevant future transport patterns.
+- [OpenAI Realtime conversations](https://platform.openai.com/docs/guides/realtime-model-capabilities): Refreshed during execution; confirms realtime sessions are stateful speech-to-speech interactions with provider-native event flows and voice constraints.
+- [LiveKit Turns overview](https://docs.livekit.io/agents/build/turns/): Refreshed during execution; reinforces VAD/STT endpointing/manual turn control as separate strategies and identifies interruption handling as a first-class session concern.
+- [Pipecat Frames](https://docs.pipecat.ai/server/frames/overview): Refreshed during execution; reinforces separation between data, control, and system frames for interruption and event-ordering semantics.
 
 ### Relevant Current Guidance
 
@@ -464,6 +468,8 @@ The desired design property is modularity. STT, TTS, realtime speech-to-speech, 
 | TEST-SMOKE-002 | Real provider smoke may be deferred | Voice credentials may not be present in this workspace | Provider adapter behavior may only be fake-tested locally | Temporary | Record exact missing credentials and add env-gated smoke. |
 | PRE-SCOPE-004 | An internal voice route may be added for smoke/demo only | A stream route may be the simplest way to verify runtime behavior | Public surface could grow before product brief | Temporary | Keep route internal/operational and document scope. |
 | LLM-PROMPT-001 | No voice prompt version is needed if using existing generic prompt unchanged | Voice may initially wrap existing agent behavior only | Later voice persona changes may slip into prompt text | Conditional | If any voice-specific prompt policy is added, add prompt id/version immediately. |
+| TEST-SMOKE-002 | Real-provider voice smoke deferred | Sprint 11 implemented fake provider seams only; no real STT/TTS adapter or committed voice credentials are present in this workspace | Provider SDK behavior remains unverified until a concrete adapter is selected | Temporary | Add env-gated real-provider smoke with the first real STT/TTS adapter. |
+| PRE-SCOPE-004 | No internal HTTP/WebSocket voice route added | In-process smokes provided enough verification without adding a public or semi-public surface | Manual external probing requires smoke CLI rather than route calls | Temporary | Add a thin route only when a UI, WebRTC setup endpoint, or transport adapter is explicitly scoped. |
 
 ## Evidence Review Checklist
 

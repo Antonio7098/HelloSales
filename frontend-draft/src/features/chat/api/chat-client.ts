@@ -2,6 +2,7 @@ import { requestJson } from "@/shared/api/http-client";
 import { getFrontendEnv } from "@/shared/config/env";
 import type {
   ApprovalDecisionInput,
+  ApprovalDecision,
   ApiEnvelope,
   CreateChatSessionInput,
   SessionEvent,
@@ -77,8 +78,8 @@ export async function getSessionEvents(sessionId: string): Promise<SessionEvent[
 export async function decideSessionApproval(
   approvalId: string,
   input: ApprovalDecisionInput,
-): Promise<SessionSummary> {
-  const response = await requestJson<ApiEnvelope<SessionSummary>>({
+): Promise<ApprovalDecision> {
+  const response = await requestJson<ApiEnvelope<ApprovalDecision>>({
     path: `/sessions/approvals/${approvalId}`,
     method: "POST",
     body: JSON.stringify({

@@ -39,6 +39,7 @@ Readiness is dependency-aware.
 It currently checks:
 - database configuration and reachability when using non-SQLite DBs
 - workflow runtime availability relative to whether workflows are required
+- optional voice STT, TTS, and turn-detection provider readiness
 
 Possible readiness outcomes include:
 - `ready`
@@ -57,6 +58,13 @@ Behavior:
 Behavior:
 - if workflows are required and unavailable, readiness fails
 - if workflows are optional and unavailable, readiness degrades rather than hard failing
+
+### Voice Readiness Semantics
+Behavior:
+- voice providers are optional by default
+- empty voice provider settings appear as disabled
+- `fake` voice providers appear as configured
+- `HELLO_SALES_VOICE_REQUIRED=true` makes readiness fail if STT, TTS, or turn detection are not configured
 
 ## Operational Event Model
 
@@ -108,6 +116,18 @@ Important current producers include:
 - agent run failure in `platform/agents/runtime.py`
 - entity mutation success/failure/undo events in `modules/entity_operations/infra/observability.py`
 - worker run lifecycle and failure events in `platform/workers/runtime.py`
+- voice STT, TTS, streaming bridge, and duplex session primitives in `modules/voice`
+
+Voice event names include:
+- `voice.session.started`
+- `voice.transcript.final`
+- `voice.text.segment`
+- `voice.audio.delta`
+- `voice.audio.completed`
+- `voice.session.interrupted`
+- `voice.session.cancelled`
+- `voice.session.completed`
+- `voice.session.failed`
 
 This is important because the diagnostics surface is not just passive storage; it reflects events emitted by runtime services.
 
@@ -132,6 +152,7 @@ The main aggregated diagnostics surface lives in:
 This makes the `system` module the main operator-facing diagnostics facade.
 
 Provider diagnostics include auth provider state. A configured WorkOS adapter appears with provider kind `auth`, and startup validation emits configuration failures before the app serves traffic when auth is required but incomplete.
+Voice provider diagnostics appear with kinds `voice_stt`, `voice_tts`, `voice_realtime`, and `voice_turn_detection`.
 
 ## Metrics Surface
 

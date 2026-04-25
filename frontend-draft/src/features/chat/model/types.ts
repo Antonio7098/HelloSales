@@ -67,3 +67,12 @@ export type StreamedAssistantDraft = {
 export type ApprovalDecisionInput = {
   approved: boolean;
 };
+
+export type ApprovalDecision = {
+  approval_id: string;
+  approved: boolean;
+  run_id: string;
+  turn_id: string;
+  tool_call_id: string;
+  status: string;
+};

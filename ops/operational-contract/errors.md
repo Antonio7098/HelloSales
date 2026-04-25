@@ -40,6 +40,7 @@ Use this contract to determine:
 | ERR-SHAPE-001 | Operational errors must preserve the canonical shape | structured errors and translations | High |
 | ERR-CODE-001 | Error codes must be stable and machine-usable | error code design | High |
 | ERR-TRANS-001 | Error translation must preserve cause and context | cross-layer translation | High |
+| ERR-RETRY-001 | Retryable errors must be retried through explicit bounded policy | retryable failure paths | High |
 | ERR-STARTUP-001 | Known-fatal startup failures must fail before traffic | startup and readiness | Blocker |
 | ERR-HTTP-001 | Transport adapters must preserve the operational signal | API and HTTP boundaries | High |
 | ERR-BG-001 | Background work must end in explicit inspectable failure state | task runners and background jobs | Blocker |
@@ -169,6 +170,38 @@ When translating an error across layers, preserve the original cause and enrich 
 **Evidence**
 - translated errors still expose the originating failure meaningfully
 - review can trace a boundary error back to its cause
+
+### ERR-RETRY-001: Retryable Errors Must Be Retried Through Explicit Bounded Policy
+
+**Rule**
+An error marked `retryable=true` must be retried by the owning runtime when a retry can be performed safely, and must not be retried when doing so would violate idempotency, corrupt user-visible output, exceed a configured budget, or hide terminal failure.
+
+**Required**
+- define the retry owner for each retryable failure path
+- retry through an explicit bounded policy with a configured attempt budget
+- classify retryable and non-retryable failures before retry decisions are made
+- preserve attempt number, maximum attempts, next attempt when applicable, issue kind, issue code, and retryable status in structured state or events
+- stop retrying when the budget is exhausted and expose the final failure as terminal state
+- preserve the original cause and the last retry issue on retry exhaustion
+- make fallback or backup-provider selection explicit when it is part of retry behavior
+
+**Appropriate retry behavior**
+- retry transient provider, dependency, timeout, rate-limit, and remote 5xx failures only when the operation is safe to repeat
+- respect idempotency and side-effect boundaries; non-idempotent operations require an explicit idempotency key, dedupe strategy, or no retry
+- do not retry after a partial externally visible result has been emitted unless the runtime can prove replay is safe
+- use corrective retry prompts only for LLM output-shape or validation failures where prompt correction is the designed recovery path
+- keep cancellation terminal and distinct from retry exhaustion
+
+**Forbidden**
+- marking an error `retryable=true` with no owning retry policy
+- adding hidden retry loops with no cap, no emitted retry event, or no terminal exhaustion behavior
+- retrying authentication, authorization, validation, domain, or caller errors unless a specific contract marks the failure as recoverable
+- converting retry exhaustion into successful empty output or a generic internal error
+- retrying non-idempotent side effects by default
+
+**Evidence**
+- retryable paths show a bounded decision point and emitted retry/exhaustion signal
+- terminal failure records preserve the final code, cause, retry budget, and last attempt detail
 
 ### ERR-STARTUP-001: Known-Fatal Startup Failures Must Fail Before Traffic
 

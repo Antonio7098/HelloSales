@@ -36,6 +36,7 @@ Owns high-signal smoke verification for:
 - jobs diagnostic flow
 - system diagnostics and system status
 - provider-backed smoke behavior, including the governed analytics-query path in the generic-agent provider suite
+- voice primitive validation, segmentation, fake providers, diagnostics, and fake duplex state transitions
 
 ### `tests/postgres/`
 Owns optional Postgres-backed verification for:
@@ -63,6 +64,10 @@ Current provider-backed suites include:
 - `generic-agent-provider-event-stream`
 - `generic-agent-provider` scenario `analytics_query_completion`
 - `worker-provider-baseline`
+- `voice-stt`
+- `voice-tts`
+- `voice-llm-to-tts`
+- `voice-duplex`
 
 ## Development Operations
 
@@ -95,9 +100,15 @@ Examples:
 - `make smoke-provider-approval`
 - `make smoke-provider-events`
 - `make smoke-provider-worker`
+- `python3 scripts/smoke.py voice-stt`
+- `python3 scripts/smoke.py voice-tts`
+- `python3 scripts/smoke.py voice-llm-to-tts`
+- `python3 scripts/smoke.py voice-duplex`
 
 The governed analytics-query smoke path uses the existing `generic-agent-provider` suite rather than a separate SQL-specific harness.
 In test mode it seeds a bounded SQLite fixture before app startup so the conversational tool path can be exercised deterministically.
+Voice smokes use fake providers and do not require external STT/TTS credentials.
+Real-provider voice smoke is explicitly deferred until a provider adapter and credential source are selected.
 
 ## Environment Model
 
@@ -110,6 +121,11 @@ Auth uses:
 - `HELLO_SALES_WORKOS_COOKIE_PASSWORD`
 - `HELLO_SALES_WORKOS_REDIRECT_URI`
 - `HELLO_SALES_FRONTEND_APP_URL`
+- `HELLO_SALES_VOICE_STT_PROVIDER`
+- `HELLO_SALES_VOICE_TTS_PROVIDER`
+- `HELLO_SALES_VOICE_REALTIME_PROVIDER`
+- `HELLO_SALES_VOICE_TURN_DETECTION_PROVIDER`
+- `HELLO_SALES_VOICE_REQUIRED`
 
 The generic-agent provider path uses provider-specific env such as:
 - `GENERIC_AGENT_PROVIDER`
@@ -137,6 +153,7 @@ The scaffold currently provides:
 - an operational jobs module with a diagnostic workflow
 - an agent-runs module exposing the generic agent runtime
 - a worker-runs module exposing the worker runtime
+- a voice module exposing STT, TTS, streaming text-to-TTS, and fake duplex primitives
 
 ## Recommended Reading With This Doc
 

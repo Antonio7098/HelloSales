@@ -43,7 +43,9 @@ class AgentStorePort(Protocol):
 
     async def append_event(self, event: AgentStreamEvent) -> None: ...
 
-    async def list_events(self, run_id: str, limit: int = 100) -> list[AgentStreamEvent]: ...
+    async def list_events(self, run_id: str, limit: int = 100) -> list[AgentStreamEvent]:
+        """Return the latest events for a run, ordered by increasing sequence number."""
+        ...
 
     async def list_events_after(
         self,

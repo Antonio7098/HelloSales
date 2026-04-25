@@ -10,6 +10,12 @@ from hello_sales_backend.platform.llm.contracts import LLMProviderPort
 from hello_sales_backend.platform.observability.runtime import ObservabilityRuntime
 from hello_sales_backend.platform.tasks.models import TaskEventSink
 from hello_sales_backend.platform.tasks.runner import BackgroundTaskRunner
+from hello_sales_backend.platform.voice.contracts import (
+    RealtimeVoiceProviderPort,
+    STTProviderPort,
+    TTSProviderPort,
+    TurnDetectionPort,
+)
 from hello_sales_backend.platform.web_search.contracts import WebSearchProviderPort
 from hello_sales_backend.platform.workflows.runtime import WorkflowRuntime
 
@@ -21,6 +27,10 @@ class AppOverrides:
     auth_provider: AuthProviderPort | None = None
     llm_provider: LLMProviderPort | None = None
     web_search_provider: WebSearchProviderPort | None = None
+    voice_stt_provider: STTProviderPort | None = None
+    voice_tts_provider: TTSProviderPort | None = None
+    voice_realtime_provider: RealtimeVoiceProviderPort | None = None
+    voice_turn_detection_provider: TurnDetectionPort | None = None
     task_runner: BackgroundTaskRunner | None = None
     task_event_sink: TaskEventSink | None = None
     observability_runtime: ObservabilityRuntime | None = None

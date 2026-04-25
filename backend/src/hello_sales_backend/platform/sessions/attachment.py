@@ -48,8 +48,8 @@ class SessionAttachmentStore:
 
     async def append_assistant_message(
         self, *, run: AgentRun, turn: AgentTurn, response_text: str
-    ) -> None:
-        await self._append_item(
+    ) -> SessionItem | None:
+        item = await self._append_item(
             run=run,
             turn=turn,
             item_type=SessionItemType.ASSISTANT_MESSAGE,
@@ -57,6 +57,7 @@ class SessionAttachmentStore:
         )
         await self._update_session_status(run=run, status=SessionStatus.COMPLETED)
         await self._schedule_summary_if_eligible(run=run)
+        return item
 
     async def append_tool_call(
         self, *, run: AgentRun, turn: AgentTurn, tool_call: AgentToolCall
@@ -135,10 +136,10 @@ class SessionAttachmentStore:
         item_type: SessionItemType,
         payload: dict[str, object],
         tool_call_id: str | None = None,
-    ) -> None:
+    ) -> SessionItem | None:
         session = await self._get_session(run)
         if session is None:
-            return
+            return None
         item = SessionItem(
             item_id=new_id(),
             session_id=session.session_id,
@@ -156,6 +157,7 @@ class SessionAttachmentStore:
         session.latest_run_id = run.run_id
         session.updated_at = utc_now()
         await self._store.update_session(session)
+        return item
 
     async def _update_session_status(self, *, run: AgentRun, status: SessionStatus) -> None:
         session = await self._get_session(run)
@@ -195,7 +197,13 @@ class SessionAttachmentStore:
         session.summary_task_id = task_id
         session.summary_status = SessionSummaryStatus.QUEUED.value
         session.updated_at = utc_now()
-        await self._store.update_session(session)
+        await self._store.update_session_summary_state(
+            session_id=session.session_id,
+            summary_task_id=session.summary_task_id,
+            summary_status=session.summary_status,
+            last_summarized_item_sequence=None,
+            updated_at=session.updated_at,
+        )
         prompt = session_summary_prompt_ref()
         existing = await self._store.get_latest_summary(session.session_id)
         coverage_start = 1 if existing is None else existing.coverage_end_sequence + 1
@@ -263,7 +271,13 @@ class SessionAttachmentStore:
         await self._store.upsert_summary(running_summary)
         session.summary_status = SessionSummaryStatus.RUNNING.value
         session.updated_at = utc_now()
-        await self._store.update_session(session)
+        await self._store.update_session_summary_state(
+            session_id=session.session_id,
+            summary_task_id=session.summary_task_id,
+            summary_status=session.summary_status,
+            last_summarized_item_sequence=None,
+            updated_at=session.updated_at,
+        )
         try:
             if not self._llm_provider.is_configured():
                 output_text = self._fallback_summary(eligible_items)
@@ -311,7 +325,13 @@ class SessionAttachmentStore:
             session.summary_status = SessionSummaryStatus.COMPLETED.value
             session.last_summarized_item_sequence = coverage_end
             session.updated_at = utc_now()
-            await self._store.update_session(session)
+            await self._store.update_session_summary_state(
+                session_id=session.session_id,
+                summary_task_id=session.summary_task_id,
+                summary_status=session.summary_status,
+                last_summarized_item_sequence=session.last_summarized_item_sequence,
+                updated_at=session.updated_at,
+            )
         except AppError as exc:
             await self._mark_summary_failed(
                 session_id=session_id,
@@ -365,7 +385,13 @@ class SessionAttachmentStore:
         await self._store.upsert_summary(failed)
         session.summary_status = SessionSummaryStatus.FAILED.value
         session.updated_at = utc_now()
-        await self._store.update_session(session)
+        await self._store.update_session_summary_state(
+            session_id=session.session_id,
+            summary_task_id=session.summary_task_id,
+            summary_status=session.summary_status,
+            last_summarized_item_sequence=None,
+            updated_at=session.updated_at,
+        )
 
     async def _get_session(self, run: AgentRun) -> Session | None:
         if run.session_id is None:

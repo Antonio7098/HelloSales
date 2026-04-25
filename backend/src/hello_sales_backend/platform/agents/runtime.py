@@ -43,6 +43,7 @@ from hello_sales_backend.platform.observability.events import OperationalEvent
 from hello_sales_backend.platform.observability.logging import get_logger
 from hello_sales_backend.platform.observability.runtime import ObservabilityRuntime
 from hello_sales_backend.platform.sessions.attachment import SessionAttachmentStore
+from hello_sales_backend.platform.sessions.models import SessionItem
 from hello_sales_backend.platform.sessions.persistence import SessionStorePort
 from hello_sales_backend.platform.workflows.pipeline import WorkflowStageKind, WorkflowStageSpec
 from hello_sales_backend.platform.workflows.runtime import WorkflowRuntime
@@ -428,6 +429,12 @@ class GenericAgentRuntime:
                         "llm_attempt": llm_attempt,
                         "max_attempts": max_attempts,
                         "streamed_text": streamed_text,
+                        "issue_kind": decision.issue.kind.value,
+                        "issue_code": decision.issue.code,
+                        "retryable": decision.issue.retryable,
+                        "should_retry": decision.should_retry,
+                        "next_attempt": decision.next_attempt,
+                        "remaining_attempts": decision.remaining_attempts,
                         "error": exc.to_dict(),
                     },
                 )
@@ -446,9 +453,33 @@ class GenericAgentRuntime:
                             "max_attempts": max_attempts,
                             "issue_kind": decision.issue.kind.value,
                             "issue_code": decision.issue.code,
+                            "retryable": decision.issue.retryable,
+                            "remaining_attempts": decision.remaining_attempts,
                         },
                     )
                     continue
+                if decision.issue.retryable:
+                    raise app_error(
+                        exc.message,
+                        code=exc.code,
+                        category=exc.category,
+                        status_code=exc.status_code,
+                        severity=exc.severity,
+                        retryable=False,
+                        details={
+                            **exc.details,
+                            "run_id": run.run_id,
+                            "turn_id": turn.turn_id,
+                            "tool_iteration": tool_iteration,
+                            "llm_attempt": llm_attempt,
+                            "max_attempts": max_attempts,
+                            "issue_kind": decision.issue.kind.value,
+                            "retry_exhausted": True,
+                        },
+                        operation=exc.operation,
+                        component=exc.component,
+                        exc=exc,
+                    ) from exc
                 raise
 
             if completion.tool_calls or (completion.content or "").strip():
@@ -486,6 +517,12 @@ class GenericAgentRuntime:
                     "tool_iteration": tool_iteration,
                     "llm_attempt": llm_attempt,
                     "max_attempts": max_attempts,
+                    "issue_kind": decision.issue.kind.value,
+                    "issue_code": decision.issue.code,
+                    "retryable": decision.issue.retryable,
+                    "should_retry": decision.should_retry,
+                    "next_attempt": decision.next_attempt,
+                    "remaining_attempts": decision.remaining_attempts,
                     "provider": completion.provider,
                     "model": completion.model,
                 },
@@ -505,6 +542,8 @@ class GenericAgentRuntime:
                         "max_attempts": max_attempts,
                         "issue_kind": decision.issue.kind.value,
                         "issue_code": decision.issue.code,
+                        "retryable": decision.issue.retryable,
+                        "remaining_attempts": decision.remaining_attempts,
                     },
                 )
                 if decision.issue.retry_prompt_message is not None:
@@ -1027,16 +1066,43 @@ class GenericAgentRuntime:
         turn.error_details = None
         await self.store.update_turn(turn)
         await self.store.update_run(run)
+        assistant_item = None
         if self.sessions is not None:
-            await self.sessions.append_assistant_message(run=run, turn=turn, response_text=response_text)
+            assistant_item = await self.sessions.append_assistant_message(
+                run=run,
+                turn=turn,
+                response_text=response_text,
+            )
         await self._append_event(
             run_id=run.run_id,
             turn_id=turn.turn_id,
             event_type="agent.turn.completed",
             severity="info",
             code="agent.turn.completed",
-            payload={"turn_id": turn.turn_id, "response_text": response_text},
+            payload={
+                "turn_id": turn.turn_id,
+                "response_text": response_text,
+                "assistant_item": (
+                    self._session_item_payload(assistant_item)
+                    if assistant_item is not None
+                    else None
+                ),
+            },
         )
+
+    @staticmethod
+    def _session_item_payload(item: SessionItem) -> dict[str, object]:
+        return {
+            "item_id": item.item_id,
+            "sequence_no": item.sequence_no,
+            "item_type": item.item_type.value,
+            "actor_id": item.actor_id,
+            "run_id": item.run_id,
+            "turn_id": item.turn_id,
+            "tool_call_id": item.tool_call_id,
+            "payload": item.payload,
+            "created_at": item.created_at.isoformat(),
+        }
 
     async def _mark_cancelled(self, *, run: AgentRun, turn: AgentTurn) -> None:
         now = utc_now()

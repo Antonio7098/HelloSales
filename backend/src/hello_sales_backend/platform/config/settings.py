@@ -20,8 +20,9 @@ class Settings(BaseSettings):
     }
     SUPPORTED_OBSERVABILITY_METRICS_EXPORTERS: ClassVar[set[str]] = {"prometheus"}
     SUPPORTED_OBSERVABILITY_TRACING_EXPORTERS: ClassVar[set[str]] = {"console", "none", "otlp"}
-    SUPPORTED_AUTH_PROVIDERS: ClassVar[set[str]] = {"", "workos"}
+    SUPPORTED_AUTH_PROVIDERS: ClassVar[set[str]] = {"", "dev", "workos"}
     SUPPORTED_WEB_SEARCH_PROVIDERS: ClassVar[set[str]] = {"", "tavily"}
+    SUPPORTED_VOICE_PROVIDERS: ClassVar[set[str]] = {"", "fake"}
 
     model_config = SettingsConfigDict(
         env_prefix="HELLO_SALES_",
@@ -64,6 +65,10 @@ class Settings(BaseSettings):
     generic_agent_model: str = ""
     generic_agent_base_url: str = ""
     generic_agent_timeout_seconds: float = Field(default=30.0, gt=0)
+    generic_agent_provider_max_retries: int = Field(default=2, ge=0, le=5)
+    generic_agent_provider_retry_backoff_seconds: float = Field(default=0.25, ge=0, le=10.0)
+    generic_agent_backup_model: str = ""
+    generic_agent_backup_model_attempt: int = Field(default=2, ge=1, le=6)
     agent_context_profile: str = "basic-session-v1"
     web_search_provider: str = ""
     web_search_api_key: str = ""
@@ -95,6 +100,17 @@ class Settings(BaseSettings):
     groq_api_key: str = ""
     openrouter_api_key: str = ""
     openai_api_key: str = ""
+    voice_stt_provider: str = ""
+    voice_tts_provider: str = ""
+    voice_realtime_provider: str = ""
+    voice_turn_detection_provider: str = ""
+    voice_transport_provider: str = ""
+    voice_required: bool = False
+    voice_stt_model: str = ""
+    voice_tts_model: str = ""
+    voice_default_tts_voice: str = ""
+    voice_max_audio_bytes: int = Field(default=25 * 1024 * 1024, ge=1)
+    voice_persist_raw_audio: bool = False
 
     @field_validator(
         "app_name",
@@ -113,6 +129,7 @@ class Settings(BaseSettings):
         "generic_agent_provider",
         "generic_agent_model",
         "generic_agent_base_url",
+        "generic_agent_backup_model",
         "agent_context_profile",
         "web_search_provider",
         "web_search_api_key",
@@ -133,6 +150,14 @@ class Settings(BaseSettings):
         "groq_api_key",
         "openrouter_api_key",
         "openai_api_key",
+        "voice_stt_provider",
+        "voice_tts_provider",
+        "voice_realtime_provider",
+        "voice_turn_detection_provider",
+        "voice_transport_provider",
+        "voice_stt_model",
+        "voice_tts_model",
+        "voice_default_tts_voice",
         mode="before",
     )
     @classmethod
@@ -190,6 +215,22 @@ class Settings(BaseSettings):
         if value not in cls.SUPPORTED_AUTH_PROVIDERS:
             supported = ", ".join(sorted(item or "<empty>" for item in cls.SUPPORTED_AUTH_PROVIDERS))
             raise ValueError(f"auth_provider must be one of: {supported}")
+        return value
+
+    @field_validator(
+        "voice_stt_provider",
+        "voice_tts_provider",
+        "voice_realtime_provider",
+        "voice_turn_detection_provider",
+        "voice_transport_provider",
+    )
+    @classmethod
+    def validate_voice_provider(cls, value: str) -> str:
+        """Restrict voice providers to implemented adapters."""
+
+        if value not in cls.SUPPORTED_VOICE_PROVIDERS:
+            supported = ", ".join(sorted(item or "<empty>" for item in cls.SUPPORTED_VOICE_PROVIDERS))
+            raise ValueError(f"voice provider must be one of: {supported}")
         return value
 
     @field_validator("observability_tracing_otlp_endpoint")

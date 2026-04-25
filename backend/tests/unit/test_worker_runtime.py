@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from hello_sales_backend.application.workers.bootstrap import build_worker_registry
 from hello_sales_backend.platform.llm import (
     JSONGenerationResult,
@@ -19,7 +21,7 @@ from hello_sales_backend.platform.workers import (
     WorkerRunStatus,
 )
 from hello_sales_backend.platform.workers.runtime import WorkerRuntime
-from hello_sales_backend.shared.errors import app_error
+from hello_sales_backend.shared.errors import AppError, app_error
 
 
 class FakeJSONProvider:
@@ -252,3 +254,60 @@ async def test_worker_runtime_retries_retryable_provider_error_then_completes() 
     assert any(item.event_type == "worker.attempt.provider_failed" for item in events)
     retry_event = next(item for item in events if item.event_type == "worker.attempt.retry_scheduled")
     assert retry_event.payload["issue_code"] == "provider.upstream_unavailable"
+
+
+async def test_worker_runtime_marks_exhausted_provider_error_non_retryable() -> None:
+    store = InMemoryWorkerStore()
+    observability = ObservabilityRuntime(
+        store=InMemoryOperationalStore(), alert_policy=AlertPolicy()
+    )
+    provider = ScriptedJSONProvider(
+        provider_name="primary",
+        responses=[
+            app_error(
+                "upstream unavailable",
+                code="provider.upstream_unavailable",
+                category="provider",
+                status_code=503,
+                retryable=True,
+            ),
+            app_error(
+                "upstream unavailable",
+                code="provider.upstream_unavailable",
+                category="provider",
+                status_code=503,
+                retryable=True,
+            ),
+        ],
+    )
+    runtime = WorkerRuntime(
+        llm_provider=provider,
+        store=store,
+        workers=build_worker_registry(),
+        observability=observability,
+    )
+    run = WorkerRun(
+        run_id="worker-run-4",
+        worker_name="structured-brief",
+        status=WorkerRunStatus.PENDING,
+        input_payload={"text": "Summarize this update."},
+        request_id="req-4",
+        trace_id="0123456789abcdef0123456789abcdef",
+        actor_id=None,
+        execution_mode=WorkerExecutionMode.DIRECT,
+        max_attempts=2,
+        timeout_seconds=5.0,
+    )
+    await store.create_run(run)
+
+    with pytest.raises(AppError) as exc_info:
+        await runtime.process_run(run_id=run.run_id)
+
+    updated = await store.get_run(run.run_id)
+
+    assert exc_info.value.retryable is False
+    assert updated is not None
+    assert updated.status == WorkerRunStatus.FAILED
+    assert updated.error_details is not None
+    assert updated.error_details["retryable"] is False
+    assert updated.error_details["details"]["retry_exhausted"] is True

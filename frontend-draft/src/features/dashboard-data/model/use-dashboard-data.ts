@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { getDashboardData } from "@/features/dashboard-data/api/get-dashboard-data";
-import type { DashboardDataResponse } from "@/features/dashboard-data/model/types";
+import type { CompanyProfileResponse } from "@/features/dashboard-data/model/types";
 
 type DashboardDataState = {
-  data: DashboardDataResponse | null;
+  data: CompanyProfileResponse | null;
   isLoading: boolean;
   error: Error | null;
 };

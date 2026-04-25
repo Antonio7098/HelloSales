@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
@@ -406,10 +407,12 @@ class SqlAlchemyAgentStore:
             result = await session.execute(
                 select(AgentStreamEventRecord)
                 .where(AgentStreamEventRecord.run_id == run_id)
-                .order_by(AgentStreamEventRecord.sequence_no.asc())
+                .order_by(AgentStreamEventRecord.sequence_no.desc())
                 .limit(limit)
             )
-            return [self._map_event(item) for item in result.scalars()]
+            records = list(result.scalars())
+            records.reverse()
+            return [self._map_event(item) for item in records]
 
     async def list_events_after(
         self,
@@ -632,6 +635,26 @@ class SqlAlchemySessionStore:
             record.error_message = session.error_message
             record.updated_at = session.updated_at
             record.completed_at = session.completed_at
+            await db.commit()
+
+    async def update_session_summary_state(
+        self,
+        *,
+        session_id: str,
+        summary_task_id: str | None,
+        summary_status: str | None,
+        last_summarized_item_sequence: int | None,
+        updated_at: datetime,
+    ) -> None:
+        async with self._session_factory() as db:
+            record = await db.get(SessionRecord, session_id)
+            if record is None:
+                return
+            record.summary_task_id = summary_task_id
+            record.summary_status = summary_status
+            if last_summarized_item_sequence is not None:
+                record.last_summarized_item_sequence = last_summarized_item_sequence
+            record.updated_at = updated_at
             await db.commit()
 
     async def list_sessions(self, *, limit: int = 50) -> list[Session]:

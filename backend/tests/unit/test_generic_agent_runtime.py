@@ -933,6 +933,56 @@ async def test_generic_agent_runtime_retries_retryable_provider_error_then_compl
 
 
 @pytest.mark.asyncio
+async def test_generic_agent_runtime_marks_exhausted_provider_error_non_retryable() -> None:
+    store = InMemoryAgentStore()
+    await _seed_run(store, input_text="show runtime status")
+    provider = ScriptedToolProvider(
+        completions=[
+            app_error(
+                "upstream unavailable",
+                code="provider.upstream_unavailable",
+                category="provider",
+                status_code=503,
+                retryable=True,
+                operation="agent.llm.complete_with_tools",
+                component="provider",
+            ),
+            app_error(
+                "upstream unavailable",
+                code="provider.upstream_unavailable",
+                category="provider",
+                status_code=503,
+                retryable=True,
+                operation="agent.llm.complete_with_tools",
+                component="provider",
+            ),
+            app_error(
+                "upstream unavailable",
+                code="provider.upstream_unavailable",
+                category="provider",
+                status_code=503,
+                retryable=True,
+                operation="agent.llm.complete_with_tools",
+                component="provider",
+            ),
+        ]
+    )
+    runtime = _build_runtime(
+        store=store,
+        llm_provider=provider,
+        tools=AgentToolCatalog([]),
+    )
+
+    with pytest.raises(AppError) as exc_info:
+        await runtime.process_turn(run_id="run-1", turn_id="turn-1")
+
+    assert exc_info.value.code == "provider.upstream_unavailable"
+    assert exc_info.value.retryable is False
+    assert exc_info.value.details["retry_exhausted"] is True
+    assert exc_info.value.details["max_attempts"] == 3
+
+
+@pytest.mark.asyncio
 async def test_generic_agent_runtime_fails_after_exhausting_empty_completion_retries() -> None:
     store = InMemoryAgentStore()
     await _seed_run(store, input_text="show runtime status")

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from datetime import datetime
 
 from hello_sales_backend.platform.sessions.models import Session, SessionItem, SessionSummary
 
@@ -24,6 +25,28 @@ class InMemorySessionStore:
 
     async def update_session(self, session: Session) -> None:
         self._sessions[session.session_id] = replace(session)
+
+    async def update_session_summary_state(
+        self,
+        *,
+        session_id: str,
+        summary_task_id: str | None,
+        summary_status: str | None,
+        last_summarized_item_sequence: int | None,
+        updated_at: datetime,
+    ) -> None:
+        session = self._sessions.get(session_id)
+        if session is None:
+            return
+        next_session = replace(
+            session,
+            summary_task_id=summary_task_id,
+            summary_status=summary_status,
+            updated_at=updated_at,
+        )
+        if last_summarized_item_sequence is not None:
+            next_session.last_summarized_item_sequence = last_summarized_item_sequence
+        self._sessions[session_id] = next_session
 
     async def list_sessions(self, *, limit: int = 50) -> list[Session]:
         ordered = sorted(self._sessions.values(), key=lambda item: item.created_at, reverse=True)

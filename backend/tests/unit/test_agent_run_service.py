@@ -10,6 +10,7 @@ from hello_sales_backend.platform.agents.memory import InMemoryAgentStore
 from hello_sales_backend.platform.agents.models import (
     AgentRun,
     AgentRunStatus,
+    AgentStreamEvent,
     AgentTurn,
     AgentTurnStatus,
 )
@@ -28,6 +29,38 @@ class _AgentResolver:
     def require(self, profile_name: str):  # noqa: ANN001
         del profile_name
         raise AssertionError("append_turn should not resolve agent definitions")
+
+
+@pytest.mark.asyncio
+async def test_list_events_returns_latest_window_in_sequence_order() -> None:
+    store = InMemoryAgentStore()
+    run = AgentRun(
+        run_id="run-1",
+        profile_name="generic",
+        status=AgentRunStatus.RUNNING,
+        request_id="req-1",
+        trace_id="trace-1",
+        actor_id=None,
+    )
+    await store.create_run(run)
+
+    for sequence_no in range(1, 6):
+        await store.append_event(
+            AgentStreamEvent(
+                event_id=f"event-{sequence_no}",
+                run_id=run.run_id,
+                turn_id="turn-1",
+                sequence_no=sequence_no,
+                event_type="agent.response.delta",
+                severity="info",
+                payload={"sequence_no": sequence_no},
+                code="agent.response.delta",
+            )
+        )
+
+    events = await store.list_events(run.run_id, limit=3)
+
+    assert [event.sequence_no for event in events] == [3, 4, 5]
 
 
 @pytest.mark.asyncio

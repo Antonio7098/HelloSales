@@ -13,6 +13,7 @@ from hello_sales_backend.modules.jobs.bootstrap import JobsModule
 from hello_sales_backend.modules.semantic_catalog.bootstrap import SemanticCatalogModule
 from hello_sales_backend.modules.sessions.bootstrap import SessionsModule
 from hello_sales_backend.modules.system.bootstrap import SystemModule
+from hello_sales_backend.modules.voice.bootstrap import VoiceModule
 from hello_sales_backend.modules.web_search.bootstrap import WebSearchModule
 from hello_sales_backend.modules.worker_runs.bootstrap import WorkerRunsModule
 
@@ -30,5 +31,6 @@ class ModuleRegistry:
     semantic_catalog: SemanticCatalogModule
     sessions: SessionsModule
     system: SystemModule
+    voice: VoiceModule
     web_search: WebSearchModule
     worker_runs: WorkerRunsModule

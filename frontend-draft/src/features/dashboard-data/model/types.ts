@@ -3,23 +3,18 @@ export type ApiEnvelope<T> = {
   data: T;
 };
 
-export type DashboardDataEntry = {
-  entry_id: string;
-  dataset_key: string;
-  sequence_no: number;
-  section_label: string;
-  prompt_text: string;
-  answer_type: string;
-  example_answer: string;
-};
-
-export type DashboardDataSection = {
-  dataset_key: string;
-  section_label: string;
-  entries: DashboardDataEntry[];
-};
-
-export type DashboardDataResponse = {
-  total_entries: number;
-  sections: DashboardDataSection[];
+export type CompanyProfileResponse = {
+  profile_id: string;
+  company_name: string;
+  industry: string | null;
+  target_customer: string | null;
+  pricing_model: string | null;
+  sales_team_size: number | null;
+  crm_tool: string | null;
+  average_deal_size: string | null;
+  average_sales_cycle: string | null;
+  primary_sales_constraint: string | null;
+  quarterly_sales_focus: string | null;
+  created_at: string;
+  updated_at: string;
 };

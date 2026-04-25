@@ -17,6 +17,7 @@ from hello_sales_backend.modules.jobs.bootstrap import build_jobs_module
 from hello_sales_backend.modules.semantic_catalog.bootstrap import build_semantic_catalog_module
 from hello_sales_backend.modules.sessions.bootstrap import build_sessions_module
 from hello_sales_backend.modules.system.bootstrap import build_system_module
+from hello_sales_backend.modules.voice.bootstrap import build_voice_module
 from hello_sales_backend.modules.web_search.bootstrap import build_web_search_module
 from hello_sales_backend.modules.worker_runs.bootstrap import build_worker_runs_module
 from hello_sales_backend.platform.agents.config import AgentRuntimeConfig
@@ -135,6 +136,10 @@ def build_app_container(settings: Settings, overrides: AppOverrides | None = Non
         auth_provider=resolved_overrides.auth_provider,
         llm_provider=resolved_overrides.llm_provider,
         web_search_provider=resolved_overrides.web_search_provider,
+        voice_stt_provider=resolved_overrides.voice_stt_provider,
+        voice_tts_provider=resolved_overrides.voice_tts_provider,
+        voice_realtime_provider=resolved_overrides.voice_realtime_provider,
+        voice_turn_detection_provider=resolved_overrides.voice_turn_detection_provider,
     )
     task_event_sink = resolved_overrides.task_event_sink
     if task_event_sink is None and not settings.database_url.startswith("sqlite+aiosqlite"):
@@ -199,6 +204,11 @@ def build_app_container(settings: Settings, overrides: AppOverrides | None = Non
     web_search_module = build_web_search_module(
         settings=settings,
         provider=providers.web_search,
+    )
+    voice_module = build_voice_module(
+        settings=settings,
+        providers=providers,
+        observability=observability,
     )
     company_profile_module = build_company_profile_module(
         settings=settings,
@@ -267,6 +277,7 @@ def build_app_container(settings: Settings, overrides: AppOverrides | None = Non
         semantic_catalog=semantic_catalog_module,
         sessions=sessions_module,
         system=system_module,
+        voice=voice_module,
         web_search=web_search_module,
         worker_runs=worker_runs_module,
     )

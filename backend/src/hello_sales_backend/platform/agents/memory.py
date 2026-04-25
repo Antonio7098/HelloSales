@@ -78,7 +78,7 @@ class InMemoryAgentStore:
     async def list_events(self, run_id: str, limit: int = 100) -> list[AgentStreamEvent]:
         matches = [item for item in self._events.values() if item.run_id == run_id]
         ordered = sorted(matches, key=lambda item: item.sequence_no)
-        return [replace(item) for item in ordered[:limit]]
+        return [replace(item) for item in ordered[-limit:]]
 
     async def list_events_after(
         self,
