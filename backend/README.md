@@ -1,13 +1,27 @@
 # HelloSales Backend Scaffold
 
+> **Note**: Project overview lives in the root [README.md](../README.md).
+
 This backend scaffold is Postgres-first in development and production.
 
 The canonical technical documentation set for the backend lives in `backend/docs/`:
-- `backend/docs/README.md`
-- `backend/docs/runtime-overview.md`
-- `backend/docs/codebase-map.md`
-- `backend/docs/api-and-runtime-surfaces.md`
-- `backend/docs/testing-and-operations.md`
+
+- [README.md](docs/README.md) - Documentation index
+- [architecture-philosophy.md](docs/architecture-philosophy.md) - Architectural principles
+- [runtime-overview.md](docs/runtime-overview.md) - Runtime architecture
+- [codebase-map.md](docs/codebase-map.md) - Code organization
+- [api-and-runtime-surfaces.md](docs/api-and-runtime-surfaces.md) - API and surfaces
+- [configuration-and-environment.md](docs/configuration-and-environment.md) - Configuration
+- [persistence-and-migrations.md](docs/persistence-and-migrations.md) - Database
+- [errors-and-logging.md](docs/errors-and-logging.md) - Error handling
+- [testing-and-operations.md](docs/testing-and-operations.md) - Testing and ops
+- [diagnostics-and-events.md](docs/diagnostics-and-events.md) - Diagnostics
+- [agent-runtime.md](docs/agent-runtime.md) - Agent runtime
+- [worker-runtime.md](docs/worker-runtime.md) - Worker runtime
+- [voice-primitives.md](docs/voice-primitives.md) - Voice primitives
+- [semantic-catalog-and-entity-mutations.md](docs/semantic-catalog-and-entity-mutations.md) - Semantic catalog
+- [web-search.md](docs/web-search.md) - Web search
+- [observability-hosting-guide.md](docs/observability-hosting-guide.md) - Observability
 
 ## Development Database
 

@@ -1,5 +1,7 @@
 # HelloSales Frontend
 
+> **Note**: Project overview lives in the root [README.md](../README.md).
+
 This frontend is scaffolded as a pre-brief, contract-driven React application.
 
 ## Goals
@@ -26,3 +28,9 @@ npm run dev
 - `src/design-system/` - tokens, primitives, patterns
 - `src/test/` - shared test setup
 - `docs/` - local frontend architecture notes and ADRs
+
+## Documentation
+
+- [frontend-architecture.md](docs/frontend-architecture.md) - Architecture overview
+- [conventions.md](docs/conventions.md) - Code conventions
+- [decision-records/](docs/decision-records/) - ADRs
