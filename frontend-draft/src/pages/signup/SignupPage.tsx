@@ -138,29 +138,46 @@ export function SignupPage() {
     <div className="funnel">
       {/* SECTION 1 — HERO. Hero elements use .funnel-hero-anim classes that animate on page load (CSS keyframes), no IO needed. */}
       <section className="funnel-hero">
+        <div className="funnel-hero-bg" aria-hidden="true" />
+        <div className="funnel-hero-grid" aria-hidden="true" />
+
         <div className="funnel-hero-inner">
           <img
             src="/hello-sales-logo.png"
             alt="Hello Sales"
             className="funnel-brand-logo funnel-hero-anim funnel-hero-anim--logo"
           />
+
           <h1 className="funnel-hero-title funnel-hero-anim funnel-hero-anim--title">
-            Your company needs<br />more sales IQ.
+            Your company needs <em>more sales IQ.</em>
           </h1>
+
           <p className="funnel-hero-sub funnel-hero-anim funnel-hero-anim--sub">
             Stop losing deals to inconsistent reps, slow onboarding, and knowledge that
             leaves when your best people do.
           </p>
-          <button
-            type="button"
-            onClick={() => scrollTo(gapNavRef)}
-            className="funnel-cta funnel-cta--primary funnel-cta--240 funnel-hero-anim funnel-hero-anim--cta"
-          >
-            Get started →
-          </button>
-          <p className="funnel-hero-meta funnel-hero-anim funnel-hero-anim--cta">
+
+          <div className="funnel-hero-ctas funnel-hero-anim funnel-hero-anim--cta">
+            <button
+              type="button"
+              onClick={() => scrollTo(gapNavRef)}
+              className="funnel-cta funnel-cta--primary funnel-cta--220"
+            >
+              Get started →
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollTo(gapNavRef)}
+              className="funnel-cta-link"
+            >
+              See how it works ↓
+            </button>
+          </div>
+
+          <div className="funnel-hero-meta-chip funnel-hero-anim funnel-hero-anim--cta">
+            <span className="funnel-hero-meta-dot" aria-hidden="true" />
             Built for sales leaders managing 5–50 reps
-          </p>
+          </div>
         </div>
       </section>
 

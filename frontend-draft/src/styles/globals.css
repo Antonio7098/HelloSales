@@ -1740,68 +1740,192 @@ button { font: inherit; color: inherit; }
   height: 44px;
   border: 0;
 }
-.funnel-cta--primary { background: #0a0a0a; color: #fafafa; }
-.funnel-cta--primary:hover { background: #222; }
-.funnel-cta--primary:disabled { background: #777; cursor: not-allowed; }
+.funnel-cta--primary {
+  background: #0a0a0a;
+  color: #fafafa;
+  box-shadow: 0 1px 2px rgba(10, 10, 10, 0.08);
+  transition: background-color 0.18s ease, transform 0.2s cubic-bezier(0.25, 0.1, 0.25, 1), box-shadow 0.2s ease;
+}
+.funnel-cta--primary:hover {
+  background: #1a1a1a;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(10, 10, 10, 0.18);
+}
+.funnel-cta--primary:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(10, 10, 10, 0.12);
+}
+.funnel-cta--primary:disabled {
+  background: #777;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
 .funnel-cta--ghost-light {
   background: transparent;
   color: #ffffff;
   border: 1px solid #ffffff;
 }
 .funnel-cta--ghost-light:hover { background: #ffffff; color: #111111; }
+.funnel-cta--220 { width: 220px; }
 .funnel-cta--240 { width: 240px; }
 .funnel-cta--280 { width: 280px; }
 .funnel-cta--full { width: 100%; }
 .funnel-cta--tall { height: 46px; font-weight: 600; }
 
-/* ─── Section 1: hero ─── */
+/* ─── Section 1: hero (premium, editorial mono) ─── */
 .funnel-hero {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 64px 20px;
-  background: #fafafa;
+  padding: 96px 24px;
+  background: #faf8f3;          /* warm cream — feels like aged paper, not cold white */
   margin: 0;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
 }
+
+/* Layered radial mesh — premium SaaS background depth without distraction.
+   Lives behind the content, blends with the cream. */
+.funnel-hero-bg {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background:
+    radial-gradient(900px 500px at 50% 8%, rgba(20, 20, 20, 0.05), transparent 65%),
+    radial-gradient(700px 400px at 0% 80%, rgba(20, 20, 20, 0.025), transparent 60%),
+    radial-gradient(700px 400px at 100% 90%, rgba(20, 20, 20, 0.025), transparent 60%);
+}
+
+/* Subtle dot grid — editorial precision cue, very low opacity */
+.funnel-hero-grid {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-image: radial-gradient(rgba(10, 10, 10, 0.06) 1px, transparent 1px);
+  background-size: 28px 28px;
+  background-position: center top;
+  mask-image: radial-gradient(ellipse 80% 70% at 50% 50%, black 30%, transparent 80%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 50%, black 30%, transparent 80%);
+  opacity: 0.45;
+}
+
 .funnel-hero-inner {
-  max-width: 520px;
+  max-width: 760px;
+  width: 100%;
   text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
 }
+
 .funnel-brand-logo {
   display: block;
-  max-height: 140px;
+  max-height: 96px;
   width: auto;
-  margin: 0 auto 48px auto;
+  margin: 0 auto 56px auto;
 }
 @media (max-width: 640px) {
-  .funnel-brand-logo { max-height: 100px; margin-bottom: 32px; }
+  .funnel-brand-logo { max-height: 72px; margin-bottom: 40px; }
+  .funnel-hero { padding: 72px 20px; }
 }
+/* Headline — large editorial mono. Italic clause for emphasis. */
 .funnel-hero-title {
   font-family: var(--font-mono);
-  font-size: 28px;
+  font-size: clamp(2.4rem, 6vw, 4.5rem);
   font-weight: 700;
-  line-height: 1.3;
+  line-height: 1.05;
   color: #0a0a0a;
-  margin: 0 0 16px 0;
-  letter-spacing: -0.01em;
+  margin: 0 0 28px 0;
+  letter-spacing: -0.035em;
+  max-width: 18ch;
 }
+.funnel-hero-title em {
+  font-family: var(--font-book);
+  font-style: italic;
+  font-weight: 500;
+  color: #0a0a0a;
+  letter-spacing: -0.02em;
+  /* The italic serif clause sits inline with the mono — high-contrast typographic
+     moment that gives the hero an editorial, intentional feel. */
+}
+@media (max-width: 640px) {
+  .funnel-hero-title { font-size: clamp(2rem, 8vw, 2.6rem); margin-bottom: 22px; }
+}
+
 .funnel-hero-sub {
   font-family: var(--font-mono);
-  font-size: 14px;
-  color: #666;
-  line-height: 1.55;
-  max-width: 420px;
-  margin: 0 0 32px 0;
+  font-size: clamp(0.95rem, 1.2vw, 1.05rem);
+  color: #555;
+  line-height: 1.6;
+  max-width: 520px;
+  margin: 0 0 44px 0;
+  letter-spacing: 0;
 }
-.funnel-hero-meta {
+@media (max-width: 640px) {
+  .funnel-hero-sub { margin-bottom: 36px; }
+}
+
+/* CTA cluster — primary button + secondary text link */
+.funnel-hero-ctas {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  flex-wrap: wrap;
+  margin-bottom: 40px;
+}
+
+.funnel-cta-link {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: #555;
+  background: transparent;
+  border: 0;
+  padding: 8px 4px;
+  cursor: pointer;
+  position: relative;
+  transition: color 0.18s ease;
+}
+.funnel-cta-link::after {
+  content: "";
+  position: absolute;
+  left: 4px; right: 4px;
+  bottom: 4px;
+  height: 1px;
+  background: #0a0a0a;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.22s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+.funnel-cta-link:hover { color: #0a0a0a; }
+.funnel-cta-link:hover::after { transform: scaleX(1); }
+
+/* Meta chip — small pill with a dot, refined social-proof signal */
+.funnel-hero-meta-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   font-family: var(--font-mono);
   font-size: 11px;
-  color: #999;
-  margin: 20px 0 0 0;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #666;
+  background: rgba(10, 10, 10, 0.03);
+  border: 1px solid rgba(10, 10, 10, 0.08);
+  padding: 8px 14px;
+  border-radius: 999px;
+}
+.funnel-hero-meta-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #16653a;     /* matches the green column in the challenge table → cohesion */
+  box-shadow: 0 0 0 2px rgba(22, 101, 58, 0.15);
 }
 
 /* ─── Section 2: competitive gap (dark band) ─── */
