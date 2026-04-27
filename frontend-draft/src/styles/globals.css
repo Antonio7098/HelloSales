@@ -995,13 +995,15 @@ button { font: inherit; color: inherit; }
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #fbfaf6;
+  /* /Oliviercontribution — beige paper across public pages so the brand bar
+     blends with the hero below */
+  background: linear-gradient(180deg, #f7f3ec 0%, #ede5d5 100%);
 }
 
 .public-header {
   padding: var(--space-md) clamp(var(--space-md), 4vw, var(--space-2xl));
   border-bottom: 1px solid var(--line);
-  background: rgba(251, 250, 246, 0.85);
+  background: rgba(247, 243, 236, 0.85);
   backdrop-filter: blur(20px);
   position: sticky;
   top: 0;
@@ -1037,14 +1039,16 @@ button { font: inherit; color: inherit; }
 .landing {
   display: flex;
   flex-direction: column;
+  /* /Oliviercontribution — beige paper across the whole landing page */
+  background:
+    radial-gradient(900px 500px at 96% 6%, rgba(40, 32, 18, 0.05), transparent 55%),
+    linear-gradient(180deg, #f7f3ec 0%, #ede5d5 100%);
 }
 
 .landing-hero {
   padding: clamp(var(--space-xl), 8vh, var(--space-2xl)) clamp(var(--space-md), 6vw, var(--space-2xl));
   background:
-    radial-gradient(1200px 600px at 10% -10%, rgba(0, 80, 197, 0.10), transparent 60%),
-    radial-gradient(900px 500px at 90% 30%, rgba(40, 32, 18, 0.04), transparent 55%),
-    #fbfaf6;
+    radial-gradient(1200px 600px at 10% -10%, rgba(0, 80, 197, 0.12), transparent 60%);
   border-bottom: 1px solid var(--line);
 }
 
