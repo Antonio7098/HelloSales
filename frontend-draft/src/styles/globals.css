@@ -1745,10 +1745,10 @@ button { font: inherit; color: inherit; }
 .funnel-cta--primary:disabled { background: #777; cursor: not-allowed; }
 .funnel-cta--ghost-light {
   background: transparent;
-  color: #fafafa;
-  border: 1px solid #fafafa;
+  color: #ffffff;
+  border: 1px solid #ffffff;
 }
-.funnel-cta--ghost-light:hover { background: #fafafa; color: #111; }
+.funnel-cta--ghost-light:hover { background: #ffffff; color: #111111; }
 .funnel-cta--240 { width: 240px; }
 .funnel-cta--280 { width: 280px; }
 .funnel-cta--full { width: 100%; }
@@ -1760,8 +1760,9 @@ button { font: inherit; color: inherit; }
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 80px 20px;
+  padding: 64px 20px;
   background: #fafafa;
+  margin: 0;
 }
 .funnel-hero-inner {
   max-width: 520px;
@@ -1770,22 +1771,11 @@ button { font: inherit; color: inherit; }
   flex-direction: column;
   align-items: center;
 }
-.funnel-brand {
-  font-family: var(--font-mono);
-  font-size: 18px;
-  font-weight: 700;
-  color: #0a0a0a;
-  letter-spacing: -0.01em;
-  margin-bottom: 48px;
-}
-.funnel-caret {
-  display: inline-block;
-  margin-left: 1px;
-  animation: funnel-caret-blink 1s step-end infinite;
-}
-@keyframes funnel-caret-blink {
-  0%, 50%   { opacity: 1; }
-  50.01%, 100% { opacity: 0; }
+.funnel-brand-logo {
+  display: block;
+  max-height: 36px;
+  width: auto;
+  margin: 0 auto 48px auto;
 }
 .funnel-hero-title {
   font-family: var(--font-mono);
@@ -1812,9 +1802,11 @@ button { font: inherit; color: inherit; }
 }
 
 /* ─── Section 2: competitive gap (dark band) ─── */
+/* 0px gap from hero — flows directly into dark band */
 .funnel-gap {
   background: #111111;
-  padding: 80px 20px;
+  padding: 64px 20px;
+  margin: 0;
 }
 .funnel-gap-inner {
   max-width: 700px;
@@ -1870,9 +1862,11 @@ button { font: inherit; color: inherit; }
 }
 
 /* ─── Section 3: book page (manifesto) ─── */
+/* 56px gap from dark section, then 64px internal padding */
 .funnel-book-section {
   background: #fafafa;
-  padding: 80px 20px;
+  padding: 64px 20px;
+  margin-top: 56px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1880,18 +1874,19 @@ button { font: inherit; color: inherit; }
 .funnel-book {
   position: relative;
   width: 100%;
-  max-width: 620px;
+  max-width: 740px;
   background: #fdf8f0;
   border: 1px solid #e8dcc8;
   box-shadow: 2px 3px 12px rgba(0, 0, 0, 0.06);
-  padding: 48px 40px 48px 56px;
+  /* Margin sits at 16px from left edge → content starts at 28px (12px after the rule) */
+  padding: 40px 32px 40px 28px;
   margin: 0;
 }
 .funnel-book-margin {
   position: absolute;
   top: 0;
   bottom: 0;
-  left: 40px;
+  left: 16px;
   width: 1px;
   background: #c9a0a0;
 }
@@ -1901,13 +1896,15 @@ button { font: inherit; color: inherit; }
 }
 .funnel-book-line {
   font-family: var(--font-mono);
-  font-size: 12.5px;
-  line-height: 38px;
+  font-size: 11.5px;
+  line-height: 1.9;
   color: #2a2a2a;
   border-bottom: 1px solid #d4c9b8;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  padding: 4px 0;
+  /* Allow natural wrapping — no truncation */
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  white-space: normal;
 }
 .funnel-book-line strong {
   font-weight: 700;
@@ -1922,9 +1919,11 @@ button { font: inherit; color: inherit; }
 }
 
 /* ─── Section 4: challenge / solution table ─── */
+/* 48px gap from book section, then 64px internal padding */
 .funnel-challenge {
   background: #fafafa;
   padding: 64px 20px;
+  margin-top: 48px;
 }
 .funnel-challenge-inner {
   max-width: 700px;
@@ -1974,9 +1973,11 @@ button { font: inherit; color: inherit; }
 }
 
 /* ─── Section 5: signup form ─── */
+/* 56px gap from challenge section, then 64px internal padding (extra bottom for breathing room) */
 .funnel-form-section {
   background: #fafafa;
-  padding: 80px 20px 120px;
+  padding: 64px 20px 96px;
+  margin-top: 56px;
   display: flex;
   justify-content: center;
 }
@@ -2113,14 +2114,14 @@ button { font: inherit; color: inherit; }
     max-width: 100%;
   }
   .funnel-book {
-    padding: 32px 24px 32px 40px;
+    padding: 32px 24px 32px 28px;
   }
   .funnel-book-line {
     font-size: 11px;
-    line-height: 32px;
+    line-height: 1.8;
   }
   .funnel-book-margin {
-    left: 28px;
+    left: 16px;
   }
   .funnel-challenge-table {
     table-layout: auto;
@@ -2128,6 +2129,110 @@ button { font: inherit; color: inherit; }
   }
   .funnel-gap-table {
     min-width: 540px;
+  }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Scroll-reveal animations. /Oliviercontribution.
+   - .scroll-reveal* classes start hidden, get .revealed added via the
+     useScrollReveal hook (IntersectionObserver) once on entry.
+   - Hero elements use .funnel-hero-anim-* keyframes that play on page load
+     (no JS observer needed — they're visible from the start).
+   - prefers-reduced-motion turns everything off.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.scroll-reveal,
+.scroll-reveal-stagger,
+.scroll-reveal-pop,
+.scroll-reveal-tilt,
+.scroll-reveal-write {
+  will-change: transform, opacity;
+}
+
+.scroll-reveal {
+  /* Section-level wrapper — no own transform; child elements animate */
+}
+
+.scroll-reveal-stagger {
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 0.4s cubic-bezier(0.25, 0.1, 0.25, 1),
+              transform 0.4s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+.scroll-reveal.revealed .scroll-reveal-stagger {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.scroll-reveal-pop {
+  opacity: 0;
+  transform: scale(0.97);
+  transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+}
+.scroll-reveal.revealed .scroll-reveal-pop {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.scroll-reveal-tilt {
+  opacity: 0;
+  transform: rotate(-0.5deg) translateY(8px);
+  transition: opacity 0.5s cubic-bezier(0.25, 0.1, 0.25, 1),
+              transform 0.5s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+.scroll-reveal.revealed .scroll-reveal-tilt {
+  opacity: 1;
+  transform: rotate(0deg) translateY(0);
+}
+
+.scroll-reveal-write {
+  opacity: 0;
+  transform: translateX(-15px);
+  transition: opacity 0.35s ease-out, transform 0.35s ease-out;
+}
+.scroll-reveal.revealed .scroll-reveal-write {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* Hero on-load — keyframes run on mount, no observer */
+@keyframes funnel-hero-fade-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes funnel-hero-fade-scale {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.funnel-hero-anim {
+  opacity: 0;
+  animation-fill-mode: both;
+}
+.funnel-hero-anim--logo {
+  animation: funnel-hero-fade-scale 0.6s ease-out 0ms;
+}
+.funnel-hero-anim--title {
+  animation: funnel-hero-fade-up 0.4s ease-out 200ms;
+}
+.funnel-hero-anim--sub {
+  animation: funnel-hero-fade-up 0.4s ease-out 400ms;
+}
+.funnel-hero-anim--cta {
+  animation: funnel-hero-fade-up 0.4s ease-out 600ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scroll-reveal-stagger,
+  .scroll-reveal-pop,
+  .scroll-reveal-tilt,
+  .scroll-reveal-write,
+  .funnel-hero-anim {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+    animation: none !important;
   }
 }
 

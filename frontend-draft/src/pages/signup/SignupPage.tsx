@@ -4,14 +4,20 @@
  *
  * One page, 5 scroll sections. Every CTA smooth-scrolls to the next section.
  * IBM Plex Mono throughout. Owns the full viewport (no PublicLayout chrome).
- * Submit logic unchanged from prior version (best-effort backend write,
- * localStorage signin fallback, redirect by role).
+ *
+ * Animations: hero elements fade-up on page load with stagger delays (CSS
+ * keyframes). All other sections use IntersectionObserver via useScrollReveal
+ * to fade in on viewport entry. Respects prefers-reduced-motion.
+ *
+ * Submit logic unchanged — best-effort backend write, localStorage signin
+ * fallback, redirect by role (admin → /onboarding, rep → /dashboard).
  */
 
 import { useState, useRef, type FormEvent, type RefObject } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCurrentUser, type UserRole } from "@/shared/auth/useCurrentUser";
 import { getSalesbookApi, isSheetsMode } from "@/shared/api/salesbook";
+import { useScrollReveal } from "@/shared/hooks/useScrollReveal";
 
 const COMPETITIVE_GAP: Array<[string, string, string]> = [
   ["Training platforms", "Teach reps", "No execution"],
@@ -56,10 +62,23 @@ export function SignupPage() {
   const navigate = useNavigate();
   const { signIn } = useCurrentUser();
 
-  const gapRef = useRef<HTMLElement>(null);
-  const bookRef = useRef<HTMLElement>(null);
-  const challengeRef = useRef<HTMLElement>(null);
-  const formRef = useRef<HTMLElement>(null);
+  // Section refs — both for smooth-scroll targets AND for reveal animation triggers
+  const gapRef = useScrollReveal<HTMLElement>();
+  const bookRef = useScrollReveal<HTMLElement>();
+  const challengeRef = useScrollReveal<HTMLElement>();
+  const formRef = useScrollReveal<HTMLElement>();
+
+  // Smooth-scroll navigation needs plain refs alongside the reveal refs
+  const gapNavRef = useRef<HTMLElement>(null);
+  const bookNavRef = useRef<HTMLElement>(null);
+  const challengeNavRef = useRef<HTMLElement>(null);
+  const formNavRef = useRef<HTMLElement>(null);
+
+  // Combine the two refs onto one element
+  const setGap = (el: HTMLElement | null) => { gapRef.current = el; gapNavRef.current = el; };
+  const setBook = (el: HTMLElement | null) => { bookRef.current = el; bookNavRef.current = el; };
+  const setChallenge = (el: HTMLElement | null) => { challengeRef.current = el; challengeNavRef.current = el; };
+  const setForm = (el: HTMLElement | null) => { formRef.current = el; formNavRef.current = el; };
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -117,48 +136,60 @@ export function SignupPage() {
 
   return (
     <div className="funnel">
-      {/* SECTION 1 — HERO */}
+      {/* SECTION 1 — HERO. Hero elements use .funnel-hero-anim classes that animate on page load (CSS keyframes), no IO needed. */}
       <section className="funnel-hero">
         <div className="funnel-hero-inner">
-          <div className="funnel-brand">
-            HelloSales<span className="funnel-caret">_</span>
-          </div>
-          <h1 className="funnel-hero-title">
+          <img
+            src="/hello-sales-logo.png"
+            alt="Hello Sales"
+            className="funnel-brand-logo funnel-hero-anim funnel-hero-anim--logo"
+          />
+          <h1 className="funnel-hero-title funnel-hero-anim funnel-hero-anim--title">
             Your company needs<br />more sales IQ.
           </h1>
-          <p className="funnel-hero-sub">
+          <p className="funnel-hero-sub funnel-hero-anim funnel-hero-anim--sub">
             Stop losing deals to inconsistent reps, slow onboarding, and knowledge that
             leaves when your best people do.
           </p>
           <button
             type="button"
-            onClick={() => scrollTo(gapRef)}
-            className="funnel-cta funnel-cta--primary funnel-cta--240"
+            onClick={() => scrollTo(gapNavRef)}
+            className="funnel-cta funnel-cta--primary funnel-cta--240 funnel-hero-anim funnel-hero-anim--cta"
           >
             Get started →
           </button>
-          <p className="funnel-hero-meta">Built for sales leaders managing 5–50 reps</p>
+          <p className="funnel-hero-meta funnel-hero-anim funnel-hero-anim--cta">
+            Built for sales leaders managing 5–50 reps
+          </p>
         </div>
       </section>
 
-      {/* SECTION 2 — COMPETITIVE GAP TABLE */}
-      <section ref={gapRef} className="funnel-gap">
+      {/* SECTION 2 — COMPETITIVE GAP TABLE. Reveals via IO, rows stagger in. */}
+      <section ref={setGap} className="funnel-gap scroll-reveal">
         <div className="funnel-gap-inner">
-          <h2 className="funnel-gap-title">Every sales team has tools.</h2>
-          <p className="funnel-gap-sub">None of them do what you actually need.</p>
+          <h2 className="funnel-gap-title scroll-reveal-stagger" style={{ transitionDelay: "0ms" }}>
+            Every sales team has tools.
+          </h2>
+          <p className="funnel-gap-sub scroll-reveal-stagger" style={{ transitionDelay: "120ms" }}>
+            None of them do what you actually need.
+          </p>
 
           <div className="funnel-table-wrap">
             <table className="funnel-gap-table">
               <thead>
                 <tr>
-                  <th>Category</th>
-                  <th>What they do</th>
-                  <th>What's missing</th>
+                  <th className="scroll-reveal-stagger" style={{ transitionDelay: "240ms" }}>Category</th>
+                  <th className="scroll-reveal-stagger" style={{ transitionDelay: "240ms" }}>What they do</th>
+                  <th className="scroll-reveal-stagger" style={{ transitionDelay: "240ms" }}>What's missing</th>
                 </tr>
               </thead>
               <tbody>
-                {COMPETITIVE_GAP.map(([cat, doe, miss]) => (
-                  <tr key={cat}>
+                {COMPETITIVE_GAP.map(([cat, doe, miss], idx) => (
+                  <tr
+                    key={cat}
+                    className="scroll-reveal-stagger"
+                    style={{ transitionDelay: `${360 + idx * 200}ms` }}
+                  >
                     <td>{cat}</td>
                     <td>{doe}</td>
                     <td className="funnel-gap-missing">{miss}</td>
@@ -168,49 +199,70 @@ export function SignupPage() {
             </table>
           </div>
 
-          <p className="funnel-gap-foot">Hello Sales does all five.</p>
+          <p
+            className="funnel-gap-foot scroll-reveal-pop"
+            style={{ transitionDelay: `${360 + COMPETITIVE_GAP.length * 200 + 120}ms` }}
+          >
+            Hello Sales does all five.
+          </p>
           <button
             type="button"
-            onClick={() => scrollTo(bookRef)}
-            className="funnel-cta funnel-cta--ghost-light"
+            onClick={() => scrollTo(bookNavRef)}
+            className="funnel-cta funnel-cta--ghost-light scroll-reveal-stagger"
+            style={{ transitionDelay: `${360 + COMPETITIVE_GAP.length * 200 + 320}ms` }}
           >
             See what you get →
           </button>
         </div>
       </section>
 
-      {/* SECTION 3 — BOOK PAGE (manifesto on notebook ruled lines) */}
-      <section ref={bookRef} className="funnel-book-section">
-        <article className="funnel-book" aria-label="Hello Sales manifesto">
+      {/* SECTION 3 — BOOK PAGE (manifesto on notebook ruled lines). */}
+      <section ref={setBook} className="funnel-book-section scroll-reveal">
+        <article className="funnel-book scroll-reveal-tilt" aria-label="Hello Sales manifesto">
           <div className="funnel-book-margin" aria-hidden="true" />
           <div className="funnel-book-lines">
             {BOOK_LINES.map((rest, i) => (
-              <div key={i} className="funnel-book-line">
+              <div
+                key={i}
+                className="funnel-book-line scroll-reveal-write"
+                style={{ transitionDelay: `${300 + i * 80}ms` }}
+              >
                 <strong>Hello Sales</strong>&nbsp;&nbsp;{rest}
               </div>
             ))}
           </div>
         </article>
-        <p className="funnel-book-caption">This is what your team gets on day one.</p>
+        <p
+          className="funnel-book-caption scroll-reveal-stagger"
+          style={{ transitionDelay: `${300 + BOOK_LINES.length * 80 + 200}ms` }}
+        >
+          This is what your team gets on day one.
+        </p>
       </section>
 
-      {/* SECTION 4 — CHALLENGE / SOLUTION TABLE */}
-      <section ref={challengeRef} className="funnel-challenge">
+      {/* SECTION 4 — CHALLENGE / SOLUTION TABLE. */}
+      <section ref={setChallenge} className="funnel-challenge scroll-reveal">
         <div className="funnel-challenge-inner">
-          <h2 className="funnel-challenge-title">Real problems. Real answers.</h2>
+          <h2 className="funnel-challenge-title scroll-reveal-stagger" style={{ transitionDelay: "0ms" }}>
+            Real problems. Real answers.
+          </h2>
 
           <div className="funnel-table-wrap">
             <table className="funnel-challenge-table">
               <thead>
                 <tr>
-                  <th className="th-dark">Challenge</th>
-                  <th className="th-dark">Impact on Business</th>
-                  <th className="th-green">Hello Sales</th>
+                  <th className="th-dark scroll-reveal-stagger" style={{ transitionDelay: "200ms" }}>Challenge</th>
+                  <th className="th-dark scroll-reveal-stagger" style={{ transitionDelay: "200ms" }}>Impact on Business</th>
+                  <th className="th-green scroll-reveal-stagger" style={{ transitionDelay: "200ms" }}>Hello Sales</th>
                 </tr>
               </thead>
               <tbody>
                 {CHALLENGE_ROWS.map(([ch, im, hs], idx) => (
-                  <tr key={ch} className={idx % 2 === 0 ? "row-even" : "row-odd"}>
+                  <tr
+                    key={ch}
+                    className={`${idx % 2 === 0 ? "row-even" : "row-odd"} scroll-reveal-stagger`}
+                    style={{ transitionDelay: `${320 + idx * 200}ms` }}
+                  >
                     <td>{ch}</td>
                     <td>{im}</td>
                     <td className="td-green">{hs}</td>
@@ -222,22 +274,27 @@ export function SignupPage() {
 
           <button
             type="button"
-            onClick={() => scrollTo(formRef)}
-            className="funnel-cta funnel-cta--primary funnel-cta--280"
+            onClick={() => scrollTo(formNavRef)}
+            className="funnel-cta funnel-cta--primary funnel-cta--280 scroll-reveal-stagger"
+            style={{ transitionDelay: `${320 + CHALLENGE_ROWS.length * 200 + 200}ms` }}
           >
             Build your salesbook →
           </button>
         </div>
       </section>
 
-      {/* SECTION 5 — SIGNUP FORM (the conversion point) */}
-      <section ref={formRef} className="funnel-form-section">
+      {/* SECTION 5 — SIGNUP FORM. */}
+      <section ref={setForm} className="funnel-form-section scroll-reveal">
         <form onSubmit={handleSubmit} className="funnel-form">
-          <h2 className="funnel-form-title">Let's build yours.</h2>
-          <p className="funnel-form-sub">Takes 2 minutes. No credit card.</p>
+          <h2 className="funnel-form-title scroll-reveal-stagger" style={{ transitionDelay: "0ms" }}>
+            Let's build yours.
+          </h2>
+          <p className="funnel-form-sub scroll-reveal-stagger" style={{ transitionDelay: "100ms" }}>
+            Takes 2 minutes. No credit card.
+          </p>
 
           <div className="funnel-fields">
-            <label className="funnel-field">
+            <label className="funnel-field scroll-reveal-stagger" style={{ transitionDelay: "300ms" }}>
               <span className="funnel-label">Your name</span>
               <input
                 className="funnel-input"
@@ -249,7 +306,7 @@ export function SignupPage() {
               />
             </label>
 
-            <label className="funnel-field">
+            <label className="funnel-field scroll-reveal-stagger" style={{ transitionDelay: "450ms" }}>
               <span className="funnel-label">Email</span>
               <input
                 className="funnel-input"
@@ -261,7 +318,7 @@ export function SignupPage() {
               />
             </label>
 
-            <label className="funnel-field">
+            <label className="funnel-field scroll-reveal-stagger" style={{ transitionDelay: "600ms" }}>
               <span className="funnel-label">Company</span>
               <input
                 className="funnel-input"
@@ -273,7 +330,7 @@ export function SignupPage() {
               />
             </label>
 
-            <div className="funnel-field">
+            <div className="funnel-field scroll-reveal-stagger" style={{ transitionDelay: "750ms" }}>
               <span className="funnel-label">Your role</span>
               <div className="funnel-roles">
                 <RoleButton
@@ -297,12 +354,15 @@ export function SignupPage() {
           <button
             type="submit"
             disabled={submitting}
-            className="funnel-cta funnel-cta--primary funnel-cta--full funnel-cta--tall"
+            className="funnel-cta funnel-cta--primary funnel-cta--full funnel-cta--tall scroll-reveal-stagger"
+            style={{ transitionDelay: "950ms" }}
           >
             {submitting ? "Signing in…" : "Get started →"}
           </button>
 
-          <p className="funnel-form-foot">Your data stays yours. Always.</p>
+          <p className="funnel-form-foot scroll-reveal-stagger" style={{ transitionDelay: "1100ms" }}>
+            Your data stays yours. Always.
+          </p>
         </form>
       </section>
     </div>
