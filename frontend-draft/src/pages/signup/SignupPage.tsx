@@ -40,15 +40,29 @@ export function SignupPage() {
     event.preventDefault();
     setError(null);
     setSubmitting(true);
+
+    // Always derive a stable demo profileId so localStorage works offline-first.
+    const profileId = `demo-${email.replace(/[^a-z0-9]/gi, "-").toLowerCase()}`;
+
+    // Best-effort backend write. In demo mode (no FastAPI, no Apps Script
+    // configured) this errors silently — we still sign you in so you can
+    // click through the UI. The real persistence kicks in once the backend
+    // or webhook is reachable.
     try {
       const api = getSalesbookApi();
-      let profileId: string;
       if (isSheetsMode && api.signup) {
         const res = await api.signup({ name, email, companyName, role });
-        profileId = res.profileId;
+        // If the webhook returns a profileId, prefer it.
+        if (res?.profileId) {
+          signIn({
+            profileId: res.profileId,
+            email, name, companyName, role,
+            signedUpAt: new Date().toISOString(),
+          });
+          navigate(role === "admin" ? "/onboarding" : "/dashboard", { replace: true });
+          return;
+        }
       } else {
-        // FastAPI demo path: derive a stable demo profileId from the email
-        profileId = `demo-${email.replace(/[^a-z0-9]/gi, "-").toLowerCase()}`;
         await api.upsertClientContact(profileId, {
           primary_email: email,
           contact_name: name,
@@ -59,32 +73,29 @@ export function SignupPage() {
           status: "active",
         });
       }
-      signIn({
-        profileId,
-        email,
-        name,
-        companyName,
-        role,
-        signedUpAt: new Date().toISOString(),
-      });
-      // Admin → onboarding wizard; rep → dashboard (admin onboards the company)
-      navigate(role === "admin" ? "/onboarding" : "/dashboard", { replace: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-      setSubmitting(false);
+      // Don't block the UI on demo backend failures — log and continue.
+      console.warn("[signup] backend unreachable, continuing in local-only demo mode:", err);
     }
+
+    signIn({
+      profileId,
+      email, name, companyName, role,
+      signedUpAt: new Date().toISOString(),
+    });
+    navigate(role === "admin" ? "/onboarding" : "/dashboard", { replace: true });
   }
 
   return (
     <div className="signup-shell">
       <Surface padding="default" tone="default" className="signup-card">
-        <Stack gap="md">
+        <Stack gap="lg">
           <Row gap="sm" baseline>
             <img src="/hello-sales-icon.png" alt="" style={{ width: 36, height: 36 }} />
             <PageHeader
               eyebrow="Hello Sales · sign in"
               title="Welcome to your sales operating desk"
-              description="Tell us who you are. Admins (CEO / VP Sales) get the keys to the company salesbook. Reps log activity, comment on the salesbook, and run their personal pipeline."
+              description="Tell us who you are. The path through the app — and the depth of your onboarding — depends on the role you pick."
             />
           </Row>
 
@@ -136,20 +147,27 @@ export function SignupPage() {
                     <RoleCard
                       selected={role === "admin"}
                       onSelect={() => setRole("admin")}
-                      title="Admin"
-                      subtitle="CEO / VP Sales"
-                      blurb="Owns the company salesbook. Sees all reps, all deals. Approves rep contributions. Marks sticky content."
+                      title="VP / Admin"
+                      subtitle="CEO · VP Sales · Founder"
+                      blurb="Lays the foundation of the company's business IQ. Defines the product, the ICP, the buyer journey, and the pipeline strategy. Sees every rep, every deal, and every signal across the org."
+                      tag="Detailed onboarding · 114 questions across 3 phases"
                     />
                     <RoleCard
                       selected={role === "rep"}
                       onSelect={() => setRole("rep")}
                       title="Sales rep"
-                      subtitle="Account executive"
-                      blurb="Personal lead workspace. Logs every interaction. Comments on the salesbook to feed admin approval."
+                      subtitle="Account executive · BDR"
+                      blurb="Runs your own pipeline of leads from the ground up. Logs every call, email, and meeting in one place so the org learns from your fieldwork."
+                      tag="Lighter onboarding · personal workspace setup"
                     />
                   </div>
                 )}
               </Field>
+
+              <p className="text-body-muted text-mono" style={{ margin: 0, fontSize: 12 }}>
+                In the final version VPs and reps will get separate onboarding URLs. For
+                this preview the role you pick decides which path you land on.
+              </p>
 
               {error ? (
                 <p className="text-body" style={{ color: "var(--danger)", margin: 0 }}>
@@ -179,16 +197,18 @@ function RoleCard({
   title,
   subtitle,
   blurb,
+  tag,
 }: {
   selected: boolean;
   onSelect: () => void;
   title: string;
   subtitle: string;
   blurb: string;
+  tag: string;
 }) {
   return (
     <button type="button" onClick={onSelect} className={`role-card ${selected ? "is-selected" : ""}`}>
-      <Stack gap="2xs">
+      <Stack gap="xs">
         <Row gap="xs" between baseline>
           <span className="role-card-title">{title}</span>
           {selected ? <span className="role-card-check">✓</span> : null}
@@ -197,6 +217,7 @@ function RoleCard({
           {subtitle}
         </Text>
         <Text className="text-body">{blurb}</Text>
+        <span className="role-card-tag">{tag}</span>
       </Stack>
     </button>
   );
