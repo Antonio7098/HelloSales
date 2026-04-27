@@ -189,14 +189,8 @@ export function SignupPage() {
         <div className="funnel-hero-grid" aria-hidden="true" />
 
         <div className={`section-content funnel-hero-inner ${hero.isVisible ? "focused" : "unfocused"}`}>
-          <img
-            src="/hello-sales-logo.png"
-            alt="Hello Sales"
-            className="funnel-brand-logo stagger-child"
-            style={{ transitionDelay: "0ms" }}
-          />
-
-          <h1 className="funnel-hero-title stagger-child" style={{ transitionDelay: "200ms" }}>
+          {/* Hero logo removed — the persistent top-left logo is the single brand mark. */}
+          <h1 className="funnel-hero-title stagger-child" style={{ transitionDelay: "0ms" }}>
             Your company needs<br />
             <span className="hero-keyword-wrap">
               <span className="hero-keyword" data-phase={keywordPhase}>
@@ -206,7 +200,7 @@ export function SignupPage() {
             </span>
           </h1>
 
-          <p className="funnel-hero-sub stagger-child" style={{ transitionDelay: "400ms" }}>
+          <p className="funnel-hero-sub stagger-child" style={{ transitionDelay: "200ms" }}>
             The bigger your team, the harder it is to keep every rep aligned, coached,
             and closing with the same playbook. Hello Sales fixes that.
           </p>
@@ -215,12 +209,12 @@ export function SignupPage() {
             type="button"
             onClick={() => smoothScrollTo(gap.ref)}
             className="funnel-cta funnel-cta--primary funnel-cta--240 stagger-child"
-            style={{ transitionDelay: "600ms" }}
+            style={{ transitionDelay: "400ms" }}
           >
             Get started →
           </button>
 
-          <div className="funnel-hero-meta-chip stagger-child" style={{ transitionDelay: "700ms" }}>
+          <div className="funnel-hero-meta-chip stagger-child" style={{ transitionDelay: "500ms" }}>
             <span className="funnel-hero-meta-dot" aria-hidden="true" />
             Built for sales teams where coordination is the bottleneck.
           </div>

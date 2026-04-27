@@ -1828,15 +1828,16 @@ button { font: inherit; color: inherit; }
   }
 }
 
-/* Persistent top-left logo — visible across all sections, switches to a
-   white silhouette via brightness-invert when over the dark gap section. */
+/* Persistent top-left logo — single brand mark for the whole signup page.
+   Bumped 8x per Olivier's spec (28px → 224px). Switches to a white
+   silhouette via brightness-invert when over the dark gap section. */
 .persistent-logo {
   position: fixed;
-  top: 20px;
+  top: 24px;
   left: 24px;
-  max-height: 28px;
+  max-height: 224px;
   width: auto;
-  opacity: 0.9;
+  opacity: 0.95;
   z-index: 100;
   pointer-events: none;
   transition: filter 0.3s ease, opacity 0.3s ease;
@@ -1844,8 +1845,11 @@ button { font: inherit; color: inherit; }
 .persistent-logo.on-dark {
   filter: brightness(0) invert(1);
 }
+@media (max-width: 1024px) {
+  .persistent-logo { max-height: 160px; }
+}
 @media (max-width: 640px) {
-  .persistent-logo { top: 16px; left: 16px; max-height: 24px; }
+  .persistent-logo { top: 16px; left: 16px; max-height: 96px; }
 }
 
 
