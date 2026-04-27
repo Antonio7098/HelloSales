@@ -1900,6 +1900,24 @@ button { font: inherit; color: inherit; }
   border: 1px solid #ffffff;
 }
 .funnel-cta--ghost-light:hover { background: #ffffff; color: #111111; }
+
+/* Solid white CTA — strong against the dark hero band */
+.funnel-cta--white {
+  background: #ffffff;
+  color: #0a0a0a;
+  border: 0;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+  transition: background-color 0.18s ease, transform 0.2s cubic-bezier(0.25, 0.1, 0.25, 1), box-shadow 0.2s ease;
+}
+.funnel-cta--white:hover {
+  background: #f0f0f0;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.32);
+}
+.funnel-cta--white:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+}
 .funnel-cta--220 { width: 220px; }
 .funnel-cta--240 { width: 240px; }
 .funnel-cta--280 { width: 280px; }
@@ -1941,18 +1959,37 @@ button { font: inherit; color: inherit; }
   opacity: 0.45;
 }
 
+/* Hero inner spans the full available height. .hero-main grows to fill,
+   centering the logo+headline+CTA. .hero-footer sits at the bottom of the
+   viewport so the sub-copy + qualifier read as a closing footer line. */
+.signup-section.funnel-hero { align-items: stretch; }
+
 .funnel-hero-inner {
   max-width: 760px;
   width: 100%;
   text-align: center;
+  display: flex;
+  flex-direction: column;
 }
 
-/* Spacing tuned for the 8x logo — tighter to keep everything inside 100vh */
-.funnel-hero-inner .funnel-hero-logo      { margin: 0 auto 24px auto; }
-.funnel-hero-inner .hero-headline         { margin: 0 0 20px 0; }
-.funnel-hero-inner .funnel-hero-sub       { margin: 0 auto 24px auto; }
-.funnel-hero-inner .funnel-cta            { margin: 0 auto; }
-.funnel-hero-inner .funnel-hero-meta-chip { margin: 14px auto 0 auto; }
+.hero-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.hero-main .funnel-hero-logo { margin: 0 auto 24px auto; }
+.hero-main .hero-headline    { margin: 0 0 28px 0; }
+.hero-main .funnel-cta       { margin: 0 auto; }
+
+.hero-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding-bottom: 0;
+}
 /* Hero headline — single small line under the giant logo: prefix + keyword
    + period all inline. Whole line is supporting copy, not the focal point. */
 .hero-headline {

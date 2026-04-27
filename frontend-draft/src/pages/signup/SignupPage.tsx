@@ -162,40 +162,46 @@ export function SignupPage() {
 
   return (
     <div className="signup-page">
-      {/* SECTION 1 — HERO. Dark band, logo centered above headline. */}
+      {/* SECTION 1 — HERO. Dark band. Top: logo + one-line headline + CTA.
+          Bottom: sub-copy + qualifier (pinned to viewport bottom). */}
       <section ref={hero.ref} className="signup-section funnel-hero">
         <div className={`section-content funnel-hero-inner ${hero.isVisible ? "focused" : "unfocused"}`}>
-          <img
-            src="/HS.OL.removed.png"
-            alt="Hello Sales"
-            className="funnel-hero-logo stagger-child"
-            style={{ transitionDelay: "0ms" }}
-          />
+          {/* Main centered group */}
+          <div className="hero-main">
+            <img
+              src="/HS.OL.removed.png"
+              alt="Hello Sales"
+              className="funnel-hero-logo stagger-child"
+              style={{ transitionDelay: "0ms" }}
+            />
 
-          <div className="hero-headline stagger-child" style={{ transitionDelay: "150ms" }}>
-            <span className="hero-prefix">Your company needs </span>
-            <span className="hero-keyword" data-phase={keywordPhase}>
-              {HERO_KEYWORDS[keywordIndex]}
-            </span>
-            <span className="hero-keyword-period">.</span>
+            <div className="hero-headline stagger-child" style={{ transitionDelay: "150ms" }}>
+              <span className="hero-prefix">Your company needs </span>
+              <span className="hero-keyword" data-phase={keywordPhase}>
+                {HERO_KEYWORDS[keywordIndex]}
+              </span>
+              <span className="hero-keyword-period">.</span>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => smoothScrollTo(gap.ref)}
+              className="funnel-cta funnel-cta--white funnel-cta--240 stagger-child"
+              style={{ transitionDelay: "300ms" }}
+            >
+              Start Now →
+            </button>
           </div>
 
-          <p className="funnel-hero-sub stagger-child" style={{ transitionDelay: "300ms" }}>
-            The bigger your team, the harder it is to keep every rep aligned, coached,
-            and closing with the same playbook. <strong>Hello Sales</strong> fixes that.
-          </p>
-
-          <button
-            type="button"
-            onClick={() => smoothScrollTo(gap.ref)}
-            className="funnel-cta funnel-cta--ghost-light funnel-cta--240 stagger-child"
-            style={{ transitionDelay: "450ms" }}
-          >
-            Get started →
-          </button>
-
-          <div className="funnel-hero-meta-chip stagger-child" style={{ transitionDelay: "550ms" }}>
-            For efficient sales team coordination and performance.
+          {/* Footer pinned to viewport bottom */}
+          <div className="hero-footer">
+            <p className="funnel-hero-sub stagger-child" style={{ transitionDelay: "450ms" }}>
+              The bigger your team, the harder it is to keep every rep aligned, coached,
+              and closing with the same playbook. <strong>Hello Sales</strong> fixes that.
+            </p>
+            <div className="funnel-hero-meta-chip stagger-child" style={{ transitionDelay: "550ms" }}>
+              For ambitious sales teams looking to build Sales IP and maximize performance.
+            </div>
           </div>
         </div>
       </section>
