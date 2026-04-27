@@ -1828,14 +1828,15 @@ button { font: inherit; color: inherit; }
   }
 }
 
-/* Persistent top-left logo — single brand mark for the whole signup page.
-   Bumped 8x per Olivier's spec (28px → 224px). Switches to a white
-   silhouette via brightness-invert when over the dark gap section. */
+/* Persistent logo — top-CENTER, single brand mark across the page.
+   Switches to a white silhouette via brightness-invert when over the dark
+   gap section. Pointer-events none so it never blocks scroll/clicks. */
 .persistent-logo {
   position: fixed;
-  top: 24px;
-  left: 24px;
-  max-height: 224px;
+  top: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-height: 200px;
   width: auto;
   opacity: 0.95;
   z-index: 100;
@@ -1846,10 +1847,10 @@ button { font: inherit; color: inherit; }
   filter: brightness(0) invert(1);
 }
 @media (max-width: 1024px) {
-  .persistent-logo { max-height: 160px; }
+  .persistent-logo { max-height: 144px; top: 24px; }
 }
 @media (max-width: 640px) {
-  .persistent-logo { top: 16px; left: 16px; max-height: 96px; }
+  .persistent-logo { max-height: 84px; top: 16px; }
 }
 
 
@@ -1944,78 +1945,89 @@ button { font: inherit; color: inherit; }
 }
 
 .funnel-hero-inner {
-  max-width: 760px;
+  max-width: 880px;
   width: 100%;
   text-align: center;
+  /* Reserve top space for the centered persistent logo so the headline
+     doesn't sit underneath it. Hero is 100vh + flex-centered, so we offset
+     vertically by adding bottom padding equal to the logo's footprint. */
+  padding-top: clamp(120px, 22vh, 240px);
 }
-
-/* Hero spacing per spec — tight cohesive group, not scattered air */
-.funnel-hero-inner .funnel-brand-logo { margin: 0 auto 40px auto; }
-.funnel-hero-inner .funnel-hero-title { margin: 0 0 14px 0; }
-.funnel-hero-inner .funnel-hero-sub { margin: 0 auto 28px auto; }
-.funnel-hero-inner .funnel-cta { margin: 0 auto; }
-.funnel-hero-inner .funnel-hero-meta-chip { margin: 16px auto 0 auto; }
-
-.funnel-brand-logo {
-  display: block;
-  max-height: 48px;
-  width: auto;
+@media (max-width: 1024px) {
+  .funnel-hero-inner { padding-top: clamp(100px, 18vh, 180px); }
 }
 @media (max-width: 640px) {
-  .funnel-brand-logo { max-height: 40px; }
-  .funnel-hero-inner .funnel-brand-logo { margin-bottom: 32px; }
-}
-/* Headline — per spec: 28px bold, line-height 1.3 */
-.funnel-hero-title {
-  font-family: var(--font-mono);
-  font-size: 28px;
-  font-weight: 700;
-  line-height: 1.3;
-  color: #0a0a0a;
-  letter-spacing: -0.01em;
-  max-width: 100%;
-}
-@media (max-width: 640px) {
-  .funnel-hero-title { font-size: 22px; }
+  .funnel-hero-inner { padding-top: clamp(80px, 14vh, 120px); }
 }
 
-.funnel-hero-sub {
-  font-family: var(--font-mono);
-  font-size: 14px;
-  color: #666;
-  line-height: 1.55;
-  max-width: 420px;
+/* Tight cohesive group — intentional spacing between elements */
+.funnel-hero-inner .hero-headline       { margin: 0 0 28px 0; }
+.funnel-hero-inner .funnel-hero-sub     { margin: 0 auto 36px auto; }
+.funnel-hero-inner .funnel-cta          { margin: 0 auto; }
+.funnel-hero-inner .funnel-hero-meta-chip { margin: 18px auto 0 auto; }
+/* Hero headline — typographic hierarchy with rotating keyword as the
+   visual centerpiece. Small "Your company needs" prefix in muted weight,
+   then a large bold rotating keyword on its own line for maximum impact. */
+.hero-headline {
   text-align: center;
+  font-family: var(--font-mono);
+  color: #0a0a0a;
 }
 
-/* Rotating-keyword wrap — fixed-height + min-width container so layout
-   doesn't shift between keywords of different lengths. */
-.hero-keyword-wrap {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 0;
-  min-height: 1.3em;
+.hero-prefix {
+  font-size: 16px;
+  font-weight: 500;
+  color: #666;
+  letter-spacing: 0.02em;
+  margin-bottom: 14px;
+  text-transform: lowercase;
 }
+@media (min-width: 1024px) {
+  .hero-prefix { font-size: 18px; }
+}
+
+.hero-keyword-line {
+  font-size: clamp(2.6rem, 6vw, 4.4rem);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+  color: #0a0a0a;
+}
+
 .hero-keyword {
   display: inline-block;
-  border-bottom: 1px solid #0a0a0a;
+  border-bottom: 2px solid #0a0a0a;
+  padding-bottom: 2px;
   transition: opacity 200ms ease-out, transform 200ms ease-out;
-  padding: 0 2px;
 }
-.hero-keyword[data-phase="in"] {
-  opacity: 1;
-  transform: translateY(0);
-}
-.hero-keyword[data-phase="out"] {
-  opacity: 0;
-  transform: translateY(-8px);
-}
+.hero-keyword[data-phase="in"]  { opacity: 1; transform: translateY(0); }
+.hero-keyword[data-phase="out"] { opacity: 0; transform: translateY(-8px); }
 .hero-keyword-period {
   display: inline-block;
+  margin-left: -2px;     /* tuck the period close to the keyword */
+}
+
+@media (max-width: 640px) {
+  .hero-prefix { font-size: 14px; margin-bottom: 10px; }
+  .hero-keyword-line { font-size: clamp(2rem, 9vw, 2.6rem); }
+  .hero-keyword { border-bottom-width: 1.5px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .hero-keyword { transition: none !important; transform: none !important; opacity: 1 !important; }
+}
+
+/* Sub-copy — 14px (per spec), generous max-width for long sentences */
+.funnel-hero-sub {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: #666;
+  line-height: 1.6;
+  max-width: 460px;
+  text-align: center;
+}
+@media (min-width: 1024px) {
+  .funnel-hero-sub { font-size: 15px; max-width: 520px; }
 }
 
 /* Meta qualifier — 11px, #999, centered (per spec: simple line, not a chip) */

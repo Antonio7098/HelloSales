@@ -190,15 +190,15 @@ export function SignupPage() {
 
         <div className={`section-content funnel-hero-inner ${hero.isVisible ? "focused" : "unfocused"}`}>
           {/* Hero logo removed — the persistent top-left logo is the single brand mark. */}
-          <h1 className="funnel-hero-title stagger-child" style={{ transitionDelay: "0ms" }}>
-            Your company needs<br />
-            <span className="hero-keyword-wrap">
+          <div className="hero-headline stagger-child" style={{ transitionDelay: "0ms" }}>
+            <div className="hero-prefix">Your company needs</div>
+            <div className="hero-keyword-line">
               <span className="hero-keyword" data-phase={keywordPhase}>
                 {HERO_KEYWORDS[keywordIndex]}
               </span>
               <span className="hero-keyword-period">.</span>
-            </span>
-          </h1>
+            </div>
+          </div>
 
           <p className="funnel-hero-sub stagger-child" style={{ transitionDelay: "200ms" }}>
             The bigger your team, the harder it is to keep every rep aligned, coached,
@@ -211,7 +211,7 @@ export function SignupPage() {
             className="funnel-cta funnel-cta--primary funnel-cta--240 stagger-child"
             style={{ transitionDelay: "400ms" }}
           >
-            Get started →
+            Start now →
           </button>
 
           <div className="funnel-hero-meta-chip stagger-child" style={{ transitionDelay: "500ms" }}>
