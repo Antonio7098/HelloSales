@@ -42,3 +42,23 @@ A log of every Cowork-applied change on this branch. Keeps the May 3rd review to
 - **Anto-file touches:** NONE in this commit. All additions live under `modules/salesbook/` + `entrypoints/http/routes/salesbook.py` (which is a new file from 4.1, not Anto's). The Alembic plumbing was already in place from 2.1.
 - **New files:** `backend/alembic/versions/0008_add_salesbook_moderation.py`
 - **Verified:** Migration applies cleanly (both tables created in fresh SQLite). End-to-end moderation flow tested: admin posts onboarding response → rep posts comment (status=pending) → admin lists pending (finds 1) → admin approves (status→approved) → admin pins original response → exhaustive view returns 1 approved comment + 1 pin. App boots with 16 unique salesbook paths registered (previously 13).
+
+## 2026-04-26 — 5.1 Frontend signup + onboarding wizard
+- **By:** Olivier (/Oliviercontribution)
+- **Change:** Built the signup flow (mock, demo-mode) and the section-by-section onboarding wizard with recap cards in `frontend-draft/`.
+  - **Brand identity applied**: copied Hello Sales logo + icon into `public/`. Updated `globals.css` design tokens to the brand palette (white/black/Hello Sales blue `#0050C5`) with `Inter` as default font. Added a scoped `.theme-salesbook` class that brings back the editorial paper+ink palette + `Lora` serif + paper texture for the Salesbook tab — so the salesbook reads like a traditional sales playbook while the rest of the app reads like a modern utility. Existing primitives (`Surface`, `Field`, `Button`) read CSS custom properties so they auto-adapt with no per-component edits.
+  - **Created missing infrastructure**: `src/shared/lib/cn.ts` (className combiner — file was referenced by every primitive but didn't exist) + `src/design-system/index.ts` (aggregator export so callers can `import { Surface, Field, ... } from "@/design-system"`).
+  - **Demo-mode user state**: `useCurrentUser` hook + localStorage. Stores `{profileId, email, name, companyName, role}` per browser. Drives role-based nav (admin sees Moderation + Team, rep does not).
+  - **Dual-mode API client** (`shared/api/salesbook.ts`): single `SalesbookApi` interface with two implementations — FastAPI (default, hits `/api/salesbook/*`) and Sheets-mode (`VITE_USE_SHEETS=true`, POSTs to Apps Script webhook). Sheets mode also pulls the registry from `public/onboarding-registry.json` (auto-copied from backend on every `npm run dev`/`build`).
+  - **TypeScript types** in `entities/salesbook/types.ts` mirroring backend Pydantic views.
+  - **SignupPage**: name + email + company + role-card picker (admin/rep). Admin role redirects to `/onboarding`, rep to `/dashboard`.
+  - **OnboardingPage**: section-by-section flow per Olivier's spec — fill a section's questions → "Recap this section →" shows a card with every answer + count of unanswered → "Add details" inline-edits more, "Continue to next section" advances. Auto-saves on input change (debounced 600ms). Polymorphic `QuestionInput` dispatches on `answer_type` (text/numeric/date/options/multi-choice/editable bullets/text-upload/file-upload).
+  - **Routes**: `/signup` (open), `/dashboard`, `/onboarding`, `/onboarding/:sectionIndex` (all gated by `RequireUser` redirect to `/signup`). Updated `AppShell` to use the brand icon + role-aware nav (Moderation + Team admin-only).
+- **Anto-file touches (additive, /Oliviercontribution-marked):**
+  · `src/styles/globals.css` — replaced palette tokens with brand colors, swapped fonts, removed the body radial gradients, appended `.theme-salesbook` scoped overrides + signup/role-card/bullet-editor styles
+  · `src/shared/ui/AppShell.tsx` — wholesale rewrite of nav (still uses existing primitives; supports unauthenticated state + role gating)
+  · `src/app/router/AppRouter.tsx` — added 4 routes (signup, onboarding, onboarding/:idx, root-redirect)
+  · `package.json` — added `copy-registry` script + made dev/build depend on it
+- **New files (10):** `shared/lib/cn.ts`, `shared/auth/useCurrentUser.ts`, `shared/api/salesbook.ts`, `entities/salesbook/types.ts`, `design-system/index.ts`, `pages/signup/{SignupPage.tsx,index.ts}`, `pages/onboarding/{OnboardingPage.tsx,QuestionInput.tsx,index.ts}`, `scripts/copy-onboarding-registry.sh`, `.env.example`.
+- **Brand assets**: `public/hello-sales-logo.png` + `public/hello-sales-icon.png` (copies of `~/Desktop/HS/Brand/Official_HS_*`).
+- **Verified**: `npm run build` passes — 91 modules transformed, 273KB JS / 86KB gzipped, 20KB CSS, 425ms build time. TypeScript strict mode clean. Registry copy step runs automatically.

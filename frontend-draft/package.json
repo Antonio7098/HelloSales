@@ -4,13 +4,14 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -p tsconfig.app.json && vite build",
+    "dev": "npm run copy-registry && vite",
+    "build": "npm run copy-registry && tsc -p tsconfig.app.json && vite build",
     "preview": "vite preview",
     "lint": "eslint src",
     "test": "vitest",
     "test:run": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "copy-registry": "bash scripts/copy-onboarding-registry.sh"
   },
   "dependencies": {
     "react": "^19.2.0",

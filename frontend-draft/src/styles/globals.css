@@ -1,23 +1,28 @@
+/* /Oliviercontribution — brand palette: black + Hello Sales blue + white.
+   The .theme-salesbook scope below brings back the editorial paper+ink palette
+   for the Salesbook tab so it reads like a traditional sales playbook. */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap");
+
 :root {
   color-scheme: light;
 
-  /* palette — editorial paper + ink */
-  --bg: #f4efe4;
-  --bg-contour: #ece5d6;
-  --panel: rgba(255, 252, 245, 0.92);
-  --panel-strong: #fffaf0;
-  --panel-sunk: #efe8da;
-  --line: rgba(40, 32, 18, 0.12);
-  --line-strong: rgba(40, 32, 18, 0.22);
-  --ink: #1b1408;
-  --text: #20170d;
-  --muted: #6b5d4a;
-  --muted-soft: #8d8172;
+  /* palette — Hello Sales identity (black + brand blue + white) */
+  --bg: #ffffff;
+  --bg-contour: #f4f6fa;
+  --panel: #ffffff;
+  --panel-strong: #ffffff;
+  --panel-sunk: #f4f6fa;
+  --line: rgba(10, 10, 10, 0.10);
+  --line-strong: rgba(10, 10, 10, 0.22);
+  --ink: #0a0a0a;
+  --text: #0a0a0a;
+  --muted: #58606a;
+  --muted-soft: #8a929c;
 
-  --accent: #a64b2a;
-  --accent-strong: #8a3a1c;
-  --accent-soft: rgba(166, 75, 42, 0.12);
-  --accent-deep: #3c2214;
+  --accent: #0050c5;          /* Hello Sales brand blue */
+  --accent-strong: #0040a3;
+  --accent-soft: rgba(0, 80, 197, 0.10);
+  --accent-deep: #002a72;
 
   --success: #3f6b3a;
   --success-soft: rgba(63, 107, 58, 0.14);
@@ -47,9 +52,10 @@
   --space-xl: 3rem;
   --space-2xl: 4.5rem;
 
-  --font-display: "Fraunces", "Iowan Old Style", Georgia, serif;
-  --font-sans: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-display: "Inter", "Helvetica Neue", system-ui, sans-serif;
+  --font-sans: "Inter", "Helvetica Neue", system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-book: "Lora", "Iowan Old Style", "Georgia", serif;
 
   --ease: cubic-bezier(0.2, 0.7, 0.1, 1);
 }
@@ -70,23 +76,7 @@ body {
   font-family: var(--font-sans);
   font-feature-settings: "ss01", "cv11";
   -webkit-font-smoothing: antialiased;
-  background:
-    radial-gradient(1100px 520px at 8% -6%, rgba(214, 128, 77, 0.22), transparent 60%),
-    radial-gradient(800px 420px at 96% 6%, rgba(55, 85, 109, 0.10), transparent 55%),
-    linear-gradient(180deg, #f7f3ec 0%, #ede5d5 100%);
-  background-attachment: fixed;
-}
-
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  background-image: radial-gradient(rgba(40, 32, 18, 0.06) 1px, transparent 1px);
-  background-size: 3px 3px;
-  opacity: 0.35;
-  mix-blend-mode: multiply;
+  background: var(--bg);
 }
 
 a { color: inherit; text-decoration: none; }
@@ -802,4 +792,188 @@ button { font: inherit; color: inherit; }
   }
   .app-sidebar-footer { display: none; }
   .app-content { padding: var(--space-lg); }
+}
+
+
+/* ───────────────────────────────────────────────────────────────────────────
+   .theme-salesbook — scoped editorial paper+ink palette for the Salesbook tab.
+   /Oliviercontribution. Wraps the page subtree to flip the design tokens to
+   the traditional sales-playbook feel: warm beige paper, ink text, Lora serif,
+   subtle paper texture. Existing primitives (Surface, Field, Button) read
+   var(--bg)/var(--ink)/etc. so they auto-adapt with no per-component edits.
+   ─────────────────────────────────────────────────────────────────────────── */
+.theme-salesbook {
+  --bg: #f4efe4;
+  --bg-contour: #ece5d6;
+  --panel: rgba(255, 252, 245, 0.92);
+  --panel-strong: #fffaf0;
+  --panel-sunk: #efe8da;
+  --line: rgba(40, 32, 18, 0.12);
+  --line-strong: rgba(40, 32, 18, 0.22);
+  --ink: #1b1408;
+  --text: #20170d;
+  --muted: #6b5d4a;
+  --muted-soft: #8d8172;
+
+  /* keep accent blue for in-app consistency, but soften so it reads on paper */
+  --accent: #0050c5;
+  --accent-strong: #0040a3;
+  --accent-soft: rgba(0, 80, 197, 0.08);
+
+  --font-display: var(--font-book);
+
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-book);
+  position: relative;
+  isolation: isolate;
+}
+
+/* Subtle paper texture overlay for the salesbook only */
+.theme-salesbook::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image: radial-gradient(rgba(40, 32, 18, 0.06) 1px, transparent 1px);
+  background-size: 3px 3px;
+  opacity: 0.35;
+  mix-blend-mode: multiply;
+}
+
+.theme-salesbook > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Book-typography niceties inside the salesbook tab */
+.theme-salesbook h1,
+.theme-salesbook h2,
+.theme-salesbook h3,
+.theme-salesbook .text-display,
+.theme-salesbook .text-hero {
+  font-family: var(--font-book);
+  letter-spacing: -0.01em;
+}
+
+.theme-salesbook .salesbook-chapter {
+  font-family: var(--font-book);
+  font-style: italic;
+  font-weight: 500;
+  color: var(--muted);
+  text-transform: uppercase;
+  font-size: 0.78rem;
+  letter-spacing: 0.18em;
+}
+
+.theme-salesbook .salesbook-section-rule {
+  border: 0;
+  border-top: 1px solid var(--line-strong);
+  margin: var(--space-lg) 0;
+  position: relative;
+}
+
+.theme-salesbook .salesbook-section-rule::after {
+  content: "§";
+  position: absolute;
+  left: 50%;
+  top: -0.65rem;
+  transform: translateX(-50%);
+  background: var(--bg);
+  padding: 0 0.5rem;
+  color: var(--muted);
+  font-style: italic;
+}
+
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Brand mark — tweak existing .app-brand-mark to use the Hello Sales icon
+   instead of the "hs" text placeholder. /Oliviercontribution.
+   ─────────────────────────────────────────────────────────────────────────── */
+.app-brand img.app-brand-icon {
+  width: 28px;
+  height: 28px;
+  display: block;
+  flex-shrink: 0;
+}
+
+.app-brand img.app-brand-logo {
+  height: 32px;
+  width: auto;
+  display: block;
+}
+
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Signup page + role-card picker. /Oliviercontribution.
+   ─────────────────────────────────────────────────────────────────────────── */
+.signup-shell {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: var(--space-xl) var(--space-md);
+  min-height: 100%;
+}
+
+.signup-card {
+  width: 100%;
+  max-width: 640px;
+}
+
+.role-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-sm);
+}
+
+.role-card {
+  text-align: left;
+  padding: var(--space-md);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 0.18s var(--ease), background-color 0.18s var(--ease), transform 0.18s var(--ease);
+}
+
+.role-card:hover {
+  border-color: var(--line-strong);
+  background: var(--panel-strong);
+}
+
+.role-card.is-selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.role-card-title {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.role-card-check {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+@media (max-width: 640px) {
+  .role-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Bullet editor (used by editable_bullets / editable_options / editable_ranking)
+   ─────────────────────────────────────────────────────────────────────────── */
+.bullet-editor .row {
+  align-items: center;
+}
+
+.bullet-editor .input {
+  flex: 1;
 }
