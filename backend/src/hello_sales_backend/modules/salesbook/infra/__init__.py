@@ -1,0 +1,1 @@
+"""Salesbook infrastructure adapters."""

@@ -1,0 +1,1142 @@
+[
+  {
+    "phase": 1,
+    "n": 1,
+    "section": "Company Overview",
+    "subsection": null,
+    "question": "Complete: \"We sell ___ to ___ so they can ___.\"",
+    "answer_type": "Text",
+    "example": "We sell AI sales agents to B2B companies so they can increase close rates",
+    "key": "product_truth_anchor"
+  },
+  {
+    "phase": 1,
+    "n": 2,
+    "section": "Company Overview",
+    "subsection": null,
+    "question": "What industry do you operate in?",
+    "answer_type": "Options",
+    "example": "B2B SaaS",
+    "key": "industry"
+  },
+  {
+    "phase": 1,
+    "n": 3,
+    "section": "Company Overview",
+    "subsection": null,
+    "question": "What geographic markets do you sell into?",
+    "answer_type": "Options + text",
+    "example": "North America",
+    "key": "sales_geography"
+  },
+  {
+    "phase": 1,
+    "n": 4,
+    "section": "Company Overview",
+    "subsection": null,
+    "question": "How many products do you currently sell?",
+    "answer_type": "Text",
+    "example": "2\u20133",
+    "key": "product_count"
+  },
+  {
+    "phase": 1,
+    "n": 5,
+    "section": "Company Overview",
+    "subsection": null,
+    "question": "Which product is your current executive priority?",
+    "answer_type": "Text",
+    "example": "Hello Sales Core",
+    "key": "executive_focus_product"
+  },
+  {
+    "phase": 1,
+    "n": 6,
+    "section": "Sales Team",
+    "subsection": null,
+    "question": "How many sales reps do you currently have?",
+    "answer_type": "Numeric",
+    "example": "6",
+    "key": "sales_team_size"
+  },
+  {
+    "phase": 1,
+    "n": 7,
+    "section": "Sales Team",
+    "subsection": null,
+    "question": "What roles are on the sales team?",
+    "answer_type": "Numeric",
+    "example": "SDR, AE, Closer",
+    "key": "sales_roles"
+  },
+  {
+    "phase": 1,
+    "n": 8,
+    "section": "Sales Team",
+    "subsection": null,
+    "question": "Is the founder still involved in sales?",
+    "answer_type": "Text",
+    "example": "Yes",
+    "key": "founder_involved_sales"
+  },
+  {
+    "phase": 1,
+    "n": 9,
+    "section": "Sales Team",
+    "subsection": null,
+    "question": "Are you currently hiring sales roles?",
+    "answer_type": "Options",
+    "example": "Planning to hire",
+    "key": "sales_hiring_status"
+  },
+  {
+    "phase": 1,
+    "n": 10,
+    "section": "Sales Channels",
+    "subsection": null,
+    "question": "What are your primary sales channels?",
+    "answer_type": "Multi-choice",
+    "example": "1. Email 2. Phone",
+    "key": "sales_channels"
+  },
+  {
+    "phase": 1,
+    "n": 11,
+    "section": "Sales Channels",
+    "subsection": null,
+    "question": "Rank your channels by sales importance",
+    "answer_type": "Editable ranking",
+    "example": "Inbound > Outbound",
+    "key": "channel_priority"
+  },
+  {
+    "phase": 1,
+    "n": 12,
+    "section": "Sales Channels",
+    "subsection": null,
+    "question": "Which channel is still experimental?",
+    "answer_type": "Text",
+    "example": "LinkedIn outbound",
+    "key": "experimental_channel"
+  },
+  {
+    "phase": 1,
+    "n": 13,
+    "section": "Sales Process",
+    "subsection": null,
+    "question": "Average sales cycle length (lead to close)?",
+    "answer_type": "Options",
+    "example": "30\u201345 days",
+    "key": "avg_sales_cycle"
+  },
+  {
+    "phase": 1,
+    "n": 14,
+    "section": "Sales Process",
+    "subsection": null,
+    "question": "Do you offer consultative services?",
+    "answer_type": "Options",
+    "example": "Consultative",
+    "key": "sales_motion"
+  },
+  {
+    "phase": 1,
+    "n": 15,
+    "section": "Sales Process",
+    "subsection": null,
+    "question": "What is the typical deal size?",
+    "answer_type": "Options",
+    "example": "$3k\u2013$10k",
+    "key": "deal_size_range"
+  },
+  {
+    "phase": 1,
+    "n": 16,
+    "section": "Customers",
+    "subsection": null,
+    "question": "Which customer segment generates most revenue?",
+    "answer_type": "Options",
+    "example": "SMB",
+    "key": "primary_customer_segment"
+  },
+  {
+    "phase": 1,
+    "n": 17,
+    "section": "Customers",
+    "subsection": null,
+    "question": "What other customer segments do you serve?",
+    "answer_type": "Editable Options",
+    "example": "Mid-market",
+    "key": "secondary_segments"
+  },
+  {
+    "phase": 1,
+    "n": 18,
+    "section": "Customers",
+    "subsection": null,
+    "question": "Typical customer company size?",
+    "answer_type": "Options",
+    "example": "10\u2013100 employees",
+    "key": "icp_company_size"
+  },
+  {
+    "phase": 1,
+    "n": 19,
+    "section": "Performance",
+    "subsection": null,
+    "question": "How many deals closed last month?",
+    "answer_type": "Numeric",
+    "example": "14",
+    "key": "deals_last_month"
+  },
+  {
+    "phase": 1,
+    "n": 20,
+    "section": "Performance",
+    "subsection": null,
+    "question": "How many deals closed in last 90 days?",
+    "answer_type": "Numeric",
+    "example": "38",
+    "key": "deals_last_90_days"
+  },
+  {
+    "phase": 1,
+    "n": 21,
+    "section": "Performance",
+    "subsection": null,
+    "question": "Sales revenue in the last 30 days?",
+    "answer_type": "Numeric",
+    "example": "65000",
+    "key": "monthly_revenue_range"
+  },
+  {
+    "phase": 1,
+    "n": 22,
+    "section": "Performance",
+    "subsection": null,
+    "question": "Average revenue per deal?",
+    "answer_type": "Numeric",
+    "example": "4500",
+    "key": "avg_revenue_per_deal"
+  },
+  {
+    "phase": 1,
+    "n": 23,
+    "section": "Pricing",
+    "subsection": null,
+    "question": "What is your main pricing model?",
+    "answer_type": "Options",
+    "example": "OTPs, Subscription",
+    "key": "pricing_model"
+  },
+  {
+    "phase": 1,
+    "n": 24,
+    "section": "Pricing",
+    "subsection": null,
+    "question": "Are you open to offering discounts?",
+    "answer_type": "Multi-choice",
+    "example": "Occasionally",
+    "key": "discount_frequency"
+  },
+  {
+    "phase": 1,
+    "n": 25,
+    "section": "Tools",
+    "subsection": null,
+    "question": "What CRM do you use?",
+    "answer_type": "Text",
+    "example": "HubSpot",
+    "key": "crm_tool"
+  },
+  {
+    "phase": 1,
+    "n": 26,
+    "section": "Tools",
+    "subsection": null,
+    "question": "What communication tools for customer service?",
+    "answer_type": "Editable bullets",
+    "example": "Gmail, Zoom",
+    "key": "comms_tools"
+  },
+  {
+    "phase": 1,
+    "n": 27,
+    "section": "Tools",
+    "subsection": null,
+    "question": "What proposal/contract tool do you use?",
+    "answer_type": "Options",
+    "example": "PandaDoc",
+    "key": "proposal_tool"
+  },
+  {
+    "phase": 1,
+    "n": 28,
+    "section": "Assets",
+    "subsection": null,
+    "question": "Do you have a website homepage?",
+    "answer_type": "Text upload",
+    "example": "Homepage pasted",
+    "key": "homepage_content"
+  },
+  {
+    "phase": 1,
+    "n": 29,
+    "section": "Assets",
+    "subsection": null,
+    "question": "Paste any product pages.",
+    "answer_type": "Text upload",
+    "example": "Product pages pasted",
+    "key": "product_pages"
+  },
+  {
+    "phase": 1,
+    "n": 30,
+    "section": "Assets",
+    "subsection": null,
+    "question": "Do you have sales materials (pitch, docs)?",
+    "answer_type": "File upload",
+    "example": "Pitch deck PDF",
+    "key": "sales_assets"
+  },
+  {
+    "phase": 1,
+    "n": 31,
+    "section": "Management",
+    "subsection": null,
+    "question": "Biggest sales constraint right now?",
+    "answer_type": "Text",
+    "example": "Inconsistent messaging",
+    "key": "primary_sales_constraint"
+  },
+  {
+    "phase": 1,
+    "n": 32,
+    "section": "Management",
+    "subsection": null,
+    "question": "Main focus this quarter?",
+    "answer_type": "Text",
+    "example": "Improve close rate",
+    "key": "quarterly_sales_focus"
+  },
+  {
+    "phase": 1,
+    "n": 33,
+    "section": "Management",
+    "subsection": null,
+    "question": "Confidence in current sales process (1\u201310)?",
+    "answer_type": "Numeric scale",
+    "example": "3",
+    "key": "sales_process_confidence"
+  },
+  {
+    "phase": 1,
+    "n": 34,
+    "section": "Product ID",
+    "subsection": null,
+    "question": "Internal product code",
+    "answer_type": "Text",
+    "example": "HS-CORE-001",
+    "key": "product_id"
+  },
+  {
+    "phase": 1,
+    "n": 35,
+    "section": "Product Name",
+    "subsection": null,
+    "question": "Product names",
+    "answer_type": "Text",
+    "example": "Hello Sales Core",
+    "key": "product_name"
+  },
+  {
+    "phase": 1,
+    "n": 36,
+    "section": "Product Status",
+    "subsection": null,
+    "question": "Is this product active?",
+    "answer_type": "Options",
+    "example": "Active",
+    "key": "product_status"
+  },
+  {
+    "phase": 1,
+    "n": 37,
+    "section": "Product Category",
+    "subsection": null,
+    "question": "Product category",
+    "answer_type": "Options + text",
+    "example": "SaaS \u2013 Sales Enablement",
+    "key": "product_category"
+  },
+  {
+    "phase": 1,
+    "n": 38,
+    "section": "Product Description",
+    "subsection": null,
+    "question": "Describe this product in 2\u20133 sentences",
+    "answer_type": "Text",
+    "example": "AI sales enablement platform capturing VP sales knowledge",
+    "key": "product_description"
+  },
+  {
+    "phase": 1,
+    "n": 39,
+    "section": "Target Customer",
+    "subsection": null,
+    "question": "Who is this product for?",
+    "answer_type": "Options + text",
+    "example": "SMB B2B companies",
+    "key": "product_target_customer"
+  },
+  {
+    "phase": 1,
+    "n": 40,
+    "section": "Primary Use Case",
+    "subsection": null,
+    "question": "Main problem this product solves",
+    "answer_type": "Text",
+    "example": "Improve rep consistency and close rate",
+    "key": "product_use_case"
+  },
+  {
+    "phase": 1,
+    "n": 41,
+    "section": "Pricing Model",
+    "subsection": null,
+    "question": "How is this product priced?",
+    "answer_type": "Options",
+    "example": "Subscription",
+    "key": "product_pricing_model"
+  },
+  {
+    "phase": 1,
+    "n": 42,
+    "section": "List Price",
+    "subsection": null,
+    "question": "Standard list price",
+    "answer_type": "Numeric",
+    "example": "$299 / month",
+    "key": "product_list_price"
+  },
+  {
+    "phase": 1,
+    "n": 43,
+    "section": "Billing Frequency",
+    "subsection": null,
+    "question": "Billing frequency",
+    "answer_type": "Options",
+    "example": "Monthly",
+    "key": "product_billing_frequency"
+  },
+  {
+    "phase": 1,
+    "n": 44,
+    "section": "Avg Selling Price",
+    "subsection": null,
+    "question": "Average price actually sold",
+    "answer_type": "Numeric",
+    "example": "$249 / month",
+    "key": "product_asp"
+  },
+  {
+    "phase": 1,
+    "n": 45,
+    "section": "Discount Range",
+    "subsection": null,
+    "question": "Typical discount range",
+    "answer_type": "Options",
+    "example": "10\u201315%",
+    "key": "product_discount_range"
+  },
+  {
+    "phase": 1,
+    "n": 46,
+    "section": "Cost to Deliver",
+    "subsection": null,
+    "question": "Estimated cost per unit",
+    "answer_type": "Numeric",
+    "example": "$40 / month",
+    "key": "product_cost"
+  },
+  {
+    "phase": 1,
+    "n": 47,
+    "section": "Gross Margin",
+    "subsection": null,
+    "question": "Estimated gross margin (%)",
+    "answer_type": "Numeric",
+    "example": "84%",
+    "key": "product_margin"
+  },
+  {
+    "phase": 1,
+    "n": 48,
+    "section": "Sales Complexity",
+    "subsection": null,
+    "question": "How hard is this product to sell?",
+    "answer_type": "Options",
+    "example": "Moderate",
+    "key": "product_sales_complexity"
+  },
+  {
+    "phase": 1,
+    "n": 49,
+    "section": "Product Sales Cycle",
+    "subsection": null,
+    "question": "Typical sales cycle for this product",
+    "answer_type": "Options",
+    "example": "30\u201345 days",
+    "key": "product_sales_cycle"
+  },
+  {
+    "phase": 1,
+    "n": 50,
+    "section": "Deal Size",
+    "subsection": null,
+    "question": "Typical contract value",
+    "answer_type": "Options",
+    "example": "$3k\u2013$6k",
+    "key": "product_deal_size"
+  },
+  {
+    "phase": 1,
+    "n": 51,
+    "section": "Most Sold Product",
+    "subsection": null,
+    "question": "Is this currently the most sold product?",
+    "answer_type": "Options",
+    "example": "Yes",
+    "key": "product_most_sold"
+  },
+  {
+    "phase": 1,
+    "n": 52,
+    "section": "Executive Priority",
+    "subsection": null,
+    "question": "Is leadership pushing this product?",
+    "answer_type": "Options",
+    "example": "Yes",
+    "key": "product_exec_priority"
+  },
+  {
+    "phase": 1,
+    "n": 53,
+    "section": "Strategic Role",
+    "subsection": null,
+    "question": "Role of this product in portfolio",
+    "answer_type": "Options",
+    "example": "Core growth product",
+    "key": "product_strategy_role"
+  },
+  {
+    "phase": 1,
+    "n": 54,
+    "section": "Upsell Potential",
+    "subsection": null,
+    "question": "Does this product enable upsells?",
+    "answer_type": "Options + text",
+    "example": "Yes \u2013 Enterprise tier",
+    "key": "product_upsell"
+  },
+  {
+    "phase": 1,
+    "n": 55,
+    "section": "Replacement Alternative",
+    "subsection": null,
+    "question": "What does this product replace?",
+    "answer_type": "Text",
+    "example": "Manual playbooks",
+    "key": "product_replacement"
+  },
+  {
+    "phase": 1,
+    "n": 56,
+    "section": "Revenue Contribution",
+    "subsection": null,
+    "question": "% of total revenue",
+    "answer_type": "Numeric",
+    "example": "65%",
+    "key": "product_revenue_share"
+  },
+  {
+    "phase": 1,
+    "n": 57,
+    "section": "Internal Notes",
+    "subsection": null,
+    "question": "Any internal notes or nuances",
+    "answer_type": "Text",
+    "example": "Easier to sell inbound",
+    "key": "product_internal_notes"
+  },
+  {
+    "phase": 2,
+    "n": 1,
+    "section": "Buyer Decision",
+    "subsection": "Buyer Profile",
+    "question": "Who is the primary decision-maker?",
+    "answer_type": "Options + text",
+    "example": "VP Sales at SMB SaaS",
+    "key": "buyer_primary_role"
+  },
+  {
+    "phase": 2,
+    "n": 2,
+    "section": "Buyer Decision",
+    "subsection": "Buyer Profile",
+    "question": "Who influences the decision?",
+    "answer_type": "Editable bullets",
+    "example": "CEO, RevOps, IT",
+    "key": "buyer_influencers"
+  },
+  {
+    "phase": 2,
+    "n": 3,
+    "section": "Buyer Decision",
+    "subsection": "Buyer Context",
+    "question": "When prospects reach out, what's their situation?",
+    "answer_type": "Options",
+    "example": "Actively comparing tools",
+    "key": "buyer_context"
+  },
+  {
+    "phase": 2,
+    "n": 4,
+    "section": "Buyer Decision",
+    "subsection": "Buyer Triggers",
+    "question": "What usually triggers the buying decision?",
+    "answer_type": "Editable bullets",
+    "example": "Missed quota, rep churn",
+    "key": "buyer_triggers"
+  },
+  {
+    "phase": 2,
+    "n": 5,
+    "section": "Buyer Decision",
+    "subsection": "Buyer Emotions",
+    "question": "What frustrates or worries them most before buying?",
+    "answer_type": "Text",
+    "example": "Inconsistent rep performance",
+    "key": "buyer_emotional_pain"
+  },
+  {
+    "phase": 2,
+    "n": 6,
+    "section": "Pain Points",
+    "subsection": "Core Problem",
+    "question": "In the customer's words, what problem do you solve?",
+    "answer_type": "Text",
+    "example": "\"Our reps all sell differently\"",
+    "key": "core_problem"
+  },
+  {
+    "phase": 2,
+    "n": 7,
+    "section": "Pain Points",
+    "subsection": "Cost of Inaction",
+    "question": "What happens if they don't solve this problem?",
+    "answer_type": "Text",
+    "example": "Lost deals, long ramp time",
+    "key": "cost_of_inaction"
+  },
+  {
+    "phase": 2,
+    "n": 8,
+    "section": "Pain Points",
+    "subsection": "Desired Outcomes",
+    "question": "What outcomes do customers want most?",
+    "answer_type": "Editable bullets",
+    "example": "Faster closes, consistency",
+    "key": "desired_outcomes"
+  },
+  {
+    "phase": 2,
+    "n": 9,
+    "section": "Pain Points",
+    "subsection": "Success Definition",
+    "question": "How do customers define success after buying?",
+    "answer_type": "Text",
+    "example": "Reps close more deals faster",
+    "key": "success_definition"
+  },
+  {
+    "phase": 2,
+    "n": 10,
+    "section": "Value Prop",
+    "subsection": "Value Prop",
+    "question": "Why do customers choose you over others?",
+    "answer_type": "Text",
+    "example": "We centralize VP knowledge into AI",
+    "key": "unique_value"
+  },
+  {
+    "phase": 2,
+    "n": 11,
+    "section": "Value Prop",
+    "subsection": "Differentiation",
+    "question": "What do competitors fail to do well?",
+    "answer_type": "Text",
+    "example": "Static playbooks, no AI",
+    "key": "competitor_weakness"
+  },
+  {
+    "phase": 2,
+    "n": 12,
+    "section": "Value Prop",
+    "subsection": "Alternatives",
+    "question": "What do customers use before you?",
+    "answer_type": "Options + text",
+    "example": "Notion, CRM notes",
+    "key": "status_quo"
+  },
+  {
+    "phase": 2,
+    "n": 13,
+    "section": "Value Prop",
+    "subsection": "Replacement Framing",
+    "question": "What are they replacing by buying you?",
+    "answer_type": "Text",
+    "example": "Manual training and scripts",
+    "key": "replacement_message"
+  },
+  {
+    "phase": 2,
+    "n": 14,
+    "section": "Sales Process",
+    "subsection": "Discovery",
+    "question": "What questions must reps ask early?",
+    "answer_type": "Editable bullets",
+    "example": "Team size, sales motion",
+    "key": "discovery_questions"
+  },
+  {
+    "phase": 2,
+    "n": 15,
+    "section": "Sales Process",
+    "subsection": "Qualification",
+    "question": "How do you qualify a good deal?",
+    "answer_type": "Editable bullets",
+    "example": "Budget, authority, urgency",
+    "key": "qualification_criteria"
+  },
+  {
+    "phase": 2,
+    "n": 16,
+    "section": "Sales Process",
+    "subsection": "Deal Stages",
+    "question": "What are your real deal stages?",
+    "answer_type": "Editable bullets",
+    "example": "Discovery, Demo, Proposal",
+    "key": "deal_stages"
+  },
+  {
+    "phase": 2,
+    "n": 17,
+    "section": "Sales Process",
+    "subsection": "Close Strategy",
+    "question": "What usually gets deals over the line?",
+    "answer_type": "Text",
+    "example": "Clear ROI + urgency",
+    "key": "close_strategy"
+  },
+  {
+    "phase": 2,
+    "n": 18,
+    "section": "Sales Process",
+    "subsection": "Follow-up Logic",
+    "question": "What follow-up cadence works best?",
+    "answer_type": "Text",
+    "example": "5 touches over 14 days",
+    "key": "follow_up_cadence"
+  },
+  {
+    "phase": 2,
+    "n": 19,
+    "section": "Objections",
+    "subsection": "Objections",
+    "question": "What objections come up most often?",
+    "answer_type": "Editable bullets",
+    "example": "Price, timing",
+    "key": "common_objections"
+  },
+  {
+    "phase": 2,
+    "n": 20,
+    "section": "Objections",
+    "subsection": "Rebuttals",
+    "question": "How should reps respond?",
+    "answer_type": "Editable bullets",
+    "example": "ROI framing",
+    "key": "objection_rebuttals"
+  },
+  {
+    "phase": 2,
+    "n": 21,
+    "section": "Objections",
+    "subsection": "Deal Killers",
+    "question": "What usually kills a deal?",
+    "answer_type": "Text",
+    "example": "No exec buy-in",
+    "key": "deal_killers"
+  },
+  {
+    "phase": 2,
+    "n": 22,
+    "section": "Objections",
+    "subsection": "Red Flags",
+    "question": "What signals a weak deal early?",
+    "answer_type": "Editable bullets",
+    "example": "Slow replies",
+    "key": "deal_red_flags"
+  },
+  {
+    "phase": 3,
+    "n": 1,
+    "section": "MEDDIC Qualification",
+    "subsection": null,
+    "question": "What KPIs are you measured on this year?",
+    "answer_type": "Text",
+    "example": "Revenue growth, close rate, pipeline velocity",
+    "key": "vp_metrics_kpis"
+  },
+  {
+    "phase": 3,
+    "n": 2,
+    "section": "MEDDIC Qualification",
+    "subsection": null,
+    "question": "Who ultimately signs off on this purchase?",
+    "answer_type": "Text",
+    "example": "CFO + VP Sales jointly",
+    "key": "vp_economic_buyer"
+  },
+  {
+    "phase": 3,
+    "n": 3,
+    "section": "MEDDIC Qualification",
+    "subsection": null,
+    "question": "What criteria will you use to evaluate solutions?",
+    "answer_type": "Editable bullets",
+    "example": "ROI, ease of implementation, team adoption speed",
+    "key": "vp_decision_criteria"
+  },
+  {
+    "phase": 3,
+    "n": 4,
+    "section": "MEDDIC Qualification",
+    "subsection": null,
+    "question": "Walk me through your internal approval process and timeline.",
+    "answer_type": "Text",
+    "example": "VP recommends > CFO approves > procurement signs > 30-day cycle",
+    "key": "vp_decision_process"
+  },
+  {
+    "phase": 3,
+    "n": 5,
+    "section": "MEDDIC Qualification",
+    "subsection": null,
+    "question": "What specific pain is driving you to look at this now?",
+    "answer_type": "Text",
+    "example": "Lost 3 deals this quarter due to inconsistent follow-up",
+    "key": "vp_identified_pain"
+  },
+  {
+    "phase": 3,
+    "n": 6,
+    "section": "MEDDIC Qualification",
+    "subsection": null,
+    "question": "Who on your team would champion this internally?",
+    "answer_type": "Text",
+    "example": "Director of RevOps \u2014 already frustrated with current tools",
+    "key": "vp_champion"
+  },
+  {
+    "phase": 3,
+    "n": 7,
+    "section": "Buying Committee",
+    "subsection": null,
+    "question": "How many people are involved in this decision?",
+    "answer_type": "Numeric",
+    "example": "5",
+    "key": "committee_size"
+  },
+  {
+    "phase": 3,
+    "n": 8,
+    "section": "Buying Committee",
+    "subsection": null,
+    "question": "What role does each person play (evaluator, influencer, blocker, signer)?",
+    "answer_type": "Editable bullets",
+    "example": "VP Sales (evaluator), CFO (signer), IT (blocker), RevOps (champion)",
+    "key": "committee_roles"
+  },
+  {
+    "phase": 3,
+    "n": 9,
+    "section": "Buying Committee",
+    "subsection": null,
+    "question": "Who typically pushes back or slows down purchases like this?",
+    "answer_type": "Text",
+    "example": "IT team \u2014 concerned about integrations and security",
+    "key": "blocker_profile"
+  },
+  {
+    "phase": 3,
+    "n": 10,
+    "section": "Buying Committee",
+    "subsection": null,
+    "question": "How do you typically build internal consensus for new tools?",
+    "answer_type": "Text",
+    "example": "Pilot with one team, show results, then expand",
+    "key": "consensus_strategy"
+  },
+  {
+    "phase": 3,
+    "n": 11,
+    "section": "Activation & TTV",
+    "subsection": null,
+    "question": "What is the single moment when a new user says 'this is worth it'?",
+    "answer_type": "Text",
+    "example": "When the AI generates its first sales script from their data",
+    "key": "aha_moment"
+  },
+  {
+    "phase": 3,
+    "n": 12,
+    "section": "Activation & TTV",
+    "subsection": null,
+    "question": "How quickly should a new client see measurable value?",
+    "answer_type": "Options",
+    "example": "Under 24 hours",
+    "key": "time_to_first_value"
+  },
+  {
+    "phase": 3,
+    "n": 13,
+    "section": "Activation & TTV",
+    "subsection": null,
+    "question": "What are the 3-5 key steps a client must complete to be 'activated'?",
+    "answer_type": "Editable bullets",
+    "example": "1. Data import 2. First agent trained 3. First auto-follow-up sent",
+    "key": "activation_milestones"
+  },
+  {
+    "phase": 3,
+    "n": 14,
+    "section": "Activation & TTV",
+    "subsection": null,
+    "question": "Where do most new clients get stuck or abandon onboarding?",
+    "answer_type": "Text",
+    "example": "Between data import and first agent configuration",
+    "key": "onboarding_dropout_point"
+  },
+  {
+    "phase": 3,
+    "n": 15,
+    "section": "Activation & TTV",
+    "subsection": null,
+    "question": "What activation rate are you targeting?",
+    "answer_type": "Numeric (%)",
+    "example": "60%",
+    "key": "activation_rate_target"
+  },
+  {
+    "phase": 3,
+    "n": 16,
+    "section": "VP Conversion Triggers",
+    "subsection": null,
+    "question": "When does your company typically approve new tool budgets?",
+    "answer_type": "Text",
+    "example": "Q4 planning for next fiscal year",
+    "key": "budget_cycle"
+  },
+  {
+    "phase": 3,
+    "n": 17,
+    "section": "VP Conversion Triggers",
+    "subsection": null,
+    "question": "When is your fiscal year end?",
+    "answer_type": "Date",
+    "example": "December 31",
+    "key": "fiscal_year_end"
+  },
+  {
+    "phase": 3,
+    "n": 18,
+    "section": "VP Conversion Triggers",
+    "subsection": null,
+    "question": "What would make solving this problem urgent in the next 30 days?",
+    "answer_type": "Text",
+    "example": "Board meeting in 6 weeks, need to show pipeline improvement",
+    "key": "urgency_lever"
+  },
+  {
+    "phase": 3,
+    "n": 19,
+    "section": "VP Conversion Triggers",
+    "subsection": null,
+    "question": "How does your company typically approach new technology adoption?",
+    "answer_type": "Options",
+    "example": "Conservative \u2014 pilot first, then scale",
+    "key": "risk_tolerance"
+  },
+  {
+    "phase": 3,
+    "n": 20,
+    "section": "VP Conversion Triggers",
+    "subsection": null,
+    "question": "What happened with the last solution you tried for this problem?",
+    "answer_type": "Text",
+    "example": "Tried a chatbot vendor \u2014 low adoption, reps ignored it",
+    "key": "previous_solution_failure"
+  },
+  {
+    "phase": 3,
+    "n": 21,
+    "section": "ROI & Business Case",
+    "subsection": null,
+    "question": "How do you typically calculate ROI for tools like this?",
+    "answer_type": "Text",
+    "example": "Compare cost vs. incremental revenue from improved close rate",
+    "key": "roi_calculation_method"
+  },
+  {
+    "phase": 3,
+    "n": 22,
+    "section": "ROI & Business Case",
+    "subsection": null,
+    "question": "What payback period would make this a no-brainer?",
+    "answer_type": "Options",
+    "example": "Under 3 months",
+    "key": "payback_period_expected"
+  },
+  {
+    "phase": 3,
+    "n": 23,
+    "section": "ROI & Business Case",
+    "subsection": null,
+    "question": "Estimate the annual cost of this problem to your business ($).",
+    "answer_type": "Numeric",
+    "example": "$180,000",
+    "key": "cost_of_current_problem"
+  },
+  {
+    "phase": 3,
+    "n": 24,
+    "section": "ROI & Business Case",
+    "subsection": null,
+    "question": "Fast-forward 12 months \u2014 what numbers would make this a clear win?",
+    "answer_type": "Text",
+    "example": "20% increase in close rate, 50% faster rep ramp time",
+    "key": "success_metric_12_months"
+  },
+  {
+    "phase": 3,
+    "n": 25,
+    "section": "ROI & Business Case",
+    "subsection": null,
+    "question": "Which of our case studies best matches your situation?",
+    "answer_type": "Options",
+    "example": "Mid-market SaaS, 10 reps, 40% close rate improvement",
+    "key": "case_study_match"
+  },
+  {
+    "phase": 3,
+    "n": 26,
+    "section": "Multi-Channel Sequence",
+    "subsection": null,
+    "question": "What's the best way to reach VP-level prospects in your market?",
+    "answer_type": "Options",
+    "example": "Email first, then LinkedIn, then phone",
+    "key": "preferred_contact_channel"
+  },
+  {
+    "phase": 3,
+    "n": 27,
+    "section": "Multi-Channel Sequence",
+    "subsection": null,
+    "question": "What time of day/week gets the best response from your buyer persona?",
+    "answer_type": "Text",
+    "example": "Tuesday-Thursday, 8-10 AM",
+    "key": "optimal_contact_time"
+  },
+  {
+    "phase": 3,
+    "n": 28,
+    "section": "Multi-Channel Sequence",
+    "subsection": null,
+    "question": "When a prospect opens an email but doesn't reply, what should happen next?",
+    "answer_type": "Text",
+    "example": "Wait 4h, send SMS. If no reply in 24h, LinkedIn touch.",
+    "key": "email_open_trigger"
+  },
+  {
+    "phase": 3,
+    "n": 29,
+    "section": "Multi-Channel Sequence",
+    "subsection": null,
+    "question": "After 3 touchpoints with no response, what's the escalation path?",
+    "answer_type": "Text",
+    "example": "Attempt different stakeholder. If no response in 7 days, nurture sequence.",
+    "key": "no_response_escalation"
+  },
+  {
+    "phase": 3,
+    "n": 30,
+    "section": "Multi-Channel Sequence",
+    "subsection": null,
+    "question": "What stops qualified prospects from actually booking a call?",
+    "answer_type": "Text",
+    "example": "Too many form fields, no calendar availability shown, unclear value prop on booking page",
+    "key": "booking_friction_points"
+  },
+  {
+    "phase": 3,
+    "n": 31,
+    "section": "Churn Prevention",
+    "subsection": null,
+    "question": "What behavior signals that a client is about to churn?",
+    "answer_type": "Editable bullets",
+    "example": "Login frequency drops, support tickets increase, stops using core feature",
+    "key": "early_churn_signals"
+  },
+  {
+    "phase": 3,
+    "n": 32,
+    "section": "Churn Prevention",
+    "subsection": null,
+    "question": "What typically brings a cold or churned client back?",
+    "answer_type": "Text",
+    "example": "New product feature announcement + personalized ROI update",
+    "key": "reactivation_trigger"
+  },
+  {
+    "phase": 3,
+    "n": 33,
+    "section": "Churn Prevention",
+    "subsection": null,
+    "question": "Why do clients switch to a competitor?",
+    "answer_type": "Editable bullets",
+    "example": "Price, missing feature, poor support response time",
+    "key": "competitor_switch_reason"
+  },
+  {
+    "phase": 3,
+    "n": 34,
+    "section": "Churn Prevention",
+    "subsection": null,
+    "question": "What keeps your best clients engaged long-term?",
+    "answer_type": "Text",
+    "example": "Quarterly business reviews + continuous AI training updates",
+    "key": "retention_hook"
+  },
+  {
+    "phase": 3,
+    "n": 35,
+    "section": "Churn Prevention",
+    "subsection": null,
+    "question": "How do you measure client satisfaction?",
+    "answer_type": "Options",
+    "example": "NPS survey quarterly + usage analytics",
+    "key": "nps_or_satisfaction_method"
+  }
+]
