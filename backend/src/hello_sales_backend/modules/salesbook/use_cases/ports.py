@@ -19,7 +19,11 @@ from hello_sales_backend.modules.salesbook.use_cases.views import (
     PipelineDealCreateRequest,
     PipelineDealUpdateRequest,
     PipelineDealView,
+    SalesbookCommentCreateRequest,
+    SalesbookCommentView,
     SalesbookExhaustiveProductEntry,
+    SalesbookPinRequest,
+    SalesbookPinView,
     TeamMembershipCreateRequest,
     TeamMembershipView,
 )
@@ -88,6 +92,30 @@ class SalesbookProductReadPort(Protocol):
     ) -> list[SalesbookExhaustiveProductEntry]: ...
 
 
+class SalesbookCommentRepositoryPort(Protocol):
+    async def create(
+        self, profile_id: str, request: SalesbookCommentCreateRequest
+    ) -> SalesbookCommentView: ...
+    async def list_for_profile(
+        self, profile_id: str, status: str | None = None,
+        target_id: str | None = None,
+    ) -> list[SalesbookCommentView]: ...
+    async def get(self, comment_id: str) -> SalesbookCommentView | None: ...
+    async def update_status(
+        self, comment_id: str, *, status: str, approved_by: str | None,
+    ) -> SalesbookCommentView: ...
+
+
+class SalesbookPinRepositoryPort(Protocol):
+    async def list_for_profile(self, profile_id: str) -> list[SalesbookPinView]: ...
+    async def upsert(
+        self, profile_id: str, request: SalesbookPinRequest
+    ) -> SalesbookPinView: ...
+    async def remove(
+        self, profile_id: str, target_type: str, target_id: str
+    ) -> None: ...
+
+
 __all__ = [
     "SalesbookClientContactRepositoryPort",
     "SalesbookOnboardingRepositoryPort",
@@ -95,4 +123,6 @@ __all__ = [
     "SalesbookEngagementRepositoryPort",
     "SalesbookTeamMembershipRepositoryPort",
     "SalesbookProductReadPort",
+    "SalesbookCommentRepositoryPort",
+    "SalesbookPinRepositoryPort",
 ]

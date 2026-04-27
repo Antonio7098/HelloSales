@@ -185,6 +185,50 @@ class SalesbookTeamMembershipRecord(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utc_now)
 
 
+class SalesbookCommentRecord(Base):
+    """Rep-authored opinion/comment against an onboarding_response. /Oliviercontribution."""
+
+    __tablename__ = "salesbook_comments"
+
+    comment_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    profile_id: Mapped[str] = mapped_column(
+        String(64),
+        ForeignKey("company_profiles.profile_id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    target_type: Mapped[str] = mapped_column(String(32), nullable=False, default="onboarding_response")
+    target_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    author_email: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending")
+    approved_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utc_now)
+
+
+class SalesbookPinnedRecord(Base):
+    """Admin's sticky-pin selection — promotes any salesbook entry to the top. /Oliviercontribution."""
+
+    __tablename__ = "salesbook_pinned"
+    __table_args__ = (
+        UniqueConstraint("profile_id", "target_type", "target_id", name="uq_salesbook_pinned_target"),
+    )
+
+    pin_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    profile_id: Mapped[str] = mapped_column(
+        String(64),
+        ForeignKey("company_profiles.profile_id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    target_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    target_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    pinned_by: Mapped[str] = mapped_column(String(255), nullable=False)
+    pinned_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utc_now)
+
+
 __all__ = [
     "SalesbookClientContactExtensionRecord",
     "SalesbookOnboardingProgressRecord",
@@ -192,4 +236,6 @@ __all__ = [
     "SalesbookPipelineDealRecord",
     "SalesbookEngagementLogRecord",
     "SalesbookTeamMembershipRecord",
+    "SalesbookCommentRecord",
+    "SalesbookPinnedRecord",
 ]

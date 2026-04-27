@@ -20,8 +20,10 @@ from hello_sales_backend.modules.salesbook.domain.value_objects import (
 )
 from hello_sales_backend.modules.salesbook.use_cases.ports import (
     SalesbookClientContactRepositoryPort,
+    SalesbookCommentRepositoryPort,
     SalesbookEngagementRepositoryPort,
     SalesbookOnboardingRepositoryPort,
+    SalesbookPinRepositoryPort,
     SalesbookPipelineRepositoryPort,
     SalesbookProductReadPort,
     SalesbookTeamMembershipRepositoryPort,
@@ -38,8 +40,13 @@ from hello_sales_backend.modules.salesbook.use_cases.views import (
     PipelineDealCreateRequest,
     PipelineDealUpdateRequest,
     PipelineDealView,
+    SalesbookCommentApproveRequest,
+    SalesbookCommentCreateRequest,
+    SalesbookCommentView,
     SalesbookExhaustiveOnboardingEntry,
     SalesbookExhaustiveView,
+    SalesbookPinRequest,
+    SalesbookPinView,
     TeamMembershipCreateRequest,
     TeamMembershipView,
 )
@@ -73,6 +80,8 @@ class SalesbookService:
         engagement_repo: SalesbookEngagementRepositoryPort,
         team_repo: SalesbookTeamMembershipRepositoryPort,
         product_read: SalesbookProductReadPort,
+        comment_repo: SalesbookCommentRepositoryPort,
+        pin_repo: SalesbookPinRepositoryPort,
         sheets_provider: "SalesbookSheetsProvider | None" = None,
     ) -> None:
         self._contact = contact_repo
@@ -81,6 +90,8 @@ class SalesbookService:
         self._engagement = engagement_repo
         self._team = team_repo
         self._product_read = product_read
+        self._comments = comment_repo
+        self._pins = pin_repo
         self._sheets = sheets_provider
 
     # ---- Onboarding registry passthrough (avoids importing in route layer) ----
@@ -258,7 +269,52 @@ class SalesbookService:
             pipeline=await self._pipeline.list_deals(profile_id),
             engagement=await self._engagement.list_for_profile(profile_id, limit=500),
             team=await self._team.list_team(profile_id),
+            comments=await self._comments.list_for_profile(profile_id, status="approved"),
+            pinned=await self._pins.list_for_profile(profile_id),
         )
+
+    # ---- Moderation: comments + pins ----
+    async def add_comment(
+        self, profile_id: str, request: SalesbookCommentCreateRequest
+    ) -> SalesbookCommentView:
+        view = await self._comments.create(profile_id, request)
+        self._maybe_push("add_comment", view.model_dump(mode="json"))
+        return view
+
+    async def list_comments(
+        self, profile_id: str, status: str | None = None,
+        target_id: str | None = None,
+    ) -> list[SalesbookCommentView]:
+        return await self._comments.list_for_profile(profile_id, status=status, target_id=target_id)
+
+    async def review_comment(
+        self, comment_id: str, request: SalesbookCommentApproveRequest
+    ) -> SalesbookCommentView:
+        view = await self._comments.update_status(
+            comment_id,
+            status=request.decision,
+            approved_by=request.approved_by if request.decision == "approved" else None,
+        )
+        self._maybe_push("review_comment", view.model_dump(mode="json"))
+        return view
+
+    async def list_pins(self, profile_id: str) -> list[SalesbookPinView]:
+        return await self._pins.list_for_profile(profile_id)
+
+    async def pin_entry(
+        self, profile_id: str, request: SalesbookPinRequest
+    ) -> SalesbookPinView:
+        view = await self._pins.upsert(profile_id, request)
+        self._maybe_push("pin_entry", view.model_dump(mode="json"))
+        return view
+
+    async def unpin_entry(
+        self, profile_id: str, target_type: str, target_id: str
+    ) -> None:
+        await self._pins.remove(profile_id, target_type, target_id)
+        self._maybe_push("unpin_entry", {
+            "profile_id": profile_id, "target_type": target_type, "target_id": target_id,
+        })
 
     # ---- Sheets sync (fire-and-forget; safe when provider is None) ----
     def _maybe_push(self, action: str, payload: dict) -> None:

@@ -13,8 +13,10 @@ from uuid import uuid4
 
 from hello_sales_backend.modules.salesbook.use_cases.ports import (
     SalesbookClientContactRepositoryPort,
+    SalesbookCommentRepositoryPort,
     SalesbookEngagementRepositoryPort,
     SalesbookOnboardingRepositoryPort,
+    SalesbookPinRepositoryPort,
     SalesbookPipelineRepositoryPort,
     SalesbookProductReadPort,
     SalesbookTeamMembershipRepositoryPort,
@@ -30,7 +32,11 @@ from hello_sales_backend.modules.salesbook.use_cases.views import (
     PipelineDealCreateRequest,
     PipelineDealUpdateRequest,
     PipelineDealView,
+    SalesbookCommentCreateRequest,
+    SalesbookCommentView,
     SalesbookExhaustiveProductEntry,
+    SalesbookPinRequest,
+    SalesbookPinView,
     TeamMembershipCreateRequest,
     TeamMembershipView,
 )
@@ -314,11 +320,98 @@ class NullProductReadPort(SalesbookProductReadPort):
         return []
 
 
+class InMemorySalesbookCommentRepository(SalesbookCommentRepositoryPort):
+    def __init__(self) -> None:
+        self._comments: dict[str, SalesbookCommentView] = {}
+
+    async def create(
+        self, profile_id: str, request: SalesbookCommentCreateRequest
+    ) -> SalesbookCommentView:
+        now = _now()
+        view = SalesbookCommentView(
+            comment_id=_new_id(),
+            profile_id=profile_id,
+            target_type=request.target_type,
+            target_id=request.target_id,
+            author_email=request.author_email,
+            body=request.body,
+            status="pending",
+            approved_by=None,
+            approved_at=None,
+            created_at=now,
+            updated_at=now,
+        )
+        self._comments[view.comment_id] = view
+        return view
+
+    async def list_for_profile(
+        self, profile_id: str, status: str | None = None,
+        target_id: str | None = None,
+    ) -> list[SalesbookCommentView]:
+        rows = [c for c in self._comments.values() if c.profile_id == profile_id]
+        if status is not None:
+            rows = [c for c in rows if c.status == status]
+        if target_id is not None:
+            rows = [c for c in rows if c.target_id == target_id]
+        return sorted(rows, key=lambda c: c.created_at, reverse=True)
+
+    async def get(self, comment_id: str) -> SalesbookCommentView | None:
+        return self._comments.get(comment_id)
+
+    async def update_status(
+        self, comment_id: str, *, status: str, approved_by: str | None,
+    ) -> SalesbookCommentView:
+        existing = self._comments[comment_id]
+        view = existing.model_copy(update={
+            "status": status,
+            "approved_by": approved_by,
+            "approved_at": _now() if status == "approved" else None,
+            "updated_at": _now(),
+        })
+        self._comments[comment_id] = view
+        return view
+
+
+class InMemorySalesbookPinRepository(SalesbookPinRepositoryPort):
+    def __init__(self) -> None:
+        # keyed by (profile_id, target_type, target_id)
+        self._pins: dict[tuple[str, str, str], SalesbookPinView] = {}
+
+    async def list_for_profile(self, profile_id: str) -> list[SalesbookPinView]:
+        return sorted(
+            (p for p in self._pins.values() if p.profile_id == profile_id),
+            key=lambda p: p.pinned_at, reverse=True,
+        )
+
+    async def upsert(
+        self, profile_id: str, request: SalesbookPinRequest
+    ) -> SalesbookPinView:
+        key = (profile_id, request.target_type, request.target_id)
+        existing = self._pins.get(key)
+        view = SalesbookPinView(
+            pin_id=existing.pin_id if existing else _new_id(),
+            profile_id=profile_id,
+            target_type=request.target_type,
+            target_id=request.target_id,
+            pinned_by=request.pinned_by,
+            pinned_at=existing.pinned_at if existing else _now(),
+        )
+        self._pins[key] = view
+        return view
+
+    async def remove(
+        self, profile_id: str, target_type: str, target_id: str
+    ) -> None:
+        self._pins.pop((profile_id, target_type, target_id), None)
+
+
 __all__ = [
     "InMemorySalesbookClientContactRepository",
     "InMemorySalesbookOnboardingRepository",
     "InMemorySalesbookPipelineRepository",
     "InMemorySalesbookEngagementRepository",
     "InMemorySalesbookTeamMembershipRepository",
+    "InMemorySalesbookCommentRepository",
+    "InMemorySalesbookPinRepository",
     "NullProductReadPort",
 ]

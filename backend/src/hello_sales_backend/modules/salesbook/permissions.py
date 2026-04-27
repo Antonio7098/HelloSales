@@ -18,6 +18,11 @@ ENGAGEMENT_READ_PERMISSION = "engagement.read"
 ENGAGEMENT_WRITE_PERMISSION = "engagement.write"
 TEAM_READ_PERMISSION = "team.read"
 TEAM_WRITE_PERMISSION = "team.write"
+# Moderation — comments + pins (admin moderates rep contributions)
+COMMENT_WRITE_PERMISSION = "comment.write"
+COMMENT_APPROVE_PERMISSION = "comment.approve"
+PIN_WRITE_PERMISSION = "pin.write"
+PIN_READ_PERMISSION = "pin.read"
 
 __all__ = [
     "SALESBOOK_READ_PERMISSION",
@@ -30,4 +35,8 @@ __all__ = [
     "ENGAGEMENT_WRITE_PERMISSION",
     "TEAM_READ_PERMISSION",
     "TEAM_WRITE_PERMISSION",
+    "COMMENT_WRITE_PERMISSION",
+    "COMMENT_APPROVE_PERMISSION",
+    "PIN_WRITE_PERMISSION",
+    "PIN_READ_PERMISSION",
 ]

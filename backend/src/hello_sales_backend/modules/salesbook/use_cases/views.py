@@ -255,6 +255,70 @@ class SalesbookExhaustiveView(BaseModel):
     pipeline: list[PipelineDealView]
     engagement: list[EngagementLogView]
     team: list[TeamMembershipView]
+    comments: list["SalesbookCommentView"] = Field(default_factory=list)
+    pinned: list["SalesbookPinView"] = Field(default_factory=list)
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# Moderation — comments + pinned content
+# ────────────────────────────────────────────────────────────────────────────
+
+
+class SalesbookCommentCreateRequest(BaseModel):
+    """Rep posts a comment/opinion against a salesbook target (typically an onboarding response)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    target_type: str = Field(default="onboarding_response")
+    target_id: str = Field(min_length=1)
+    author_email: str = Field(min_length=3, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+    body: str = Field(min_length=1)
+
+
+class SalesbookCommentApproveRequest(BaseModel):
+    """Admin approves or rejects a pending comment."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    approved_by: str = Field(min_length=3, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+    decision: str = Field(pattern=r"^(approved|rejected)$")
+
+
+class SalesbookCommentView(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    comment_id: str
+    profile_id: str
+    target_type: str
+    target_id: str
+    author_email: str
+    body: str
+    status: str
+    approved_by: str | None
+    approved_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class SalesbookPinRequest(BaseModel):
+    """Admin pins (or unpins) a salesbook entry to feature it at the top."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    target_type: str = Field(min_length=1)
+    target_id: str = Field(min_length=1)
+    pinned_by: str = Field(min_length=3, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+class SalesbookPinView(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    pin_id: str
+    profile_id: str
+    target_type: str
+    target_id: str
+    pinned_by: str
+    pinned_at: datetime
 
 
 __all__ = [
@@ -274,4 +338,13 @@ __all__ = [
     "SalesbookExhaustiveOnboardingEntry",
     "SalesbookExhaustiveProductEntry",
     "SalesbookExhaustiveView",
+    "SalesbookCommentCreateRequest",
+    "SalesbookCommentApproveRequest",
+    "SalesbookCommentView",
+    "SalesbookPinRequest",
+    "SalesbookPinView",
 ]
+
+
+# Resolve forward refs for SalesbookExhaustiveView fields
+SalesbookExhaustiveView.model_rebuild()

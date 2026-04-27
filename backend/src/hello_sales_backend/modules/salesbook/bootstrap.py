@@ -16,8 +16,10 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from hello_sales_backend.modules.salesbook.infra.memory import (
     InMemorySalesbookClientContactRepository,
+    InMemorySalesbookCommentRepository,
     InMemorySalesbookEngagementRepository,
     InMemorySalesbookOnboardingRepository,
+    InMemorySalesbookPinRepository,
     InMemorySalesbookPipelineRepository,
     InMemorySalesbookTeamMembershipRepository,
     NullProductReadPort,
@@ -25,8 +27,10 @@ from hello_sales_backend.modules.salesbook.infra.memory import (
 from hello_sales_backend.modules.salesbook.infra.repository import (
     CompanyProfileProductReadAdapter,
     SqlAlchemySalesbookClientContactRepository,
+    SqlAlchemySalesbookCommentRepository,
     SqlAlchemySalesbookEngagementRepository,
     SqlAlchemySalesbookOnboardingRepository,
+    SqlAlchemySalesbookPinRepository,
     SqlAlchemySalesbookPipelineRepository,
     SqlAlchemySalesbookTeamMembershipRepository,
 )
@@ -70,12 +74,16 @@ def build_salesbook_module(
         pipeline_repo = InMemorySalesbookPipelineRepository()
         engagement_repo = InMemorySalesbookEngagementRepository()
         team_repo = InMemorySalesbookTeamMembershipRepository()
+        comment_repo = InMemorySalesbookCommentRepository()
+        pin_repo = InMemorySalesbookPinRepository()
     else:
         contact_repo = SqlAlchemySalesbookClientContactRepository(session_factory)
         onboarding_repo = SqlAlchemySalesbookOnboardingRepository(session_factory)
         pipeline_repo = SqlAlchemySalesbookPipelineRepository(session_factory)
         engagement_repo = SqlAlchemySalesbookEngagementRepository(session_factory)
         team_repo = SqlAlchemySalesbookTeamMembershipRepository(session_factory)
+        comment_repo = SqlAlchemySalesbookCommentRepository(session_factory)
+        pin_repo = SqlAlchemySalesbookPinRepository(session_factory)
 
     product_read: SalesbookProductReadPort = (
         CompanyProfileProductReadAdapter(company_profile_service)
@@ -100,6 +108,8 @@ def build_salesbook_module(
             engagement_repo=engagement_repo,
             team_repo=team_repo,
             product_read=product_read,
+            comment_repo=comment_repo,
+            pin_repo=pin_repo,
             sheets_provider=sheets_provider,
         )
     )

@@ -23,14 +23,21 @@ from hello_sales_backend.modules.salesbook import (
     OnboardingResponseSubmit,
     PipelineDealCreateRequest,
     PipelineDealUpdateRequest,
+    SalesbookCommentApproveRequest,
+    SalesbookCommentCreateRequest,
+    SalesbookPinRequest,
     SalesbookService,
     TeamMembershipCreateRequest,
 )
 from hello_sales_backend.modules.salesbook.permissions import (
+    COMMENT_APPROVE_PERMISSION,
+    COMMENT_WRITE_PERMISSION,
     ENGAGEMENT_READ_PERMISSION,
     ENGAGEMENT_WRITE_PERMISSION,
     ONBOARDING_READ_PERMISSION,
     ONBOARDING_WRITE_PERMISSION,
+    PIN_READ_PERMISSION,
+    PIN_WRITE_PERMISSION,
     PIPELINE_READ_PERMISSION,
     PIPELINE_WRITE_PERMISSION,
     SALESBOOK_READ_PERMISSION,
@@ -56,6 +63,10 @@ ExecReadDep = Annotated[
     object,
     Depends(require_permissions(APP_ACCESS_PERMISSION, ENGAGEMENT_READ_PERMISSION, SALESBOOK_READ_PERMISSION)),
 ]
+CommentWriteDep = Annotated[object, Depends(require_permissions(APP_ACCESS_PERMISSION, COMMENT_WRITE_PERMISSION))]
+CommentApproveDep = Annotated[object, Depends(require_permissions(APP_ACCESS_PERMISSION, COMMENT_APPROVE_PERMISSION))]
+PinReadDep = Annotated[object, Depends(require_permissions(APP_ACCESS_PERMISSION, PIN_READ_PERMISSION))]
+PinWriteDep = Annotated[object, Depends(require_permissions(APP_ACCESS_PERMISSION, PIN_WRITE_PERMISSION))]
 
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -249,3 +260,70 @@ async def remove_team_member(
 ) -> ApiEnvelope:
     await service.remove_team_member(membership_id)
     return ok_response({"removed": True, "membership_id": membership_id})
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# Moderation — comments + pins (admin moderates rep contributions)
+# ────────────────────────────────────────────────────────────────────────────
+
+
+@router.post("/clients/{profile_id}/comments", response_model=ApiEnvelope)
+async def add_comment(
+    profile_id: str,
+    request: SalesbookCommentCreateRequest,
+    _auth: CommentWriteDep,
+    service: SalesbookService = Depends(get_salesbook_service),
+) -> ApiEnvelope:
+    return ok_response(await service.add_comment(profile_id, request))
+
+
+@router.get("/clients/{profile_id}/comments", response_model=ApiEnvelope)
+async def list_comments(
+    profile_id: str,
+    _auth: SalesbookReadDep,
+    status: str | None = Query(default=None, pattern=r"^(pending|approved|rejected)$"),
+    target_id: str | None = Query(default=None),
+    service: SalesbookService = Depends(get_salesbook_service),
+) -> ApiEnvelope:
+    return ok_response(await service.list_comments(profile_id, status=status, target_id=target_id))
+
+
+@router.patch("/comments/{comment_id}/review", response_model=ApiEnvelope)
+async def review_comment(
+    comment_id: str,
+    request: SalesbookCommentApproveRequest,
+    _auth: CommentApproveDep,
+    service: SalesbookService = Depends(get_salesbook_service),
+) -> ApiEnvelope:
+    return ok_response(await service.review_comment(comment_id, request))
+
+
+@router.get("/clients/{profile_id}/pins", response_model=ApiEnvelope)
+async def list_pins(
+    profile_id: str,
+    _auth: PinReadDep,
+    service: SalesbookService = Depends(get_salesbook_service),
+) -> ApiEnvelope:
+    return ok_response(await service.list_pins(profile_id))
+
+
+@router.post("/clients/{profile_id}/pins", response_model=ApiEnvelope)
+async def pin_entry(
+    profile_id: str,
+    request: SalesbookPinRequest,
+    _auth: PinWriteDep,
+    service: SalesbookService = Depends(get_salesbook_service),
+) -> ApiEnvelope:
+    return ok_response(await service.pin_entry(profile_id, request))
+
+
+@router.delete("/clients/{profile_id}/pins", response_model=ApiEnvelope)
+async def unpin_entry(
+    profile_id: str,
+    _auth: PinWriteDep,
+    target_type: str = Query(..., min_length=1),
+    target_id: str = Query(..., min_length=1),
+    service: SalesbookService = Depends(get_salesbook_service),
+) -> ApiEnvelope:
+    await service.unpin_entry(profile_id, target_type, target_id)
+    return ok_response({"removed": True, "target_type": target_type, "target_id": target_id})

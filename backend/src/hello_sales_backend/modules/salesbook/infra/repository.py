@@ -17,16 +17,20 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from hello_sales_backend.modules.salesbook.infra.persistence import (
     SalesbookClientContactExtensionRecord,
+    SalesbookCommentRecord,
     SalesbookEngagementLogRecord,
     SalesbookOnboardingProgressRecord,
     SalesbookOnboardingResponseRecord,
+    SalesbookPinnedRecord,
     SalesbookPipelineDealRecord,
     SalesbookTeamMembershipRecord,
 )
 from hello_sales_backend.modules.salesbook.use_cases.ports import (
     SalesbookClientContactRepositoryPort,
+    SalesbookCommentRepositoryPort,
     SalesbookEngagementRepositoryPort,
     SalesbookOnboardingRepositoryPort,
+    SalesbookPinRepositoryPort,
     SalesbookPipelineRepositoryPort,
     SalesbookProductReadPort,
     SalesbookTeamMembershipRepositoryPort,
@@ -42,7 +46,11 @@ from hello_sales_backend.modules.salesbook.use_cases.views import (
     PipelineDealCreateRequest,
     PipelineDealUpdateRequest,
     PipelineDealView,
+    SalesbookCommentCreateRequest,
+    SalesbookCommentView,
     SalesbookExhaustiveProductEntry,
+    SalesbookPinRequest,
+    SalesbookPinView,
     TeamMembershipCreateRequest,
     TeamMembershipView,
 )
@@ -531,11 +539,157 @@ class CompanyProfileProductReadAdapter(SalesbookProductReadPort):
         ]
 
 
+def _comment_view(r: SalesbookCommentRecord) -> SalesbookCommentView:
+    return SalesbookCommentView(
+        comment_id=r.comment_id,
+        profile_id=r.profile_id,
+        target_type=r.target_type,
+        target_id=r.target_id,
+        author_email=r.author_email,
+        body=r.body,
+        status=r.status,
+        approved_by=r.approved_by,
+        approved_at=r.approved_at,
+        created_at=r.created_at,
+        updated_at=r.updated_at,
+    )
+
+
+def _pin_view(r: SalesbookPinnedRecord) -> SalesbookPinView:
+    return SalesbookPinView(
+        pin_id=r.pin_id,
+        profile_id=r.profile_id,
+        target_type=r.target_type,
+        target_id=r.target_id,
+        pinned_by=r.pinned_by,
+        pinned_at=r.pinned_at,
+    )
+
+
+class SqlAlchemySalesbookCommentRepository(SalesbookCommentRepositoryPort):
+    def __init__(self, session_factory: async_sessionmaker[AsyncSession]) -> None:
+        self._sf = session_factory
+
+    async def create(
+        self, profile_id: str, request: SalesbookCommentCreateRequest
+    ) -> SalesbookCommentView:
+        async with self._sf() as session:
+            now = _now()
+            r = SalesbookCommentRecord(
+                comment_id=_new_id(),
+                profile_id=profile_id,
+                target_type=request.target_type,
+                target_id=request.target_id,
+                author_email=request.author_email,
+                body=request.body,
+                status="pending",
+                created_at=now,
+                updated_at=now,
+            )
+            session.add(r)
+            await session.commit()
+            await session.refresh(r)
+            return _comment_view(r)
+
+    async def list_for_profile(
+        self, profile_id: str, status: str | None = None,
+        target_id: str | None = None,
+    ) -> list[SalesbookCommentView]:
+        async with self._sf() as session:
+            q = select(SalesbookCommentRecord).where(SalesbookCommentRecord.profile_id == profile_id)
+            if status is not None:
+                q = q.where(SalesbookCommentRecord.status == status)
+            if target_id is not None:
+                q = q.where(SalesbookCommentRecord.target_id == target_id)
+            rows = list(await session.scalars(q.order_by(SalesbookCommentRecord.created_at.desc())))
+            return [_comment_view(r) for r in rows]
+
+    async def get(self, comment_id: str) -> SalesbookCommentView | None:
+        async with self._sf() as session:
+            r = await session.scalar(
+                select(SalesbookCommentRecord).where(SalesbookCommentRecord.comment_id == comment_id)
+            )
+            return _comment_view(r) if r else None
+
+    async def update_status(
+        self, comment_id: str, *, status: str, approved_by: str | None,
+    ) -> SalesbookCommentView:
+        async with self._sf() as session:
+            r = await session.scalar(
+                select(SalesbookCommentRecord).where(SalesbookCommentRecord.comment_id == comment_id)
+            )
+            if r is None:
+                raise KeyError(f"comment not found: {comment_id}")
+            r.status = status
+            r.approved_by = approved_by
+            r.approved_at = _now() if status == "approved" else None
+            r.updated_at = _now()
+            await session.commit()
+            await session.refresh(r)
+            return _comment_view(r)
+
+
+class SqlAlchemySalesbookPinRepository(SalesbookPinRepositoryPort):
+    def __init__(self, session_factory: async_sessionmaker[AsyncSession]) -> None:
+        self._sf = session_factory
+
+    async def list_for_profile(self, profile_id: str) -> list[SalesbookPinView]:
+        async with self._sf() as session:
+            rows = list(await session.scalars(
+                select(SalesbookPinnedRecord)
+                .where(SalesbookPinnedRecord.profile_id == profile_id)
+                .order_by(SalesbookPinnedRecord.pinned_at.desc())
+            ))
+            return [_pin_view(r) for r in rows]
+
+    async def upsert(
+        self, profile_id: str, request: SalesbookPinRequest
+    ) -> SalesbookPinView:
+        async with self._sf() as session:
+            r = await session.scalar(
+                select(SalesbookPinnedRecord).where(
+                    SalesbookPinnedRecord.profile_id == profile_id,
+                    SalesbookPinnedRecord.target_type == request.target_type,
+                    SalesbookPinnedRecord.target_id == request.target_id,
+                )
+            )
+            if r is None:
+                r = SalesbookPinnedRecord(
+                    pin_id=_new_id(),
+                    profile_id=profile_id,
+                    target_type=request.target_type,
+                    target_id=request.target_id,
+                    pinned_by=request.pinned_by,
+                    pinned_at=_now(),
+                )
+                session.add(r)
+            else:
+                r.pinned_by = request.pinned_by
+            await session.commit()
+            await session.refresh(r)
+            return _pin_view(r)
+
+    async def remove(
+        self, profile_id: str, target_type: str, target_id: str
+    ) -> None:
+        async with self._sf() as session:
+            await session.execute(
+                delete(SalesbookPinnedRecord).where(
+                    SalesbookPinnedRecord.profile_id == profile_id,
+                    SalesbookPinnedRecord.target_type == target_type,
+                    SalesbookPinnedRecord.target_id == target_id,
+                )
+            )
+            await session.commit()
+
+
 __all__ = [
     "SqlAlchemySalesbookClientContactRepository",
     "SqlAlchemySalesbookOnboardingRepository",
     "SqlAlchemySalesbookPipelineRepository",
     "SqlAlchemySalesbookEngagementRepository",
     "SqlAlchemySalesbookTeamMembershipRepository",
+    "SqlAlchemySalesbookCommentRepository",
+    "SqlAlchemySalesbookPinRepository",
     "CompanyProfileProductReadAdapter",
 ]
