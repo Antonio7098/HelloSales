@@ -166,7 +166,7 @@ export function SignupPage() {
       <section ref={hero.ref} className="signup-section funnel-hero">
         <div className={`section-content funnel-hero-inner ${hero.isVisible ? "focused" : "unfocused"}`}>
           <img
-            src="/hello-sales-logo.png"
+            src="/HS.OL.removed.png"
             alt="Hello Sales"
             className="funnel-hero-logo stagger-child"
             style={{ transitionDelay: "0ms" }}
