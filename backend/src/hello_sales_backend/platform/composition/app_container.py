@@ -14,6 +14,7 @@ from hello_sales_backend.modules.auth.bootstrap import build_auth_module
 from hello_sales_backend.modules.company_profile.bootstrap import build_company_profile_module
 from hello_sales_backend.modules.entity_operations.bootstrap import build_entity_operations_module
 from hello_sales_backend.modules.jobs.bootstrap import build_jobs_module
+from hello_sales_backend.modules.salesbook.bootstrap import build_salesbook_module  # /Oliviercontribution
 from hello_sales_backend.modules.semantic_catalog.bootstrap import build_semantic_catalog_module
 from hello_sales_backend.modules.sessions.bootstrap import build_sessions_module
 from hello_sales_backend.modules.system.bootstrap import build_system_module
@@ -214,6 +215,11 @@ def build_app_container(settings: Settings, overrides: AppOverrides | None = Non
         settings=settings,
         session_factory=db.session_factory,
     )
+    salesbook_module = build_salesbook_module(  # /Oliviercontribution
+        settings=settings,
+        session_factory=db.session_factory,
+        company_profile_service=company_profile_module.service,
+    )
     entity_operations_module = build_entity_operations_module(
         settings=settings,
         semantic_catalogs=semantic_catalog_module.service,
@@ -274,6 +280,7 @@ def build_app_container(settings: Settings, overrides: AppOverrides | None = Non
         company_profile=company_profile_module,
         entity_operations=entity_operations_module,
         jobs=jobs_module,
+        salesbook=salesbook_module,  # /Oliviercontribution
         semantic_catalog=semantic_catalog_module,
         sessions=sessions_module,
         system=system_module,

@@ -24,3 +24,14 @@ A log of every Cowork-applied change on this branch. Keeps the May 3rd review to
 - **Anto-file touch:** NONE in this commit. The 1-line registration was already in place from 2.1.
 - **New files:** `backend/alembic/versions/0007_add_salesbook_tables.py`
 - **Verified:** `alembic upgrade head` against fresh SQLite created all 6 tables with correct column counts (11/11/9/14/12/8 = 65 columns total).
+
+## 2026-04-26 — 4.1 HTTP routes + module wiring
+- **By:** Olivier (/Oliviercontribution)
+- **Change:** Wired the salesbook module into the HTTP transport. New file `entrypoints/http/routes/salesbook.py` exposes 16 endpoints under `/api/salesbook/*` covering: client_contact upsert/get, onboarding (registry, progress, responses single+batch+list, exhaustive view), pipeline (list/create/update with stage transition stamping), engagement-log (create + per-profile + per-deal + all-org feed), team (list/add/remove). Every handler is async, returns `ApiEnvelope` via `ok_response()`, and is gated by `Depends(require_permissions(APP_ACCESS_PERMISSION, ...))` using the constants from `modules/salesbook/permissions.py`.
+- **Anto-file touches (4 files, all additive, all /Oliviercontribution-marked):**
+  · `platform/composition/module_registry.py` — 1 import + 1 field on `ModuleRegistry`
+  · `platform/composition/app_container.py` — 1 import + 1 build call (passes `company_profile_service`) + 1 ctor kwarg in `ModuleRegistry(...)`. `AppContainer` dataclass UNCHANGED.
+  · `entrypoints/http/dependencies.py` — 1 import + 1 async factory `get_salesbook_service`
+  · `entrypoints/http/router.py` — 1 import name + 1 `include_router(salesbook.router, prefix="/salesbook", ...)`
+- **New files:** `backend/src/hello_sales_backend/entrypoints/http/routes/salesbook.py` (16 handlers, ~250 lines)
+- **Verified:** App boots cleanly. 13 unique paths registered under `/api/salesbook/*` (multiple HTTP verbs share some paths). `GET /api/salesbook/onboarding/registry` without auth returns `401 {ok: false, error: {code: "auth.unauthenticated", ...}}` — confirms `require_permissions` chain fires before the handler.

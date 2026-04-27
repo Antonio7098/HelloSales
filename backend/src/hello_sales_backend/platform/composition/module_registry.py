@@ -11,6 +11,7 @@ from hello_sales_backend.modules.company_profile.bootstrap import CompanyProfile
 from hello_sales_backend.modules.entity_operations.bootstrap import EntityOperationsModule
 from hello_sales_backend.modules.jobs.bootstrap import JobsModule
 from hello_sales_backend.modules.semantic_catalog.bootstrap import SemanticCatalogModule
+from hello_sales_backend.modules.salesbook.bootstrap import SalesbookModule  # /Oliviercontribution
 from hello_sales_backend.modules.sessions.bootstrap import SessionsModule
 from hello_sales_backend.modules.system.bootstrap import SystemModule
 from hello_sales_backend.modules.voice.bootstrap import VoiceModule
@@ -28,6 +29,7 @@ class ModuleRegistry:
     company_profile: CompanyProfileModule
     entity_operations: EntityOperationsModule
     jobs: JobsModule
+    salesbook: SalesbookModule  # /Oliviercontribution
     semantic_catalog: SemanticCatalogModule
     sessions: SessionsModule
     system: SystemModule
