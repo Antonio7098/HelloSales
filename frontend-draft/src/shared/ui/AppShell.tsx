@@ -1,24 +1,41 @@
+/**
+ * AppShell — sidebar + content layout for the signed-in app pages only.
+ * /Oliviercontribution.
+ *
+ * Landing + Signup use PublicLayout; Onboarding uses OnboardingLayout.
+ * AppShell wraps Dashboard, Salesbook, Pipeline, Sales Log, Moderation, Team —
+ * the actual operating-desk surfaces.
+ */
+
 import { NavLink, Outlet } from "react-router-dom";
+import type { ComponentType, SVGProps } from "react";
 import { StatusDot } from "@/design-system/primitives/StatusDot";
-import { Text } from "@/design-system/primitives/Text";
 import { useCurrentUser } from "@/shared/auth/useCurrentUser";
+import {
+  IconBook,
+  IconDashboard,
+  IconLog,
+  IconModeration,
+  IconOnboarding,
+  IconPipeline,
+  IconTeam,
+} from "@/shared/icons/NavIcons";
 
 type NavItem = {
   to: string;
   label: string;
-  shortcut?: string;
-  description: string;
+  Icon: ComponentType<SVGProps<SVGSVGElement>>;
   adminOnly?: boolean;
 };
 
 const navItems: NavItem[] = [
-  { to: "/dashboard", label: "Dashboard", shortcut: "D", description: "Your overview" },
-  { to: "/onboarding", label: "Onboarding", shortcut: "O", description: "Build your sales context" },
-  { to: "/salesbook", label: "Salesbook", shortcut: "B", description: "Searchable knowledge book" },
-  { to: "/pipeline", label: "Pipeline", shortcut: "P", description: "Deal flow" },
-  { to: "/sales-log", label: "Sales Log", shortcut: "L", description: "Activity stream" },
-  { to: "/moderation", label: "Moderation", shortcut: "M", description: "Approve rep contributions", adminOnly: true },
-  { to: "/team", label: "Team", shortcut: "T", description: "Roster & roles", adminOnly: true },
+  { to: "/dashboard", label: "Dashboard", Icon: IconDashboard },
+  { to: "/salesbook", label: "Salesbook", Icon: IconBook },
+  { to: "/pipeline", label: "Pipeline", Icon: IconPipeline },
+  { to: "/sales-log", label: "Sales log", Icon: IconLog },
+  { to: "/onboarding", label: "Onboarding", Icon: IconOnboarding },
+  { to: "/moderation", label: "Moderation", Icon: IconModeration, adminOnly: true },
+  { to: "/team", label: "Team", Icon: IconTeam, adminOnly: true },
 ];
 
 export function AppShell() {
@@ -30,60 +47,46 @@ export function AppShell() {
   return (
     <div className="app-shell">
       <aside className="app-sidebar">
-        <div className="stack-2xs">
-          <NavLink
-            to={user ? "/dashboard" : "/signup"}
-            className="app-brand"
-            style={{ textDecoration: "none" }}
-          >
-            <img src="/hello-sales-icon.png" alt="" className="app-brand-icon" />
-            <span>
-              Hello<em>Sales</em>
-            </span>
-          </NavLink>
-          <Text variant="mono" className="text-body-muted">
-            {user ? `${user.companyName} · ${role}` : "Sales intelligence platform"}
-          </Text>
-        </div>
+        <NavLink to="/dashboard" className="app-brand" style={{ textDecoration: "none" }}>
+          <img src="/hello-sales-icon.png" alt="" className="app-brand-icon" />
+          <span>
+            Hello<em>Sales</em>
+          </span>
+        </NavLink>
 
-        {user ? (
-          <div className="stack-2xs">
-            <div className="app-nav-label">Workspace</div>
-            <nav className="app-nav" aria-label="Primary">
-              {visibleNav.map((item) => (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  className={({ isActive }) => (isActive ? "nav-link is-active" : "nav-link")}
-                >
-                  <span>{item.label}</span>
-                  {item.shortcut ? <kbd>{item.shortcut}</kbd> : null}
-                </NavLink>
-              ))}
-            </nav>
-          </div>
-        ) : null}
+        <nav className="app-nav" aria-label="Primary">
+          {visibleNav.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              className={({ isActive }) => (isActive ? "nav-link is-active" : "nav-link")}
+            >
+              <item.Icon />
+              <span>{item.label}</span>
+            </NavLink>
+          ))}
+        </nav>
 
         <div className="app-sidebar-footer">
-          <div className="row row--gap-xs">
-            <StatusDot tone="success" pulse />
-            <Text variant="mono" className="text-body-muted">
-              {user ? user.email : "Demo · no auth"}
-            </Text>
-          </div>
           {user ? (
-            <button
-              type="button"
-              onClick={signOut}
-              className="nav-link"
-              style={{ textAlign: "left", width: "100%" }}
-            >
-              Sign out
-            </button>
+            <>
+              <div className="app-user">
+                <div className="app-user-name">{user.name}</div>
+                <div className="app-user-meta">
+                  {user.companyName} · <span className="app-user-role">{role}</span>
+                </div>
+              </div>
+              <div className="row row--gap-xs">
+                <StatusDot tone="success" pulse />
+                <span className="text-mono text-body-muted" style={{ fontSize: 11 }}>
+                  Demo · no auth
+                </span>
+              </div>
+              <button type="button" onClick={signOut} className="app-signout">
+                Sign out
+              </button>
+            </>
           ) : null}
-          <Text variant="mono" className="text-body-muted">
-            v0.1 · /Oliviercontribution
-          </Text>
         </div>
       </aside>
       <main className="app-content">

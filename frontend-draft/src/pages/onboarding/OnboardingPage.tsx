@@ -1,30 +1,20 @@
 /**
- * OnboardingPage — section-by-section wizard with recap cards. /Oliviercontribution.
+ * OnboardingPage — section-by-section, focus-mode wizard. /Oliviercontribution.
  *
- * Flow per Olivier: not "all 114 questions on one page" and not "just 3 phases".
- * Granular section navigation: user fills a section → recap card appears
- * showing every answer → "add more details" lets them inline-edit before
- * "Continue to next section". Phase-end shows a bigger recap. End of all 3
- * phases = "Your sales intelligence is ready" + jump to dashboard.
+ * One section per page. Question/answer only — no app sidebar. Long sections
+ * are sub-paged (page through groups of ~6 questions) instead of one giant
+ * scroll. Auto-save on every change. Final recap appears ONLY at the very end
+ * (when the wizard has actually built something worth showing).
  *
- * Auto-save fires on every input change (debounced 600ms). Progress %
- * updates live from the backend response.
+ * Section navigation lives at the bottom (Prev/Next) with a slim phase-progress
+ * indicator at the top.
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import {
-  Badge,
-  Button,
-  Divider,
-  PageHeader,
-  Row,
-  Stack,
-  Surface,
-  Text,
-} from "@/design-system";
 import { useCurrentUser } from "@/shared/auth/useCurrentUser";
 import { getSalesbookApi } from "@/shared/api/salesbook";
+import { IconArrow, IconArrowLeft, IconCheck } from "@/shared/icons/NavIcons";
 import type {
   OnboardingProgress,
   OnboardingResponse,
@@ -32,6 +22,9 @@ import type {
   RegistryQuestion,
 } from "@/entities/salesbook/types";
 import { QuestionInput } from "@/pages/onboarding/QuestionInput";
+import { Button, Stack } from "@/design-system";
+
+const QUESTIONS_PER_PAGE = 6; // long sections sub-page through groups of 6
 
 type SectionGroup = {
   phase: number;
@@ -48,7 +41,6 @@ function groupBySection(registry: Registry): SectionGroup[] {
     }
     groups.get(key)!.questions.push(q);
   });
-  // Sort questions within each section by `n`; sections by phase then first appearance
   return Array.from(groups.values())
     .map((g) => ({ ...g, questions: g.questions.slice().sort((a, b) => a.n - b.n) }))
     .sort((a, b) => a.phase - b.phase || a.questions[0].n - b.questions[0].n);
@@ -69,10 +61,10 @@ export function OnboardingPage() {
   const [responses, setResponses] = useState<Record<string, string>>({});
   const [progress, setProgress] = useState<OnboardingProgress | null>(null);
   const [loading, setLoading] = useState(true);
-  const [recapOpen, setRecapOpen] = useState(false);
+  const [showFinalRecap, setShowFinalRecap] = useState(false);
+  const [pageInSection, setPageInSection] = useState(0);
   const saveTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
-  // Initial fetch: registry + existing responses + progress
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
@@ -98,31 +90,43 @@ export function OnboardingPage() {
     };
   }, [user, api]);
 
+  // Reset sub-page when section changes
+  useEffect(() => {
+    setPageInSection(0);
+  }, [sectionIndex]);
+
   if (!user) {
-    navigate("/signup", { replace: true });
+    navigate("/welcome", { replace: true });
     return null;
   }
 
   if (loading || !registry) {
     return (
-      <Stack gap="md">
-        <PageHeader eyebrow="Onboarding" title="Loading your sales intelligence…" />
-      </Stack>
+      <div className="onboarding-loading">
+        <div className="onboarding-eyebrow">Hello Sales · onboarding</div>
+        <h1 className="onboarding-title">Loading your sales intelligence…</h1>
+      </div>
     );
   }
 
   const sections = groupBySection(registry);
   const idx = Math.max(0, Math.min(sections.length - 1, Number(sectionIndex ?? "0")));
   const currentSection = sections[idx];
-  const isLast = idx === sections.length - 1;
 
+  // Sub-paginate long sections (best practice: divide rather than scroll-of-doom)
   const sectionQuestions = currentSection.questions;
+  const totalSubPages = Math.max(1, Math.ceil(sectionQuestions.length / QUESTIONS_PER_PAGE));
+  const safePage = Math.max(0, Math.min(totalSubPages - 1, pageInSection));
+  const pageStart = safePage * QUESTIONS_PER_PAGE;
+  const pageQuestions = sectionQuestions.slice(pageStart, pageStart + QUESTIONS_PER_PAGE);
+  const isLastSubPage = safePage === totalSubPages - 1;
+  const isFirstSubPage = safePage === 0;
+  const isLastSection = idx === sections.length - 1;
+
   const answeredInSection = sectionQuestions.filter((q) => (responses[q.key] ?? "").trim() !== "").length;
-  const sectionPct = Math.round((answeredInSection / sectionQuestions.length) * 100);
 
   function setAnswer(key: string, val: string, q: RegistryQuestion) {
     setResponses((prev) => ({ ...prev, [key]: val }));
-    // Debounced save per question
     const existing = saveTimers.current.get(key);
     if (existing) clearTimeout(existing);
     const handle = setTimeout(async () => {
@@ -134,8 +138,8 @@ export function OnboardingPage() {
           response_type: q.answer_type ?? null,
           question_text: q.question ?? null,
         });
-        const fresh = await api.getOnboardingProgress(user!.profileId);
-        setProgress(fresh);
+        const fresh = await api.getOnboardingProgress(user!.profileId).catch(() => null);
+        if (fresh) setProgress(fresh);
       } catch (err) {
         console.warn("Save failed for", key, err);
       }
@@ -143,162 +147,194 @@ export function OnboardingPage() {
     saveTimers.current.set(key, handle);
   }
 
-  const goToSection = (n: number) => {
-    setRecapOpen(false);
-    navigate(`/onboarding/${n}`);
-  };
+  function goToNext() {
+    if (!isLastSubPage) {
+      setPageInSection(safePage + 1);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+    if (isLastSection) {
+      setShowFinalRecap(true);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+    navigate(`/onboarding/${idx + 1}`);
+  }
 
-  if (recapOpen) {
+  function goToPrev() {
+    if (!isFirstSubPage) {
+      setPageInSection(safePage - 1);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+    if (idx > 0) {
+      navigate(`/onboarding/${idx - 1}`);
+    }
+  }
+
+  if (showFinalRecap) {
     return (
-      <SectionRecap
-        section={currentSection}
+      <FinalRecap
+        registry={registry}
         responses={responses}
-        onEdit={() => setRecapOpen(false)}
-        onContinue={() => {
-          if (isLast) {
-            navigate("/dashboard", { replace: true });
-          } else {
-            goToSection(idx + 1);
-          }
-        }}
-        isLast={isLast}
-        nextSectionTitle={sections[idx + 1]?.section}
         progress={progress}
+        onBackToOnboarding={() => setShowFinalRecap(false)}
+        onDone={() => navigate("/dashboard", { replace: true })}
       />
     );
   }
 
   return (
-    <Stack gap="md">
-      <PageHeader
-        eyebrow={`Phase ${currentSection.phase} · Section ${idx + 1} of ${sections.length}`}
-        title={currentSection.section}
-        description="Each section feeds your salesbook. Auto-saves as you type. Take your time — depth here = sharper agent context later."
-      />
+    <div className="onboarding-page">
+      {/* Slim progress band */}
+      <div className="onboarding-progress">
+        <div className="onboarding-progress-phases">
+          <PhaseDot
+            label="1"
+            active={currentSection.phase === 1}
+            pct={pctNumber(progress?.phase1_pct)}
+          />
+          <PhaseDot
+            label="2"
+            active={currentSection.phase === 2}
+            pct={pctNumber(progress?.phase2_pct)}
+          />
+          <PhaseDot
+            label="3"
+            active={currentSection.phase === 3}
+            pct={pctNumber(progress?.phase3_pct)}
+          />
+        </div>
+        <div className="onboarding-progress-meta">
+          Section {idx + 1} / {sections.length}
+          {totalSubPages > 1 ? ` · page ${safePage + 1} / ${totalSubPages}` : null}
+          {" · "}
+          {answeredInSection}/{sectionQuestions.length} answered
+        </div>
+      </div>
 
-      <Row gap="sm" between baseline className="row--wrap">
-        <Row gap="xs" baseline>
-          <ProgressPill label="Phase 1" pct={pctNumber(progress?.phase1_pct)} />
-          <ProgressPill label="Phase 2" pct={pctNumber(progress?.phase2_pct)} />
-          <ProgressPill label="Phase 3" pct={pctNumber(progress?.phase3_pct)} />
-        </Row>
-        <Text variant="mono" className="text-body-muted">
-          {answeredInSection}/{sectionQuestions.length} answered in this section ({sectionPct}%)
-        </Text>
-      </Row>
+      {/* Section header — minimal, sets the stage */}
+      <header className="onboarding-section-header">
+        <div className="onboarding-eyebrow">
+          Phase {currentSection.phase}
+          {currentSection.questions[0]?.subsection
+            ? ` · ${currentSection.questions[0].subsection}`
+            : null}
+        </div>
+        <h1 className="onboarding-title">{currentSection.section}</h1>
+        <p className="onboarding-sub">
+          Take your time. The depth here is what makes your sales agents sharp downstream.
+        </p>
+      </header>
 
-      <Surface padding="default">
-        <Stack gap="md">
-          {sectionQuestions.map((q) => (
-            <QuestionInput
-              key={q.key}
-              question={q}
-              value={responses[q.key] ?? ""}
-              onChange={(v) => setAnswer(q.key, v, q)}
-            />
-          ))}
-        </Stack>
-      </Surface>
+      {/* Questions — limited to QUESTIONS_PER_PAGE so the page never scrolls forever */}
+      <Stack gap="lg">
+        {pageQuestions.map((q) => (
+          <QuestionInput
+            key={q.key}
+            question={q}
+            value={responses[q.key] ?? ""}
+            onChange={(v) => setAnswer(q.key, v, q)}
+          />
+        ))}
+      </Stack>
 
-      <Row gap="sm" between className="row--wrap">
-        <Button variant="ghost" onClick={() => idx > 0 && goToSection(idx - 1)} disabled={idx === 0}>
-          ← Previous section
+      {/* Navigation */}
+      <footer className="onboarding-footer">
+        <Button variant="ghost" onClick={goToPrev} disabled={idx === 0 && isFirstSubPage} leading={<IconArrowLeft />}>
+          Previous
         </Button>
-        <Button variant="primary" onClick={() => setRecapOpen(true)}>
-          Recap this section →
+        <div className="onboarding-footer-meta">
+          {pctNumber(progress?.total_completion_pct).toFixed(0)}% complete · auto-saved
+        </div>
+        <Button variant="primary" onClick={goToNext} trailing={<IconArrow />}>
+          {!isLastSubPage
+            ? "Continue"
+            : isLastSection
+              ? "Finish onboarding"
+              : `Next: ${sections[idx + 1].section}`}
         </Button>
-      </Row>
-    </Stack>
+      </footer>
+    </div>
   );
 }
 
-function SectionRecap({
-  section,
+function PhaseDot({ label, active, pct }: { label: string; active: boolean; pct: number }) {
+  const done = pct >= 100;
+  return (
+    <div className={`phase-dot ${active ? "is-active" : ""} ${done ? "is-done" : ""}`}>
+      <span className="phase-dot-circle">
+        {done ? <IconCheck width={12} height={12} /> : label}
+      </span>
+      <span className="phase-dot-label">Phase {label}</span>
+      <span className="phase-dot-pct">{pct.toFixed(0)}%</span>
+    </div>
+  );
+}
+
+function FinalRecap({
+  registry,
   responses,
-  onEdit,
-  onContinue,
-  isLast,
-  nextSectionTitle,
   progress,
+  onBackToOnboarding,
+  onDone,
 }: {
-  section: SectionGroup;
+  registry: Registry;
   responses: Record<string, string>;
-  onEdit: () => void;
-  onContinue: () => void;
-  isLast: boolean;
-  nextSectionTitle?: string;
   progress: OnboardingProgress | null;
+  onBackToOnboarding: () => void;
+  onDone: () => void;
 }) {
-  const answered = section.questions.filter((q) => (responses[q.key] ?? "").trim() !== "");
-  const blank = section.questions.filter((q) => (responses[q.key] ?? "").trim() === "");
+  const groups = groupBySection(registry);
+  const totalAnswered = Object.values(responses).filter((v) => v.trim() !== "").length;
+  const totalQuestions = Object.keys(registry).length;
 
   return (
-    <Stack gap="md">
-      <PageHeader
-        eyebrow={`Recap · Phase ${section.phase}`}
-        title={`What we captured for "${section.section}"`}
-        description="Anything to add or correct? Edit and we'll keep it. Otherwise continue — your sales agent gets smarter with every section you finish."
-      />
+    <div className="onboarding-final">
+      <div className="onboarding-final-eyebrow">Hello Sales · your business IQ</div>
+      <h1 className="onboarding-final-title">
+        Here's what your sales agents now know.
+      </h1>
+      <p className="onboarding-final-sub">
+        {totalAnswered} of {totalQuestions} questions answered
+        {progress ? ` · ${pctNumber(progress.total_completion_pct).toFixed(0)}% complete` : ""}.
+        This is the foundation every rep, every call, and every agent will draw from.
+      </p>
 
-      <Surface padding="default" tone="default">
-        <Stack gap="sm">
-          {answered.length === 0 ? (
-            <Text className="text-body-muted">
-              No answers yet for this section. Tap "Add details" to start filling it in.
-            </Text>
-          ) : (
-            answered.map((q) => (
-              <div key={q.key}>
-                <div
-                  className="text-body-muted text-mono"
-                  style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em" }}
-                >
-                  {q.question}
-                </div>
-                <div className="text-body" style={{ marginTop: 2 }}>
-                  {responses[q.key]}
-                </div>
-              </div>
-            ))
-          )}
-          {blank.length > 0 ? (
-            <>
-              <Divider />
-              <Row gap="xs" baseline>
-                <Badge tone="warn">{blank.length} unanswered</Badge>
-                <Text variant="mono" className="text-body-muted">
-                  ({blank.map((q) => q.question).slice(0, 2).join(" · ")}{blank.length > 2 ? " · …" : ""})
-                </Text>
-              </Row>
-            </>
-          ) : null}
-        </Stack>
-      </Surface>
+      <div className="onboarding-final-body">
+        {groups.map((g) => {
+          const answered = g.questions.filter((q) => (responses[q.key] ?? "").trim() !== "");
+          if (answered.length === 0) return null;
+          return (
+            <section key={`${g.phase}-${g.section}`} className="onboarding-final-section">
+              <header className="onboarding-final-section-head">
+                <span className="onboarding-final-section-phase">Phase {g.phase}</span>
+                <h2 className="onboarding-final-section-title">{g.section}</h2>
+                <span className="onboarding-final-section-count">
+                  {answered.length}/{g.questions.length}
+                </span>
+              </header>
+              <dl className="onboarding-final-list">
+                {answered.map((q) => (
+                  <div key={q.key} className="onboarding-final-item">
+                    <dt>{q.question}</dt>
+                    <dd>{responses[q.key]}</dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
+          );
+        })}
+      </div>
 
-      <Row gap="sm" between className="row--wrap">
-        <Button variant="ghost" onClick={onEdit}>
-          ← Add details
+      <footer className="onboarding-footer">
+        <Button variant="ghost" onClick={onBackToOnboarding} leading={<IconArrowLeft />}>
+          Back to onboarding
         </Button>
-        <Button variant="primary" onClick={onContinue}>
-          {isLast
-            ? "Finish onboarding →"
-            : `Continue to "${nextSectionTitle ?? "next section"}" →`}
+        <Button variant="primary" onClick={onDone} trailing={<IconArrow />}>
+          Open your dashboard
         </Button>
-      </Row>
-
-      {progress ? (
-        <Text variant="mono" className="text-body-muted">
-          Overall: {pctNumber(progress.total_completion_pct).toFixed(1)}% complete
-        </Text>
-      ) : null}
-    </Stack>
-  );
-}
-
-function ProgressPill({ label, pct }: { label: string; pct: number }) {
-  return (
-    <Badge tone={pct >= 100 ? "success" : pct > 0 ? "info" : "outline"}>
-      {label} · {pct.toFixed(0)}%
-    </Badge>
+      </footer>
+    </div>
   );
 }
