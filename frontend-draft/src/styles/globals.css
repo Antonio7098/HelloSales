@@ -1953,54 +1953,40 @@ button { font: inherit; color: inherit; }
 .funnel-hero-inner .funnel-hero-sub       { margin: 0 auto 24px auto; }
 .funnel-hero-inner .funnel-cta            { margin: 0 auto; }
 .funnel-hero-inner .funnel-hero-meta-chip { margin: 14px auto 0 auto; }
-/* Hero headline — on dark bg. "Your company needs" sits 8px above the
-   rotating keyword; they read as one connected headline. */
+/* Hero headline — single small line under the giant logo: prefix + keyword
+   + period all inline. Whole line is supporting copy, not the focal point. */
 .hero-headline {
   text-align: center;
   font-family: var(--font-mono);
-}
-
-/* Prefix 3× bigger per spec (18 → 54). Now the dominant headline statement;
-   the rotating keyword sits 20% smaller below it as the rotating answer. */
-.hero-prefix {
-  font-size: 54px;
+  font-size: 16px;
   font-weight: 400;
-  color: #999;
-  letter-spacing: 0.02em;
-  line-height: 1.05;
-  margin-bottom: 8px;
+  line-height: 1.4;
+  letter-spacing: 0.01em;
 }
-@media (max-width: 1024px) {
-  .hero-prefix { font-size: 42px; }
+@media (min-width: 1280px) {
+  .hero-headline { font-size: 18px; }
 }
 @media (max-width: 640px) {
-  .hero-prefix { font-size: 28px; }
+  .hero-headline { font-size: 14px; }
 }
 
-.hero-keyword-line {
-  font-size: 29px;
-  font-weight: 700;
-  line-height: 1.15;
-  letter-spacing: -0.01em;
-  color: #ffffff;
-}
-@media (max-width: 1024px) {
-  .hero-keyword-line { font-size: 24px; }
-}
-@media (max-width: 640px) {
-  .hero-keyword-line { font-size: 20px; }
+.hero-prefix {
+  color: #999;        /* muted preamble */
 }
 
 .hero-keyword {
   display: inline-block;
-  /* underline removed per spec */
+  color: #ffffff;     /* bright — only the rotating word stands out */
+  font-weight: 600;
+  /* no underline per spec */
   transition: opacity 200ms ease-out, transform 200ms ease-out;
 }
 .hero-keyword[data-phase="in"]  { opacity: 1; transform: translateY(0); }
 .hero-keyword[data-phase="out"] { opacity: 0; transform: translateY(-8px); }
+
 .hero-keyword-period {
   display: inline-block;
-  margin-left: -2px;
+  margin-left: -1px;
   color: #ffffff;
 }
 

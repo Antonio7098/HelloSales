@@ -173,13 +173,11 @@ export function SignupPage() {
           />
 
           <div className="hero-headline stagger-child" style={{ transitionDelay: "150ms" }}>
-            <div className="hero-prefix">Your company needs</div>
-            <div className="hero-keyword-line">
-              <span className="hero-keyword" data-phase={keywordPhase}>
-                {HERO_KEYWORDS[keywordIndex]}
-              </span>
-              <span className="hero-keyword-period">.</span>
-            </div>
+            <span className="hero-prefix">Your company needs </span>
+            <span className="hero-keyword" data-phase={keywordPhase}>
+              {HERO_KEYWORDS[keywordIndex]}
+            </span>
+            <span className="hero-keyword-period">.</span>
           </div>
 
           <p className="funnel-hero-sub stagger-child" style={{ transitionDelay: "300ms" }}>
