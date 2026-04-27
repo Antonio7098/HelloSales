@@ -1748,20 +1748,21 @@ button { font: inherit; color: inherit; }
   padding: 64px 24px;
 }
 
-/* Section content — fades + lifts on focus, fades + drops on unfocus */
+/* Section content — fade IN only, never fade out. Once a section has been
+   revealed via IO, it stays revealed (one-shot). This eliminates the dead
+   white screens between sections during scroll. */
 .section-content {
   width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  transition: opacity 0.5s cubic-bezier(0.25, 0.1, 0.25, 1),
-              transform 0.5s cubic-bezier(0.25, 0.1, 0.25, 1);
+  transition: opacity 0.4s cubic-bezier(0.25, 0.1, 0.25, 1),
+              transform 0.4s cubic-bezier(0.25, 0.1, 0.25, 1);
   will-change: opacity, transform;
 }
 .section-content.unfocused {
   opacity: 0;
   transform: translateY(20px);
-  pointer-events: none;
 }
 .section-content.focused {
   opacity: 1;
@@ -1828,29 +1829,18 @@ button { font: inherit; color: inherit; }
   }
 }
 
-/* Persistent logo — top-CENTER, single brand mark across the page.
-   Switches to a white silhouette via brightness-invert when over the dark
-   gap section. Pointer-events none so it never blocks scroll/clicks. */
-.persistent-logo {
-  position: fixed;
-  top: 32px;
-  left: 50%;
-  transform: translateX(-50%);
-  max-height: 200px;
+/* Hero logo — appears ONCE in the hero, centered above the headline.
+   Switches to a white silhouette via brightness-invert because it sits on
+   the dark hero band. */
+.funnel-hero-logo {
+  display: block;
+  max-height: 58px;
   width: auto;
-  opacity: 0.95;
-  z-index: 100;
-  pointer-events: none;
-  transition: filter 0.3s ease, opacity 0.3s ease;
-}
-.persistent-logo.on-dark {
-  filter: brightness(0) invert(1);
-}
-@media (max-width: 1024px) {
-  .persistent-logo { max-height: 144px; top: 24px; }
+  margin: 0 auto;
+  filter: brightness(0) invert(1);   /* white silhouette on dark bg */
 }
 @media (max-width: 640px) {
-  .persistent-logo { max-height: 84px; top: 16px; }
+  .funnel-hero-logo { max-height: 48px; }
 }
 
 
@@ -1910,11 +1900,12 @@ button { font: inherit; color: inherit; }
 .funnel-cta--full { width: 100%; }
 .funnel-cta--tall { height: 46px; font-weight: 600; }
 
-/* ─── Section 1: hero (premium, editorial mono) ─── */
-/* min-height/flex/padding now come from .signup-section; we keep only the
-   hero-specific bg + bg-layer positioning context */
+/* ─── Section 1: hero (dark band, continuous with gap section) ─── */
+/* Hero + competitive gap share the same #111 background — one continuous
+   dark band at the top of the page. The transition to light happens once
+   between gap and book. */
 .funnel-hero {
-  background: #faf8f3;          /* warm cream — feels like aged paper, not cold white */
+  background: #111111;
   isolation: isolate;
   overflow: hidden;
 }
@@ -1945,58 +1936,52 @@ button { font: inherit; color: inherit; }
 }
 
 .funnel-hero-inner {
-  max-width: 880px;
+  max-width: 760px;
   width: 100%;
   text-align: center;
-  /* Reserve top space for the centered persistent logo so the headline
-     doesn't sit underneath it. Hero is 100vh + flex-centered, so we offset
-     vertically by adding bottom padding equal to the logo's footprint. */
-  padding-top: clamp(120px, 22vh, 240px);
-}
-@media (max-width: 1024px) {
-  .funnel-hero-inner { padding-top: clamp(100px, 18vh, 180px); }
-}
-@media (max-width: 640px) {
-  .funnel-hero-inner { padding-top: clamp(80px, 14vh, 120px); }
 }
 
 /* Tight cohesive group — intentional spacing between elements */
-.funnel-hero-inner .hero-headline       { margin: 0 0 28px 0; }
-.funnel-hero-inner .funnel-hero-sub     { margin: 0 auto 36px auto; }
+.funnel-hero-inner .funnel-hero-logo    { margin: 0 auto 36px auto; }
+.funnel-hero-inner .hero-headline       { margin: 0 0 24px 0; }
+.funnel-hero-inner .funnel-hero-sub     { margin: 0 auto 32px auto; }
 .funnel-hero-inner .funnel-cta          { margin: 0 auto; }
-.funnel-hero-inner .funnel-hero-meta-chip { margin: 18px auto 0 auto; }
-/* Hero headline — typographic hierarchy with rotating keyword as the
-   visual centerpiece. Small "Your company needs" prefix in muted weight,
-   then a large bold rotating keyword on its own line for maximum impact. */
+.funnel-hero-inner .funnel-hero-meta-chip { margin: 16px auto 0 auto; }
+/* Hero headline — on dark bg. "Your company needs" sits 8px above the
+   rotating keyword; they read as one connected headline. */
 .hero-headline {
   text-align: center;
   font-family: var(--font-mono);
-  color: #0a0a0a;
 }
 
 .hero-prefix {
-  font-size: 16px;
-  font-weight: 500;
-  color: #666;
+  font-size: 18px;
+  font-weight: 400;
+  color: #999;
   letter-spacing: 0.02em;
-  margin-bottom: 14px;
-  text-transform: lowercase;
+  margin-bottom: 8px;
 }
-@media (min-width: 1024px) {
-  .hero-prefix { font-size: 18px; }
+@media (max-width: 640px) {
+  .hero-prefix { font-size: 16px; }
 }
 
 .hero-keyword-line {
-  font-size: clamp(2.6rem, 6vw, 4.4rem);
+  font-size: 36px;
   font-weight: 700;
-  line-height: 1.05;
-  letter-spacing: -0.04em;
-  color: #0a0a0a;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+}
+@media (min-width: 1280px) {
+  .hero-keyword-line { font-size: 44px; }
+}
+@media (max-width: 640px) {
+  .hero-keyword-line { font-size: 28px; }
 }
 
 .hero-keyword {
   display: inline-block;
-  border-bottom: 2px solid #0a0a0a;
+  border-bottom: 1px solid #ffffff;
   padding-bottom: 2px;
   transition: opacity 200ms ease-out, transform 200ms ease-out;
 }
@@ -2004,41 +1989,37 @@ button { font: inherit; color: inherit; }
 .hero-keyword[data-phase="out"] { opacity: 0; transform: translateY(-8px); }
 .hero-keyword-period {
   display: inline-block;
-  margin-left: -2px;     /* tuck the period close to the keyword */
-}
-
-@media (max-width: 640px) {
-  .hero-prefix { font-size: 14px; margin-bottom: 10px; }
-  .hero-keyword-line { font-size: clamp(2rem, 9vw, 2.6rem); }
-  .hero-keyword { border-bottom-width: 1.5px; }
+  margin-left: -2px;
+  color: #ffffff;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .hero-keyword { transition: none !important; transform: none !important; opacity: 1 !important; }
 }
 
-/* Sub-copy — 14px (per spec), generous max-width for long sentences */
+/* Sub-copy — on dark bg, "Hello Sales" gets weight-600 emphasis */
 .funnel-hero-sub {
   font-family: var(--font-mono);
   font-size: 14px;
-  color: #666;
+  color: #888;
   line-height: 1.6;
   max-width: 460px;
   text-align: center;
+}
+.funnel-hero-sub strong {
+  font-weight: 600;
+  color: #aaa;   /* slightly brighter than the surrounding text */
 }
 @media (min-width: 1024px) {
   .funnel-hero-sub { font-size: 15px; max-width: 520px; }
 }
 
-/* Meta qualifier — 11px, #999, centered (per spec: simple line, not a chip) */
+/* Meta qualifier — 11px, #555 on dark hero bg, no dot, no decoration. */
 .funnel-hero-meta-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
   font-family: var(--font-mono);
   font-size: 11px;
   letter-spacing: 0.04em;
-  color: #999;
+  color: #555;
 }
 .funnel-hero-meta-dot {
   width: 6px;
@@ -2125,17 +2106,20 @@ button { font: inherit; color: inherit; }
   background: #fdf8f0;
   border: 1px solid #e8dcc8;
   box-shadow: 2px 3px 12px rgba(0, 0, 0, 0.06);
-  /* Margin sits at 16px from left edge → content starts at 28px (12px after the rule) */
-  padding: 40px 32px 40px 28px;
+  /* Red margin line at 24px from left → content starts at 36px (12px past).
+     Right padding 40px so the longest lines never bump the edge. */
+  padding: 40px 40px 40px 36px;
   margin: 0;
+  overflow: visible;
 }
 .funnel-book-margin {
   position: absolute;
   top: 0;
   bottom: 0;
-  left: 16px;
+  left: 24px;
   width: 1px;
   background: #c9a0a0;
+  pointer-events: none;
 }
 .funnel-book-lines {
   display: flex;
@@ -2148,10 +2132,11 @@ button { font: inherit; color: inherit; }
   color: #2a2a2a;
   border-bottom: 1px solid #d4c9b8;
   padding: 4px 0;
-  /* Allow natural wrapping — no truncation */
+  /* Allow natural wrapping — no truncation, no overflow hiding */
   word-wrap: break-word;
   overflow-wrap: break-word;
   white-space: normal;
+  overflow: visible;
 }
 .funnel-book-line strong {
   font-weight: 700;
@@ -2355,14 +2340,14 @@ button { font: inherit; color: inherit; }
     max-width: 100%;
   }
   .funnel-book {
-    padding: 32px 24px 32px 28px;
+    padding: 32px 28px 32px 32px;
   }
   .funnel-book-line {
     font-size: 11px;
     line-height: 1.8;
   }
   .funnel-book-margin {
-    left: 16px;
+    left: 20px;
   }
   .funnel-challenge-table {
     table-layout: auto;

@@ -86,19 +86,6 @@ export function SignupPage() {
   const challenge = useSectionFocus<HTMLElement>();
   const form = useSectionFocus<HTMLElement>();
 
-  // Persistent-logo dark-mode toggle: flips when the dark gap section is visible
-  const [overDark, setOverDark] = useState(false);
-  useEffect(() => {
-    if (!gap.ref.current) return;
-    const node = gap.ref.current;
-    const obs = new IntersectionObserver(
-      ([entry]) => setOverDark(entry.intersectionRatio > 0.3),
-      { threshold: [0.1, 0.3, 0.6] },
-    );
-    obs.observe(node);
-    return () => obs.disconnect();
-  }, [gap.ref]);
-
   // Rotating hero keyword — 3s interval, two-phase fade. Pauses when tab is hidden.
   const [keywordIndex, setKeywordIndex] = useState(0);
   const [keywordPhase, setKeywordPhase] = useState<"in" | "out">("in");
@@ -175,22 +162,17 @@ export function SignupPage() {
 
   return (
     <div className="signup-page">
-      {/* Persistent top-left logo. Switches to a white silhouette when scrolling
-          through the dark gap section so it stays visible. */}
-      <img
-        src="/hello-sales-logo.png"
-        alt="Hello Sales"
-        className={`persistent-logo ${overDark ? "on-dark" : ""}`}
-      />
-
-      {/* SECTION 1 — HERO */}
+      {/* SECTION 1 — HERO. Dark band, logo centered above headline. */}
       <section ref={hero.ref} className="signup-section funnel-hero">
-        <div className="funnel-hero-bg" aria-hidden="true" />
-        <div className="funnel-hero-grid" aria-hidden="true" />
-
         <div className={`section-content funnel-hero-inner ${hero.isVisible ? "focused" : "unfocused"}`}>
-          {/* Hero logo removed — the persistent top-left logo is the single brand mark. */}
-          <div className="hero-headline stagger-child" style={{ transitionDelay: "0ms" }}>
+          <img
+            src="/hello-sales-logo.png"
+            alt="Hello Sales"
+            className="funnel-hero-logo stagger-child"
+            style={{ transitionDelay: "0ms" }}
+          />
+
+          <div className="hero-headline stagger-child" style={{ transitionDelay: "150ms" }}>
             <div className="hero-prefix">Your company needs</div>
             <div className="hero-keyword-line">
               <span className="hero-keyword" data-phase={keywordPhase}>
@@ -200,23 +182,22 @@ export function SignupPage() {
             </div>
           </div>
 
-          <p className="funnel-hero-sub stagger-child" style={{ transitionDelay: "200ms" }}>
+          <p className="funnel-hero-sub stagger-child" style={{ transitionDelay: "300ms" }}>
             The bigger your team, the harder it is to keep every rep aligned, coached,
-            and closing with the same playbook. Hello Sales fixes that.
+            and closing with the same playbook. <strong>Hello Sales</strong> fixes that.
           </p>
 
           <button
             type="button"
             onClick={() => smoothScrollTo(gap.ref)}
-            className="funnel-cta funnel-cta--primary funnel-cta--240 stagger-child"
-            style={{ transitionDelay: "400ms" }}
+            className="funnel-cta funnel-cta--ghost-light funnel-cta--240 stagger-child"
+            style={{ transitionDelay: "450ms" }}
           >
-            Start now →
+            Get started →
           </button>
 
-          <div className="funnel-hero-meta-chip stagger-child" style={{ transitionDelay: "500ms" }}>
-            <span className="funnel-hero-meta-dot" aria-hidden="true" />
-            Built for sales teams where coordination is the bottleneck.
+          <div className="funnel-hero-meta-chip stagger-child" style={{ transitionDelay: "550ms" }}>
+            For efficient sales team coordination and performance.
           </div>
         </div>
       </section>
