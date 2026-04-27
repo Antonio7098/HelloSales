@@ -1717,11 +1717,143 @@ button { font: inherit; color: inherit; }
    table → form. IBM Plex Mono throughout. Owns the full viewport.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-.funnel {
+/* Scroll-snap page container — each .signup-section snaps to viewport */
+.signup-page {
   font-family: var(--font-mono);
   color: #0a0a0a;
   background: #fafafa;
+  position: relative;
+  scroll-snap-type: y mandatory;
+  overflow-y: scroll;
+  height: 100vh;
+  height: 100dvh;
   scroll-behavior: smooth;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.signup-page::-webkit-scrollbar { display: none; }
+
+@media (max-width: 768px) {
+  .signup-page { scroll-snap-type: y proximity; }
+}
+
+.signup-section {
+  scroll-snap-align: start;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  padding: 64px 24px;
+}
+
+/* Section content — fades + lifts on focus, fades + drops on unfocus */
+.section-content {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: opacity 0.5s cubic-bezier(0.25, 0.1, 0.25, 1),
+              transform 0.5s cubic-bezier(0.25, 0.1, 0.25, 1);
+  will-change: opacity, transform;
+}
+.section-content.unfocused {
+  opacity: 0;
+  transform: translateY(20px);
+  pointer-events: none;
+}
+.section-content.focused {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Stagger primitives — apply with inline transitionDelay style */
+.stagger-child,
+.stagger-row,
+.stagger-write,
+.stagger-tilt {
+  will-change: opacity, transform;
+}
+
+.stagger-child {
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 0.4s ease-out, transform 0.4s ease-out;
+}
+.section-content.focused .stagger-child {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.stagger-row {
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.35s ease-out, transform 0.35s ease-out;
+}
+.section-content.focused .stagger-row {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.stagger-write {
+  opacity: 0;
+  transform: translateX(-12px);
+  transition: opacity 0.35s ease-out, transform 0.35s ease-out;
+}
+.section-content.focused .stagger-write {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.stagger-tilt {
+  opacity: 0;
+  transform: rotate(-0.5deg) translateY(8px);
+  transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+}
+.section-content.focused .stagger-tilt {
+  opacity: 1;
+  transform: rotate(0) translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .section-content,
+  .stagger-child,
+  .stagger-row,
+  .stagger-write,
+  .stagger-tilt {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+}
+
+/* Persistent top-left logo — visible across all sections, switches to a
+   white silhouette via brightness-invert when over the dark gap section. */
+.persistent-logo {
+  position: fixed;
+  top: 20px;
+  left: 24px;
+  max-height: 28px;
+  width: auto;
+  opacity: 0.9;
+  z-index: 100;
+  pointer-events: none;
+  transition: filter 0.3s ease, opacity 0.3s ease;
+}
+.persistent-logo.on-dark {
+  filter: brightness(0) invert(1);
+}
+@media (max-width: 640px) {
+  .persistent-logo { top: 16px; left: 16px; max-height: 24px; }
+}
+
+
+.funnel {
+  /* legacy class — kept for any descendant selectors that still reference it */
+  font-family: var(--font-mono);
+  color: #0a0a0a;
+  background: #fafafa;
 }
 
 /* shared CTA buttons */
@@ -1774,15 +1906,10 @@ button { font: inherit; color: inherit; }
 .funnel-cta--tall { height: 46px; font-weight: 600; }
 
 /* ─── Section 1: hero (premium, editorial mono) ─── */
+/* min-height/flex/padding now come from .signup-section; we keep only the
+   hero-specific bg + bg-layer positioning context */
 .funnel-hero {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 96px 24px;
   background: #faf8f3;          /* warm cream — feels like aged paper, not cold white */
-  margin: 0;
-  position: relative;
   isolation: isolate;
   overflow: hidden;
 }
@@ -1816,109 +1943,86 @@ button { font: inherit; color: inherit; }
   max-width: 760px;
   width: 100%;
   text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
 }
+
+/* Hero spacing per spec — tight cohesive group, not scattered air */
+.funnel-hero-inner .funnel-brand-logo { margin: 0 auto 40px auto; }
+.funnel-hero-inner .funnel-hero-title { margin: 0 0 14px 0; }
+.funnel-hero-inner .funnel-hero-sub { margin: 0 auto 28px auto; }
+.funnel-hero-inner .funnel-cta { margin: 0 auto; }
+.funnel-hero-inner .funnel-hero-meta-chip { margin: 16px auto 0 auto; }
 
 .funnel-brand-logo {
   display: block;
-  max-height: 96px;
+  max-height: 48px;
   width: auto;
-  margin: 0 auto 56px auto;
 }
 @media (max-width: 640px) {
-  .funnel-brand-logo { max-height: 72px; margin-bottom: 40px; }
-  .funnel-hero { padding: 72px 20px; }
+  .funnel-brand-logo { max-height: 40px; }
+  .funnel-hero-inner .funnel-brand-logo { margin-bottom: 32px; }
 }
-/* Headline — large editorial mono. Italic clause for emphasis. */
+/* Headline — per spec: 28px bold, line-height 1.3 */
 .funnel-hero-title {
   font-family: var(--font-mono);
-  font-size: clamp(2.4rem, 6vw, 4.5rem);
+  font-size: 28px;
   font-weight: 700;
-  line-height: 1.05;
+  line-height: 1.3;
   color: #0a0a0a;
-  margin: 0 0 28px 0;
-  letter-spacing: -0.035em;
-  max-width: 18ch;
-}
-.funnel-hero-title em {
-  font-family: var(--font-book);
-  font-style: italic;
-  font-weight: 500;
-  color: #0a0a0a;
-  letter-spacing: -0.02em;
-  /* The italic serif clause sits inline with the mono — high-contrast typographic
-     moment that gives the hero an editorial, intentional feel. */
+  letter-spacing: -0.01em;
+  max-width: 100%;
 }
 @media (max-width: 640px) {
-  .funnel-hero-title { font-size: clamp(2rem, 8vw, 2.6rem); margin-bottom: 22px; }
+  .funnel-hero-title { font-size: 22px; }
 }
 
 .funnel-hero-sub {
   font-family: var(--font-mono);
-  font-size: clamp(0.95rem, 1.2vw, 1.05rem);
-  color: #555;
-  line-height: 1.6;
-  max-width: 520px;
-  margin: 0 0 44px 0;
-  letter-spacing: 0;
-}
-@media (max-width: 640px) {
-  .funnel-hero-sub { margin-bottom: 36px; }
+  font-size: 14px;
+  color: #666;
+  line-height: 1.55;
+  max-width: 420px;
+  text-align: center;
 }
 
-/* CTA cluster — primary button + secondary text link */
-.funnel-hero-ctas {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 24px;
-  flex-wrap: wrap;
-  margin-bottom: 40px;
+/* Rotating-keyword wrap — fixed-height + min-width container so layout
+   doesn't shift between keywords of different lengths. */
+.hero-keyword-wrap {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0;
+  min-height: 1.3em;
+}
+.hero-keyword {
+  display: inline-block;
+  border-bottom: 1px solid #0a0a0a;
+  transition: opacity 200ms ease-out, transform 200ms ease-out;
+  padding: 0 2px;
+}
+.hero-keyword[data-phase="in"] {
+  opacity: 1;
+  transform: translateY(0);
+}
+.hero-keyword[data-phase="out"] {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+.hero-keyword-period {
+  display: inline-block;
 }
 
-.funnel-cta-link {
-  font-family: var(--font-mono);
-  font-size: 13px;
-  font-weight: 500;
-  letter-spacing: 0.02em;
-  color: #555;
-  background: transparent;
-  border: 0;
-  padding: 8px 4px;
-  cursor: pointer;
-  position: relative;
-  transition: color 0.18s ease;
+@media (prefers-reduced-motion: reduce) {
+  .hero-keyword { transition: none !important; transform: none !important; opacity: 1 !important; }
 }
-.funnel-cta-link::after {
-  content: "";
-  position: absolute;
-  left: 4px; right: 4px;
-  bottom: 4px;
-  height: 1px;
-  background: #0a0a0a;
-  transform: scaleX(0);
-  transform-origin: left center;
-  transition: transform 0.22s cubic-bezier(0.25, 0.1, 0.25, 1);
-}
-.funnel-cta-link:hover { color: #0a0a0a; }
-.funnel-cta-link:hover::after { transform: scaleX(1); }
 
-/* Meta chip — small pill with a dot, refined social-proof signal */
+/* Meta qualifier — 11px, #999, centered (per spec: simple line, not a chip) */
 .funnel-hero-meta-chip {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   font-family: var(--font-mono);
   font-size: 11px;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: #666;
-  background: rgba(10, 10, 10, 0.03);
-  border: 1px solid rgba(10, 10, 10, 0.08);
-  padding: 8px 14px;
-  border-radius: 999px;
+  letter-spacing: 0.04em;
+  color: #999;
 }
 .funnel-hero-meta-dot {
   width: 6px;
@@ -1929,11 +2033,11 @@ button { font: inherit; color: inherit; }
 }
 
 /* ─── Section 2: competitive gap (dark band) ─── */
-/* 0px gap from hero — flows directly into dark band */
 .funnel-gap {
   background: #111111;
-  padding: 64px 20px;
-  margin: 0;
+}
+.funnel-gap .funnel-gap-inner {
+  text-align: center;
 }
 .funnel-gap-inner {
   max-width: 700px;
@@ -1989,14 +2093,14 @@ button { font: inherit; color: inherit; }
 }
 
 /* ─── Section 3: book page (manifesto) ─── */
-/* 56px gap from dark section, then 64px internal padding */
 .funnel-book-section {
   background: #fafafa;
-  padding: 64px 20px;
-  margin-top: 56px;
+}
+.funnel-book-stack {
   display: flex;
   flex-direction: column;
   align-items: center;
+  width: 100%;
 }
 .funnel-book {
   position: relative;
@@ -2046,12 +2150,10 @@ button { font: inherit; color: inherit; }
 }
 
 /* ─── Section 4: challenge / solution table ─── */
-/* 48px gap from book section, then 64px internal padding */
 .funnel-challenge {
   background: #fafafa;
-  padding: 64px 20px;
-  margin-top: 48px;
 }
+.funnel-challenge .funnel-challenge-inner { text-align: center; }
 .funnel-challenge-inner {
   max-width: 700px;
   margin: 0 auto;
@@ -2100,14 +2202,10 @@ button { font: inherit; color: inherit; }
 }
 
 /* ─── Section 5: signup form ─── */
-/* 56px gap from challenge section, then 64px internal padding (extra bottom for breathing room) */
 .funnel-form-section {
   background: #fafafa;
-  padding: 64px 20px 96px;
-  margin-top: 56px;
-  display: flex;
-  justify-content: center;
 }
+.funnel-form-section .funnel-form { text-align: center; }
 .funnel-form {
   width: 100%;
   max-width: 440px;
@@ -2122,8 +2220,8 @@ button { font: inherit; color: inherit; }
 }
 .funnel-form-sub {
   font-family: var(--font-mono);
-  font-size: 12px;
-  color: #999;
+  font-size: 13px;
+  color: #666;
   margin: 8px 0 36px 0;
 }
 .funnel-fields {

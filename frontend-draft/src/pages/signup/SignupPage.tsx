@@ -1,23 +1,40 @@
 /**
- * SignupPage — full conversion funnel: hook → problem → solution → proof → convert.
+ * SignupPage — full conversion funnel with full-section scroll-snap focus.
  * /Oliviercontribution.
  *
- * One page, 5 scroll sections. Every CTA smooth-scrolls to the next section.
- * IBM Plex Mono throughout. Owns the full viewport (no PublicLayout chrome).
+ * 5 sections, each owning a full viewport (100vh). Hard scroll-snap on
+ * desktop, proximity on mobile. Each section's content fades in when it
+ * enters the viewport (re-triggerable: scroll back up = fades back in).
+ * Internal element stagger via inline transition-delay.
  *
- * Animations: hero elements fade-up on page load with stagger delays (CSS
- * keyframes). All other sections use IntersectionObserver via useScrollReveal
- * to fade in on viewport entry. Respects prefers-reduced-motion.
+ * Hero rotates a keyword every 3s (paused when tab hidden). Persistent
+ * top-left logo across all sections, switches to a white silhouette over
+ * the dark competitive-gap section.
  *
- * Submit logic unchanged — best-effort backend write, localStorage signin
- * fallback, redirect by role (admin → /onboarding, rep → /dashboard).
+ * IBM Plex Mono throughout. Submit logic preserved (best-effort backend
+ * write, localStorage signin fallback, redirect by role).
  */
 
-import { useState, useRef, type FormEvent, type RefObject } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type RefObject,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import { useCurrentUser, type UserRole } from "@/shared/auth/useCurrentUser";
 import { getSalesbookApi, isSheetsMode } from "@/shared/api/salesbook";
-import { useScrollReveal } from "@/shared/hooks/useScrollReveal";
+import { useSectionFocus } from "@/shared/hooks/useSectionFocus";
+
+const HERO_KEYWORDS = [
+  "more sales IQ",
+  "a salesbook",
+  "pipeline intelligence",
+  "scalable sales knowledge",
+  "data-backed decisions",
+  "institutional memory",
+];
 
 const COMPETITIVE_GAP: Array<[string, string, string]> = [
   ["Training platforms", "Teach reps", "No execution"],
@@ -54,7 +71,7 @@ const CHALLENGE_ROWS: Array<[string, string, string]> = [
   ["No real-time coaching", "Reps left alone on live calls", "Live agent recommendations mid-conversation"],
 ];
 
-function scrollTo(ref: RefObject<HTMLElement | null>) {
+function smoothScrollTo(ref: RefObject<HTMLElement | null>) {
   ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
@@ -62,23 +79,45 @@ export function SignupPage() {
   const navigate = useNavigate();
   const { signIn } = useCurrentUser();
 
-  // Section refs — both for smooth-scroll targets AND for reveal animation triggers
-  const gapRef = useScrollReveal<HTMLElement>();
-  const bookRef = useScrollReveal<HTMLElement>();
-  const challengeRef = useScrollReveal<HTMLElement>();
-  const formRef = useScrollReveal<HTMLElement>();
+  // Section refs — IO-backed focus state for fade in/out
+  const hero = useSectionFocus<HTMLElement>({ initialVisible: true });
+  const gap = useSectionFocus<HTMLElement>();
+  const book = useSectionFocus<HTMLElement>();
+  const challenge = useSectionFocus<HTMLElement>();
+  const form = useSectionFocus<HTMLElement>();
 
-  // Smooth-scroll navigation needs plain refs alongside the reveal refs
-  const gapNavRef = useRef<HTMLElement>(null);
-  const bookNavRef = useRef<HTMLElement>(null);
-  const challengeNavRef = useRef<HTMLElement>(null);
-  const formNavRef = useRef<HTMLElement>(null);
+  // Persistent-logo dark-mode toggle: flips when the dark gap section is visible
+  const [overDark, setOverDark] = useState(false);
+  useEffect(() => {
+    if (!gap.ref.current) return;
+    const node = gap.ref.current;
+    const obs = new IntersectionObserver(
+      ([entry]) => setOverDark(entry.intersectionRatio > 0.3),
+      { threshold: [0.1, 0.3, 0.6] },
+    );
+    obs.observe(node);
+    return () => obs.disconnect();
+  }, [gap.ref]);
 
-  // Combine the two refs onto one element
-  const setGap = (el: HTMLElement | null) => { gapRef.current = el; gapNavRef.current = el; };
-  const setBook = (el: HTMLElement | null) => { bookRef.current = el; bookNavRef.current = el; };
-  const setChallenge = (el: HTMLElement | null) => { challengeRef.current = el; challengeNavRef.current = el; };
-  const setForm = (el: HTMLElement | null) => { formRef.current = el; formNavRef.current = el; };
+  // Rotating hero keyword — 3s interval, two-phase fade. Pauses when tab is hidden.
+  const [keywordIndex, setKeywordIndex] = useState(0);
+  const [keywordPhase, setKeywordPhase] = useState<"in" | "out">("in");
+  useEffect(() => {
+    const reduceMotion =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduceMotion) return; // no rotation for reduced-motion users
+
+    const id = setInterval(() => {
+      if (typeof document !== "undefined" && document.hidden) return;
+      setKeywordPhase("out");
+      window.setTimeout(() => {
+        setKeywordIndex((i) => (i + 1) % HERO_KEYWORDS.length);
+        setKeywordPhase("in");
+      }, 200);
+    }, 3000);
+    return () => clearInterval(id);
+  }, []);
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -135,77 +174,84 @@ export function SignupPage() {
   }
 
   return (
-    <div className="funnel">
-      {/* SECTION 1 — HERO. Hero elements use .funnel-hero-anim classes that animate on page load (CSS keyframes), no IO needed. */}
-      <section className="funnel-hero">
+    <div className="signup-page">
+      {/* Persistent top-left logo. Switches to a white silhouette when scrolling
+          through the dark gap section so it stays visible. */}
+      <img
+        src="/hello-sales-logo.png"
+        alt="Hello Sales"
+        className={`persistent-logo ${overDark ? "on-dark" : ""}`}
+      />
+
+      {/* SECTION 1 — HERO */}
+      <section ref={hero.ref} className="signup-section funnel-hero">
         <div className="funnel-hero-bg" aria-hidden="true" />
         <div className="funnel-hero-grid" aria-hidden="true" />
 
-        <div className="funnel-hero-inner">
+        <div className={`section-content funnel-hero-inner ${hero.isVisible ? "focused" : "unfocused"}`}>
           <img
             src="/hello-sales-logo.png"
             alt="Hello Sales"
-            className="funnel-brand-logo funnel-hero-anim funnel-hero-anim--logo"
+            className="funnel-brand-logo stagger-child"
+            style={{ transitionDelay: "0ms" }}
           />
 
-          <h1 className="funnel-hero-title funnel-hero-anim funnel-hero-anim--title">
-            Your company needs <em>more sales IQ.</em>
+          <h1 className="funnel-hero-title stagger-child" style={{ transitionDelay: "200ms" }}>
+            Your company needs<br />
+            <span className="hero-keyword-wrap">
+              <span className="hero-keyword" data-phase={keywordPhase}>
+                {HERO_KEYWORDS[keywordIndex]}
+              </span>
+              <span className="hero-keyword-period">.</span>
+            </span>
           </h1>
 
-          <p className="funnel-hero-sub funnel-hero-anim funnel-hero-anim--sub">
-            Stop losing deals to inconsistent reps, slow onboarding, and knowledge that
-            leaves when your best people do.
+          <p className="funnel-hero-sub stagger-child" style={{ transitionDelay: "400ms" }}>
+            The bigger your team, the harder it is to keep every rep aligned, coached,
+            and closing with the same playbook. Hello Sales fixes that.
           </p>
 
-          <div className="funnel-hero-ctas funnel-hero-anim funnel-hero-anim--cta">
-            <button
-              type="button"
-              onClick={() => scrollTo(gapNavRef)}
-              className="funnel-cta funnel-cta--primary funnel-cta--220"
-            >
-              Get started →
-            </button>
-            <button
-              type="button"
-              onClick={() => scrollTo(gapNavRef)}
-              className="funnel-cta-link"
-            >
-              See how it works ↓
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => smoothScrollTo(gap.ref)}
+            className="funnel-cta funnel-cta--primary funnel-cta--240 stagger-child"
+            style={{ transitionDelay: "600ms" }}
+          >
+            Get started →
+          </button>
 
-          <div className="funnel-hero-meta-chip funnel-hero-anim funnel-hero-anim--cta">
+          <div className="funnel-hero-meta-chip stagger-child" style={{ transitionDelay: "700ms" }}>
             <span className="funnel-hero-meta-dot" aria-hidden="true" />
-            Built for sales leaders managing 5–50 reps
+            Built for sales teams where coordination is the bottleneck.
           </div>
         </div>
       </section>
 
-      {/* SECTION 2 — COMPETITIVE GAP TABLE. Reveals via IO, rows stagger in. */}
-      <section ref={setGap} className="funnel-gap scroll-reveal">
-        <div className="funnel-gap-inner">
-          <h2 className="funnel-gap-title scroll-reveal-stagger" style={{ transitionDelay: "0ms" }}>
+      {/* SECTION 2 — COMPETITIVE GAP TABLE (dark) */}
+      <section ref={gap.ref} className="signup-section funnel-gap">
+        <div className={`section-content funnel-gap-inner ${gap.isVisible ? "focused" : "unfocused"}`}>
+          <h2 className="funnel-gap-title stagger-child" style={{ transitionDelay: "0ms" }}>
             Every sales team has tools.
           </h2>
-          <p className="funnel-gap-sub scroll-reveal-stagger" style={{ transitionDelay: "120ms" }}>
+          <p className="funnel-gap-sub stagger-child" style={{ transitionDelay: "100ms" }}>
             None of them do what you actually need.
           </p>
 
-          <div className="funnel-table-wrap">
+          <div className="funnel-table-wrap stagger-child" style={{ transitionDelay: "200ms" }}>
             <table className="funnel-gap-table">
               <thead>
                 <tr>
-                  <th className="scroll-reveal-stagger" style={{ transitionDelay: "240ms" }}>Category</th>
-                  <th className="scroll-reveal-stagger" style={{ transitionDelay: "240ms" }}>What they do</th>
-                  <th className="scroll-reveal-stagger" style={{ transitionDelay: "240ms" }}>What's missing</th>
+                  <th>Category</th>
+                  <th>What they do</th>
+                  <th>What's missing</th>
                 </tr>
               </thead>
               <tbody>
                 {COMPETITIVE_GAP.map(([cat, doe, miss], idx) => (
                   <tr
                     key={cat}
-                    className="scroll-reveal-stagger"
-                    style={{ transitionDelay: `${360 + idx * 200}ms` }}
+                    className="stagger-row"
+                    style={{ transitionDelay: `${100 + idx * 150}ms` }}
                   >
                     <td>{cat}</td>
                     <td>{doe}</td>
@@ -216,69 +262,68 @@ export function SignupPage() {
             </table>
           </div>
 
-          <p
-            className="funnel-gap-foot scroll-reveal-pop"
-            style={{ transitionDelay: `${360 + COMPETITIVE_GAP.length * 200 + 120}ms` }}
-          >
+          <p className="funnel-gap-foot stagger-child" style={{ transitionDelay: "900ms" }}>
             Hello Sales does all five.
           </p>
           <button
             type="button"
-            onClick={() => scrollTo(bookNavRef)}
-            className="funnel-cta funnel-cta--ghost-light scroll-reveal-stagger"
-            style={{ transitionDelay: `${360 + COMPETITIVE_GAP.length * 200 + 320}ms` }}
+            onClick={() => smoothScrollTo(book.ref)}
+            className="funnel-cta funnel-cta--ghost-light funnel-cta--240 stagger-child"
+            style={{ transitionDelay: "1000ms" }}
           >
-            See what you get →
+            Get started →
           </button>
         </div>
       </section>
 
-      {/* SECTION 3 — BOOK PAGE (manifesto on notebook ruled lines). */}
-      <section ref={setBook} className="funnel-book-section scroll-reveal">
-        <article className="funnel-book scroll-reveal-tilt" aria-label="Hello Sales manifesto">
-          <div className="funnel-book-margin" aria-hidden="true" />
-          <div className="funnel-book-lines">
-            {BOOK_LINES.map((rest, i) => (
-              <div
-                key={i}
-                className="funnel-book-line scroll-reveal-write"
-                style={{ transitionDelay: `${300 + i * 80}ms` }}
-              >
-                <strong>Hello Sales</strong>&nbsp;&nbsp;{rest}
-              </div>
-            ))}
-          </div>
-        </article>
-        <p
-          className="funnel-book-caption scroll-reveal-stagger"
-          style={{ transitionDelay: `${300 + BOOK_LINES.length * 80 + 200}ms` }}
-        >
-          This is what your team gets on day one.
-        </p>
+      {/* SECTION 3 — BOOK PAGE (notebook manifesto) */}
+      <section ref={book.ref} className="signup-section funnel-book-section">
+        <div className={`section-content funnel-book-stack ${book.isVisible ? "focused" : "unfocused"}`}>
+          <article className="funnel-book stagger-tilt" style={{ transitionDelay: "0ms" }} aria-label="Hello Sales manifesto">
+            <div className="funnel-book-margin" aria-hidden="true" />
+            <div className="funnel-book-lines">
+              {BOOK_LINES.map((rest, i) => (
+                <div
+                  key={i}
+                  className="funnel-book-line stagger-write"
+                  style={{ transitionDelay: `${200 + i * 60}ms` }}
+                >
+                  <strong>Hello Sales</strong>&nbsp;&nbsp;{rest}
+                </div>
+              ))}
+            </div>
+          </article>
+          <p
+            className="funnel-book-caption stagger-child"
+            style={{ transitionDelay: "1300ms" }}
+          >
+            This is what your team gets on day one.
+          </p>
+        </div>
       </section>
 
-      {/* SECTION 4 — CHALLENGE / SOLUTION TABLE. */}
-      <section ref={setChallenge} className="funnel-challenge scroll-reveal">
-        <div className="funnel-challenge-inner">
-          <h2 className="funnel-challenge-title scroll-reveal-stagger" style={{ transitionDelay: "0ms" }}>
+      {/* SECTION 4 — CHALLENGE / SOLUTION TABLE */}
+      <section ref={challenge.ref} className="signup-section funnel-challenge">
+        <div className={`section-content funnel-challenge-inner ${challenge.isVisible ? "focused" : "unfocused"}`}>
+          <h2 className="funnel-challenge-title stagger-child" style={{ transitionDelay: "0ms" }}>
             Real problems. Real answers.
           </h2>
 
-          <div className="funnel-table-wrap">
+          <div className="funnel-table-wrap stagger-child" style={{ transitionDelay: "100ms" }}>
             <table className="funnel-challenge-table">
               <thead>
                 <tr>
-                  <th className="th-dark scroll-reveal-stagger" style={{ transitionDelay: "200ms" }}>Challenge</th>
-                  <th className="th-dark scroll-reveal-stagger" style={{ transitionDelay: "200ms" }}>Impact on Business</th>
-                  <th className="th-green scroll-reveal-stagger" style={{ transitionDelay: "200ms" }}>Hello Sales</th>
+                  <th className="th-dark">Challenge</th>
+                  <th className="th-dark">Impact on Business</th>
+                  <th className="th-green">Hello Sales</th>
                 </tr>
               </thead>
               <tbody>
                 {CHALLENGE_ROWS.map(([ch, im, hs], idx) => (
                   <tr
                     key={ch}
-                    className={`${idx % 2 === 0 ? "row-even" : "row-odd"} scroll-reveal-stagger`}
-                    style={{ transitionDelay: `${320 + idx * 200}ms` }}
+                    className={`${idx % 2 === 0 ? "row-even" : "row-odd"} stagger-row`}
+                    style={{ transitionDelay: `${200 + idx * 150}ms` }}
                   >
                     <td>{ch}</td>
                     <td>{im}</td>
@@ -291,27 +336,27 @@ export function SignupPage() {
 
           <button
             type="button"
-            onClick={() => scrollTo(formNavRef)}
-            className="funnel-cta funnel-cta--primary funnel-cta--280 scroll-reveal-stagger"
-            style={{ transitionDelay: `${320 + CHALLENGE_ROWS.length * 200 + 200}ms` }}
+            onClick={() => smoothScrollTo(form.ref)}
+            className="funnel-cta funnel-cta--primary funnel-cta--240 stagger-child"
+            style={{ transitionDelay: "1150ms" }}
           >
-            Build your salesbook →
+            Get started →
           </button>
         </div>
       </section>
 
-      {/* SECTION 5 — SIGNUP FORM. */}
-      <section ref={setForm} className="funnel-form-section scroll-reveal">
-        <form onSubmit={handleSubmit} className="funnel-form">
-          <h2 className="funnel-form-title scroll-reveal-stagger" style={{ transitionDelay: "0ms" }}>
+      {/* SECTION 5 — SIGNUP FORM */}
+      <section ref={form.ref} className="signup-section funnel-form-section">
+        <form onSubmit={handleSubmit} className={`section-content funnel-form ${form.isVisible ? "focused" : "unfocused"}`}>
+          <h2 className="funnel-form-title stagger-child" style={{ transitionDelay: "0ms" }}>
             Let's build yours.
           </h2>
-          <p className="funnel-form-sub scroll-reveal-stagger" style={{ transitionDelay: "100ms" }}>
-            Takes 2 minutes. No credit card.
+          <p className="funnel-form-sub stagger-child" style={{ transitionDelay: "100ms" }}>
+            Fix your sales foundations now.
           </p>
 
           <div className="funnel-fields">
-            <label className="funnel-field scroll-reveal-stagger" style={{ transitionDelay: "300ms" }}>
+            <label className="funnel-field stagger-child" style={{ transitionDelay: "200ms" }}>
               <span className="funnel-label">Your name</span>
               <input
                 className="funnel-input"
@@ -323,7 +368,7 @@ export function SignupPage() {
               />
             </label>
 
-            <label className="funnel-field scroll-reveal-stagger" style={{ transitionDelay: "450ms" }}>
+            <label className="funnel-field stagger-child" style={{ transitionDelay: "320ms" }}>
               <span className="funnel-label">Email</span>
               <input
                 className="funnel-input"
@@ -335,7 +380,7 @@ export function SignupPage() {
               />
             </label>
 
-            <label className="funnel-field scroll-reveal-stagger" style={{ transitionDelay: "600ms" }}>
+            <label className="funnel-field stagger-child" style={{ transitionDelay: "440ms" }}>
               <span className="funnel-label">Company</span>
               <input
                 className="funnel-input"
@@ -347,7 +392,7 @@ export function SignupPage() {
               />
             </label>
 
-            <div className="funnel-field scroll-reveal-stagger" style={{ transitionDelay: "750ms" }}>
+            <div className="funnel-field stagger-child" style={{ transitionDelay: "600ms" }}>
               <span className="funnel-label">Your role</span>
               <div className="funnel-roles">
                 <RoleButton
@@ -371,13 +416,13 @@ export function SignupPage() {
           <button
             type="submit"
             disabled={submitting}
-            className="funnel-cta funnel-cta--primary funnel-cta--full funnel-cta--tall scroll-reveal-stagger"
-            style={{ transitionDelay: "950ms" }}
+            className="funnel-cta funnel-cta--primary funnel-cta--full funnel-cta--tall stagger-child"
+            style={{ transitionDelay: "750ms" }}
           >
-            {submitting ? "Signing in…" : "Get started →"}
+            {submitting ? "Signing in…" : "Start now →"}
           </button>
 
-          <p className="funnel-form-foot scroll-reveal-stagger" style={{ transitionDelay: "1100ms" }}>
+          <p className="funnel-form-foot stagger-child" style={{ transitionDelay: "850ms" }}>
             Your data stays yours. Always.
           </p>
         </form>
