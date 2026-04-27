@@ -29,8 +29,10 @@ export function AppRouter() {
       <Route element={<PublicLayout />}>
         <Route index element={<RootRedirect />} />
         <Route path="welcome" element={<LandingPage />} />
-        <Route path="signup" element={<SignupPage />} />
       </Route>
+
+      {/* Signup — owns its full viewport, mono minimal aesthetic */}
+      <Route path="signup" element={<SignupPage />} />
 
       {/* Onboarding — focus mode, minimal chrome, no app sidebar */}
       <Route element={<OnboardingLayout />}>

@@ -1703,5 +1703,181 @@ button { font: inherit; color: inherit; }
 .app-signout:hover { color: var(--danger); }
 
 
-/* Hide the old .signup-shell + .signup-card (now using .signup-split) */
-.signup-shell, .signup-card { display: none; }
+/* Old signup variants — superseded by .signup-mono */
+.signup-shell, .signup-card, .signup-split, .signup-pitch, .signup-form-area { display: none; }
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Signup — premium minimal mono. /Oliviercontribution.
+   Owns the full viewport (not wrapped in PublicLayout). Single centered
+   column, no card, no marketing column. IBM Plex Mono throughout. Black/
+   white only. Bottom-border inputs.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.signup-mono {
+  min-height: 100vh;
+  background: #fafafa;
+  color: #0a0a0a;
+  font-family: var(--font-mono);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.signup-mono-col {
+  width: 100%;
+  max-width: 440px;
+  display: flex;
+  flex-direction: column;
+}
+
+.signup-mono-brand {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 600;
+  color: #0a0a0a;
+  letter-spacing: -0.01em;
+}
+
+.signup-mono-caret {
+  display: inline-block;
+  margin-left: 1px;
+  color: #0a0a0a;
+  animation: signup-caret-blink 1.05s step-end infinite;
+}
+
+@keyframes signup-caret-blink {
+  0%, 50%   { opacity: 1; }
+  50.01%, 100% { opacity: 0; }
+}
+
+.signup-mono-tagline {
+  margin: 8px 0 32px;
+  font-family: var(--font-mono);
+  font-size: 15px;
+  line-height: 1.45;
+  color: #666;
+}
+
+.signup-mono-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.signup-mono-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.signup-mono-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #666;
+}
+
+.signup-mono-input {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: #0a0a0a;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid #ccc;
+  border-radius: 0;
+  padding: 0 0 8px;
+  height: 36px;
+  outline: 0;
+  transition: border-color 0.18s ease;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.signup-mono-input:focus,
+.signup-mono-input:focus-visible {
+  border-bottom-color: #0a0a0a;
+}
+
+.signup-mono-input::placeholder { color: #aaa; }
+.signup-mono-input:-webkit-autofill {
+  -webkit-text-fill-color: #0a0a0a;
+  -webkit-box-shadow: 0 0 0 100px #fafafa inset;
+  caret-color: #0a0a0a;
+}
+
+.signup-mono-roles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.signup-mono-role {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  font-family: var(--font-mono);
+  text-align: left;
+  background: #fafafa;
+  color: #0a0a0a;
+  border: 1px solid #ccc;
+  border-radius: 2px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+
+.signup-mono-role:hover {
+  border-color: #0a0a0a;
+}
+
+.signup-mono-role.is-selected {
+  background: #0a0a0a;
+  color: #fafafa;
+  border-color: #0a0a0a;
+}
+
+.signup-mono-role-title {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+
+.signup-mono-role-sub {
+  font-size: 11px;
+  color: inherit;
+  opacity: 0.7;
+}
+
+.signup-mono-error {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: #b91c1c;
+  margin-bottom: 12px;
+}
+
+.signup-mono-submit {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: #fafafa;
+  background: #0a0a0a;
+  border: 0;
+  border-radius: 2px;
+  height: 40px;
+  padding: 0 16px;
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+}
+
+.signup-mono-submit:hover { background: #222; }
+.signup-mono-submit:disabled {
+  background: #777;
+  cursor: not-allowed;
+}

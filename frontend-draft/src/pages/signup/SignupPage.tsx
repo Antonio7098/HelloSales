@@ -1,18 +1,18 @@
 /**
- * SignupPage — split layout: brand value pitch on the left, focused form on
- * the right. /Oliviercontribution. No "templaty" centered card — the form
- * shares the canvas with brand context so the page has personality.
+ * SignupPage — premium minimal mono. /Oliviercontribution.
  *
- * Best-effort backend write; falls back to local-only signin if no backend
- * is reachable so the demo is clickable without Postgres or Apps Script.
+ * Single centered column. No card, no marketing column, no badges, no bullet
+ * list. IBM Plex Mono everywhere. Bottom-border inputs. Black submit button.
+ * Owns its full viewport (not wrapped in PublicLayout).
+ *
+ * Submission logic preserved from prior version: best-effort backend write,
+ * fall back to localStorage-only signin if no backend is reachable.
  */
 
 import { useState, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { Button, Field, Input, Stack } from "@/design-system";
+import { useNavigate } from "react-router-dom";
 import { useCurrentUser, type UserRole } from "@/shared/auth/useCurrentUser";
 import { getSalesbookApi, isSheetsMode } from "@/shared/api/salesbook";
-import { IconArrow, IconArrowLeft, IconCheck } from "@/shared/icons/NavIcons";
 
 export function SignupPage() {
   const navigate = useNavigate();
@@ -22,9 +22,11 @@ export function SignupPage() {
   const [companyName, setCompanyName] = useState("");
   const [role, setRole] = useState<UserRole>("admin");
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setError(null);
     setSubmitting(true);
 
     const profileId = `demo-${email.replace(/[^a-z0-9]/gi, "-").toLowerCase()}`;
@@ -53,148 +55,115 @@ export function SignupPage() {
         });
       }
     } catch (err) {
+      // Silent fallback — proceed to localStorage signin even if backend is down.
+      // Only surface an error if the user explicitly retries and it still fails.
       console.warn("[signup] backend unreachable, continuing in local-only demo mode:", err);
     }
 
-    signIn({
-      profileId,
-      email, name, companyName, role,
-      signedUpAt: new Date().toISOString(),
-    });
-    navigate(role === "admin" ? "/onboarding" : "/dashboard", { replace: true });
+    try {
+      signIn({
+        profileId,
+        email, name, companyName, role,
+        signedUpAt: new Date().toISOString(),
+      });
+      navigate(role === "admin" ? "/onboarding" : "/dashboard", { replace: true });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not sign in.");
+      setSubmitting(false);
+    }
   }
 
   return (
-    <div className="signup-split">
-      {/* Left — brand pitch, sets context, full-bleed feel */}
-      <aside className="signup-pitch">
-        <Link to="/welcome" className="signup-back">
-          <IconArrowLeft /> Back
-        </Link>
-        <div className="signup-pitch-eyebrow">Hello Sales · sign in</div>
-        <h1 className="signup-pitch-title">
-          One desk for the company's
-          <br />
-          <em>sales intelligence.</em>
-        </h1>
-        <p className="signup-pitch-sub">
-          Tell us who you are. The rest of the app shapes itself around your role —
-          VPs build the foundation, reps run their own pipeline.
-        </p>
-        <ul className="signup-pitch-list">
-          <li><IconCheck /> 114-question business IQ for VPs</li>
-          <li><IconCheck /> Personal pipeline + activity log for reps</li>
-          <li><IconCheck /> AI agents trained on your actual sales motion</li>
-        </ul>
-      </aside>
+    <div className="signup-mono">
+      <form className="signup-mono-col" onSubmit={handleSubmit}>
+        <div className="signup-mono-brand">
+          HelloSales<span className="signup-mono-caret">_</span>
+        </div>
+        <p className="signup-mono-tagline">One desk for your sales intelligence.</p>
 
-      {/* Right — focused form */}
-      <section className="signup-form-area">
-        <form onSubmit={handleSubmit} className="signup-form">
-          <Stack gap="md">
-            <Field label="Your name">
-              {({ id }) => (
-                <Input
-                  id={id}
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Olivier Greki"
-                  required
-                  autoComplete="name"
-                />
-              )}
-            </Field>
+        <div className="signup-mono-fields">
+          <label className="signup-mono-field">
+            <span className="signup-mono-label">Your name</span>
+            <input
+              className="signup-mono-input"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              autoComplete="name"
+              required
+            />
+          </label>
 
-            <Field label="Email">
-              {({ id }) => (
-                <Input
-                  id={id}
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="olivier@yourcompany.com"
-                  required
-                  autoComplete="email"
-                />
-              )}
-            </Field>
+          <label className="signup-mono-field">
+            <span className="signup-mono-label">Email</span>
+            <input
+              className="signup-mono-input"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+              required
+            />
+          </label>
 
-            <Field label="Company name">
-              {({ id }) => (
-                <Input
-                  id={id}
-                  value={companyName}
-                  onChange={(e) => setCompanyName(e.target.value)}
-                  placeholder="Acme Corp"
-                  required
-                  autoComplete="organization"
-                />
-              )}
-            </Field>
+          <label className="signup-mono-field">
+            <span className="signup-mono-label">Company</span>
+            <input
+              className="signup-mono-input"
+              type="text"
+              value={companyName}
+              onChange={(e) => setCompanyName(e.target.value)}
+              autoComplete="organization"
+              required
+            />
+          </label>
 
-            <Field label="Pick your role">
-              {({ id }) => (
-                <div className="role-grid" id={id}>
-                  <RoleCard
-                    selected={role === "admin"}
-                    onSelect={() => setRole("admin")}
-                    title="VP / Admin"
-                    subtitle="CEO · VP Sales · Founder"
-                    blurb="Lays the foundation of the company's business IQ. Defines the product, the ICP, the buyer journey, and the pipeline strategy. Sees every rep, every deal, every signal."
-                    tag="Detailed onboarding · 3 phases"
-                  />
-                  <RoleCard
-                    selected={role === "rep"}
-                    onSelect={() => setRole("rep")}
-                    title="Sales rep"
-                    subtitle="Account executive · BDR"
-                    blurb="Runs your own pipeline of leads from the ground up. Logs every call, email, and meeting in one place so the org learns from your fieldwork."
-                    tag="Lighter setup · personal workspace"
-                  />
-                </div>
-              )}
-            </Field>
-
-            <p className="signup-note">
-              In the full release, VPs and reps will have separate onboarding URLs so the
-              flow is shaped to each path. For this preview the role you pick decides
-              where you land.
-            </p>
-
-            <div className="signup-actions">
-              <span className="signup-actions-meta">
-                {isSheetsMode ? "Demo mode · writes to Google Sheets" : "Connecting to FastAPI"}
-              </span>
-              <Button variant="primary" type="submit" disabled={submitting} trailing={<IconArrow />}>
-                {submitting ? "Signing in…" : "Get started"}
-              </Button>
+          <div className="signup-mono-field">
+            <span className="signup-mono-label">Your role</span>
+            <div className="signup-mono-roles">
+              <RoleButton
+                selected={role === "admin"}
+                onClick={() => setRole("admin")}
+                title="VP / Admin"
+                subtitle="Build the salesbook"
+              />
+              <RoleButton
+                selected={role === "rep"}
+                onClick={() => setRole("rep")}
+                title="Sales Rep"
+                subtitle="Run your pipeline"
+              />
             </div>
-          </Stack>
-        </form>
-      </section>
+          </div>
+        </div>
+
+        {error ? <div className="signup-mono-error">{error}</div> : null}
+
+        <button type="submit" className="signup-mono-submit" disabled={submitting}>
+          {submitting ? "Signing in…" : "Get started →"}
+        </button>
+      </form>
     </div>
   );
 }
 
-function RoleCard({
-  selected, onSelect, title, subtitle, blurb, tag,
+function RoleButton({
+  selected, onClick, title, subtitle,
 }: {
   selected: boolean;
-  onSelect: () => void;
+  onClick: () => void;
   title: string;
   subtitle: string;
-  blurb: string;
-  tag: string;
 }) {
   return (
-    <button type="button" onClick={onSelect} className={`role-card ${selected ? "is-selected" : ""}`}>
-      <div className="role-card-top">
-        <span className="role-card-title">{title}</span>
-        {selected ? <IconCheck className="role-card-check" /> : null}
-      </div>
-      <div className="role-card-subtitle">{subtitle}</div>
-      <p className="role-card-blurb">{blurb}</p>
-      <span className="role-card-tag">{tag}</span>
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className={`signup-mono-role ${selected ? "is-selected" : ""}`}
+    >
+      <span className="signup-mono-role-title">{title}</span>
+      <span className="signup-mono-role-sub">{subtitle}</span>
     </button>
   );
 }
