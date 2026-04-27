@@ -1748,25 +1748,28 @@ button { font: inherit; color: inherit; }
   padding: 64px 24px;
 }
 
-/* Section content — fade IN only, never fade out. Once a section has been
-   revealed via IO, it stays revealed (one-shot). This eliminates the dead
-   white screens between sections during scroll. */
+/* Section content — re-triggerable fade. Animations play on every entry
+   (scroll down AND scroll back up). Asymmetric timing: fast fade-out on
+   leave (140ms) so the dead-window between sections is minimal, slower
+   fade-in on enter (400ms) so the reveal feels intentional. */
 .section-content {
   width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  transition: opacity 0.4s cubic-bezier(0.25, 0.1, 0.25, 1),
-              transform 0.4s cubic-bezier(0.25, 0.1, 0.25, 1);
   will-change: opacity, transform;
 }
 .section-content.unfocused {
   opacity: 0;
   transform: translateY(20px);
+  transition: opacity 0.14s ease-in,
+              transform 0.14s ease-in;
 }
 .section-content.focused {
   opacity: 1;
   transform: translateY(0);
+  transition: opacity 0.4s cubic-bezier(0.25, 0.1, 0.25, 1),
+              transform 0.4s cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 
 /* Stagger primitives — apply with inline transitionDelay style */
@@ -1829,18 +1832,21 @@ button { font: inherit; color: inherit; }
   }
 }
 
-/* Hero logo — appears ONCE in the hero, centered above the headline.
-   Switches to a white silhouette via brightness-invert because it sits on
-   the dark hero band. */
+/* Hero logo — 8× bigger per spec (was 58px → 464px). Clamped against vh
+   so it never blows past the viewport on shorter screens. White silhouette
+   via brightness-invert because it sits on the dark hero band. */
 .funnel-hero-logo {
   display: block;
-  max-height: 58px;
+  max-height: clamp(280px, 36vh, 464px);
   width: auto;
   margin: 0 auto;
-  filter: brightness(0) invert(1);   /* white silhouette on dark bg */
+  filter: brightness(0) invert(1);
+}
+@media (max-width: 1024px) {
+  .funnel-hero-logo { max-height: clamp(220px, 30vh, 360px); }
 }
 @media (max-width: 640px) {
-  .funnel-hero-logo { max-height: 48px; }
+  .funnel-hero-logo { max-height: clamp(160px, 26vh, 240px); }
 }
 
 
@@ -1941,12 +1947,12 @@ button { font: inherit; color: inherit; }
   text-align: center;
 }
 
-/* Tight cohesive group — intentional spacing between elements */
-.funnel-hero-inner .funnel-hero-logo    { margin: 0 auto 36px auto; }
-.funnel-hero-inner .hero-headline       { margin: 0 0 24px 0; }
-.funnel-hero-inner .funnel-hero-sub     { margin: 0 auto 32px auto; }
-.funnel-hero-inner .funnel-cta          { margin: 0 auto; }
-.funnel-hero-inner .funnel-hero-meta-chip { margin: 16px auto 0 auto; }
+/* Spacing tuned for the 8x logo — tighter to keep everything inside 100vh */
+.funnel-hero-inner .funnel-hero-logo      { margin: 0 auto 24px auto; }
+.funnel-hero-inner .hero-headline         { margin: 0 0 20px 0; }
+.funnel-hero-inner .funnel-hero-sub       { margin: 0 auto 24px auto; }
+.funnel-hero-inner .funnel-cta            { margin: 0 auto; }
+.funnel-hero-inner .funnel-hero-meta-chip { margin: 14px auto 0 auto; }
 /* Hero headline — on dark bg. "Your company needs" sits 8px above the
    rotating keyword; they read as one connected headline. */
 .hero-headline {
@@ -1954,35 +1960,40 @@ button { font: inherit; color: inherit; }
   font-family: var(--font-mono);
 }
 
+/* Prefix 3× bigger per spec (18 → 54). Now the dominant headline statement;
+   the rotating keyword sits 20% smaller below it as the rotating answer. */
 .hero-prefix {
-  font-size: 18px;
+  font-size: 54px;
   font-weight: 400;
   color: #999;
   letter-spacing: 0.02em;
+  line-height: 1.05;
   margin-bottom: 8px;
 }
+@media (max-width: 1024px) {
+  .hero-prefix { font-size: 42px; }
+}
 @media (max-width: 640px) {
-  .hero-prefix { font-size: 16px; }
+  .hero-prefix { font-size: 28px; }
 }
 
 .hero-keyword-line {
-  font-size: 36px;
+  font-size: 29px;
   font-weight: 700;
-  line-height: 1.1;
-  letter-spacing: -0.02em;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
   color: #ffffff;
 }
-@media (min-width: 1280px) {
-  .hero-keyword-line { font-size: 44px; }
+@media (max-width: 1024px) {
+  .hero-keyword-line { font-size: 24px; }
 }
 @media (max-width: 640px) {
-  .hero-keyword-line { font-size: 28px; }
+  .hero-keyword-line { font-size: 20px; }
 }
 
 .hero-keyword {
   display: inline-block;
-  border-bottom: 1px solid #ffffff;
-  padding-bottom: 2px;
+  /* underline removed per spec */
   transition: opacity 200ms ease-out, transform 200ms ease-out;
 }
 .hero-keyword[data-phase="in"]  { opacity: 1; transform: translateY(0); }

@@ -44,14 +44,11 @@ export function useSectionFocus<T extends HTMLElement>(options: Options = {}) {
 
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-          // One-shot: once a section has been revealed, it stays revealed
-          // forever. This prevents the "dead white screen" effect where a
-          // section fades out as it leaves the viewport mid-scroll, then the
-          // next one hasn't faded in yet.
-          observer.disconnect();
-        }
+        // Re-triggerable: isVisible flips every time the threshold is crossed
+        // so the entry animation replays when the user scrolls back to a
+        // section. Fade-out on leave is fast (CSS) so the dead-window between
+        // sections stays minimal.
+        setIsVisible(entry.isIntersecting);
       },
       { threshold: options.threshold ?? 0.3 },
     );
