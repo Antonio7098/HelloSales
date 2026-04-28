@@ -34,6 +34,7 @@ const HERO_KEYWORDS = [
   "scalable sales knowledge",
   "data-backed decisions",
   "institutional memory",
+  "Hello Sales",
 ];
 
 const COMPETITIVE_GAP: Array<[string, string, string]> = [
