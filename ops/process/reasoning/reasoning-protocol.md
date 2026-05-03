@@ -4,7 +4,7 @@ This protocol defines how to create the Sprint Reasoning document.
 
 ## Purpose
 
-The reasoning agent reads the governing contracts and relevant existing code, then produces a reasoning document that maps sprint scope to contract requirements and justifies the decisions needed to satisfy them.
+The reasoning agent reads the governing contracts, the sprint research document, and relevant existing code, then produces a reasoning document that maps sprint scope to contract requirements and justifies the decisions needed to satisfy them.
 
 The Sprint Reasoning is not a restatement of sprint scope and not merely an implementation blueprint.
 It is a structured reasoning artifact whose job is to force deep analysis before coding:
@@ -17,8 +17,8 @@ It is a structured reasoning artifact whose job is to force deep analysis before
 ## Inputs
 
 1. **Governing contracts** - The contract documents currently in force for the work being reviewed
-2. **Relevant existing code** - Code and tests relevant to the sprint scope
-3. **Current external guidance** - Latest relevant tools, technologies, options, best practices, and official guidance, researched when not already known from recent verified context
+2. **Sprint research** - `ops/sprints/sprint-[XX]-[name]/research.md`, containing codebase evidence and current external guidance gathered before reasoning
+3. **Relevant existing code** - Code and tests relevant to the sprint scope, used to verify and deepen the research where needed
 4. **Known dependencies or unfinished work** - Existing constraints that affect delivery
 
 ## Output
@@ -28,6 +28,8 @@ It is a structured reasoning artifact whose job is to force deep analysis before
 ## Procedure
 
 ### Step 1: Read Governing Contracts
+
+> **IMPORTANT**: You must read EVERY contract document that applies to this work. Do not skip or assume any contract is irrelevant without reading it first.
 
 Read the governing contract documents and extract the requirements that apply to the sprint.
 
@@ -45,7 +47,9 @@ For each applicable requirement, determine:
 
 ### Step 2: Read Relevant Existing Code
 
-Examine existing code and tests to understand:
+Read the codebase evidence in the sprint research document, then examine relevant code and tests as needed to verify or deepen that evidence.
+
+Understand:
 - how similar features are structured
 - existing patterns and seams already in use
 - where authoritative logic lives today
@@ -53,24 +57,19 @@ Examine existing code and tests to understand:
 
 The reasoning must stay grounded in the actual codebase rather than idealised structure.
 
-### Step 3: Research Current Tools, Options, And Guidance
+### Step 3: Read Sprint Research And Identify Decision Inputs
 
-If you have not already done so from recent verified context, research the latest relevant tools, technologies, implementation options, best practices, and official guidance that could affect the sprint.
+Read `research.md` before making design decisions.
 
-The research should establish:
-- which current tools or technologies are relevant to the sprint scope
-- whether any version-specific behavior, deprecation, security guidance, or recommended practice affects the design
-- what credible implementation options exist outside the current codebase
-- where current best practice conflicts with existing local patterns or governing contracts
-- which sources are authoritative enough to influence a delivery decision
+Extract:
+- codebase findings that constrain the sprint
+- current external guidance that affects tools, implementation options, security, reliability, or compatibility
+- key repositories, examples, or code snippets that may guide implementation
+- researched options that were rejected and why
+- risks and open questions that reasoning must resolve
 
-Record how the research affects reasoning:
-- **Relevant findings** - current guidance or options that shape the sprint
-- **Rejected findings** - researched options that are not applicable and why
-- **Source basis** - official docs, release notes, standards, or other authoritative sources used
-- **Impact on decisions** - which design choices, risks, or evidence expectations changed because of the research
-
-If no external research is needed, state why the existing verified context is sufficient.
+Reasoning must explicitly use the research where relevant.
+If the research is incomplete, stale, or missing evidence needed for a confident decision, update or request an update to `research.md` before finalizing the affected reasoning.
 
 ### Step 4: Analyse Each Feature Against The Requirements
 
@@ -78,6 +77,7 @@ For each in-scope feature, analyse:
 - which requirements apply
 - which parts of the current system are affected
 - what invariants or constraints must remain true
+- which research findings affect the design
 - what implementation options are plausible
 - why one option is preferable to the alternatives
 - what risks, trade-offs, and second-order effects follow from that choice
@@ -123,16 +123,17 @@ Write the document using the template, ensuring:
 5. **Complete coverage** - every in-scope feature is analysed
 6. **Explicit evidence expectations** - define what execution and review must later verify
 7. **Trade-offs documented** - any deviations or compromises are explicit
-8. **Current guidance reflected** - latest relevant research is either documented or explicitly deemed unnecessary
+8. **Research reflected** - findings from `research.md` are tied to decisions, alternatives, risks, and evidence expectations
 
 ### Step 8: Verify Exit Criteria
 
 Before completing, verify:
+- [ ] Every governing contract document was read in full
+- [ ] Sprint research was read and used
 - [ ] Sprint scope is covered
 - [ ] Applicable requirements are mapped
 - [ ] Non-applicable and ambiguous requirements are recorded when relevant
-- [ ] Latest relevant tools, technologies, options, best practices, and guidance were researched or explicitly deemed unnecessary
-- [ ] Research findings are tied to decisions, risks, alternatives, or evidence expectations where relevant
+- [ ] Codebase and external research findings are tied to decisions, risks, alternatives, or evidence expectations where relevant
 - [ ] Important decisions are justified against the requirements
 - [ ] Alternatives are discussed where the choice is non-trivial
 - [ ] Deviations, assumptions, risks, and unknowns are documented
@@ -143,7 +144,7 @@ Before completing, verify:
 1. **Be thorough** - the document is a reasoning artifact, not a shallow checklist
 2. **Be requirement-driven** - map sprint scope to specific governing requirements
 3. **Stay grounded** - reference actual code patterns and seams
-4. **Stay current** - research latest relevant tools, technologies, options, best practices, and guidance when not already verified
+4. **Reason from research** - use `research.md` as the source of current codebase and external evidence
 5. **Justify decisions explicitly** - do not jump from requirement to conclusion without explanation
 6. **Record deviations explicitly** - do not bury them in prose
 7. **Design for reviewability** - define evidence that later review can verify
