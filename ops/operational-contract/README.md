@@ -2,6 +2,11 @@
 
 This directory contains the normative operational contracts for HelloSales.
 
+## Prerequisites
+
+- Review requires understanding of the project scope
+- Contracts define must/must-not rules - review the full contract before implementing
+
 ## Purpose
 
 Contracts define the must / must not rules that govern implementation and review.
@@ -14,21 +19,28 @@ They are structured with:
 
 ## Contract Files
 
-- `architecture.md` - Core architecture rules and layering principles
-- `frontend.md` - Frontend structure, ownership boundaries, state placement, API access, and extension rules
-- `errors.md` - Error handling, logging, and failure visibility requirements
-- `observability.md` - Logging, correlation, health, and diagnostics requirements
-- `testing.md` - Test seams, coverage, and determinism requirements
-- `workflows.md` - Workflow eligibility, boundaries, and retry/cancellation semantics
-- `llm.md` - Agent and worker runtime boundaries, prompt versioning and propagation rules, tool and structured-output rules, lifecycle semantics, and operational exposure
-- `pre-brief-scope.md` - What is safe to build before the product brief exists
+| File | Purpose |
+|---|---|
+| [architecture.md](architecture.md) | Core architecture rules and layering principles |
+| [frontend.md](frontend.md) | Frontend structure, ownership boundaries, state placement |
+| [errors.md](errors.md) | Error handling, logging, failure visibility |
+| [observability.md](observability.md) | Logging, correlation, health, diagnostics |
+| [testing.md](testing.md) | Test seams, coverage, determinism |
+| [workflows.md](workflows.md) | Workflow boundaries, retry/cancellation |
+| [llm.md](llm.md) | Agent/worker runtime, prompt versioning |
+| [pre-brief-scope.md](pre-brief-scope.md) | What is safe before product brief |
 
 ## How To Use Contracts
 
 Contracts are used in:
-- reasoning documents to map requirements to design decisions
-- review to verify conformance against mapped requirements
-- execution to preserve constraints and collect evidence
+- **reasoning** - map requirements to design decisions
+- **review** - verify conformance against requirements
+- **execution** - preserve constraints and collect evidence
 
-Contracts are contract-agnostic in the process docs, meaning the process does not hard-code specific contracts.
-Instead, reasoning maps to whichever contracts apply to the sprint scope.
+Contracts are contract-agnostic in the process docs - reasoning maps to whichever contracts apply to the sprint scope.
+
+## Related Docs
+
+- [ops/process/README.md](../process/README.md) - Operational process
+- [ops/process/reasoning/README.md](../process/reasoning/README.md) - Reasoning phase
+- [ops/process/review/README.md](../process/review/README.md) - Review phase
