@@ -31,15 +31,6 @@ Auth endpoints:
 Purpose:
 - liveness and readiness-style operational checks
 
-### `/dashboard-data`
-Purpose:
-- expose governed MVP dashboard questions and example answers for frontend/bootstrap use
-- keep the seed dataset behind a stable backend module boundary
-
-Backed by:
-- `modules/dashboard_data/use_cases/dashboard_data_service.py`
-- `modules/dashboard_data/infra/`
-
 ### `/sessions`
 Purpose:
 - create a durable session

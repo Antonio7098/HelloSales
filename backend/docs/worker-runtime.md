@@ -91,9 +91,10 @@ Location:
 - `application/workers/registry.py`
 
 The current application worker registry includes:
-- `structured-brief`
+- `structured-brief` - generic structured output worker for testing the runtime boundary
+- `sales-campaign-blueprint` - generates comprehensive sales campaign plans
 
-This sample worker stays intentionally generic. It exists to exercise the runtime boundary, not to commit the backend to a product-specific workflow.
+These workers exercise the runtime boundary while demonstrating product-agnostic task execution.
 
 ## Lifecycle Model
 

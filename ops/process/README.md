@@ -2,36 +2,68 @@
 
 This directory contains the protocols and templates for the operational process.
 
+## Prerequisites
+
+- Understanding of the sprint scope
+- Access to relevant contracts in `ops/operational-contract/`
+
 ## Purpose
 
 The operational process defines how sprints are planned, executed, and reviewed in HelloSales.
 
 ## Process Phases
 
-### Reasoning
-Location: `ops/process/reasoning/`
+### 1. Reasoning
+Location: `reasoning/`
 
-The reasoning phase produces a document that maps sprint scope to governing contract requirements, justifies decisions, and defines evidence expectations.
+The reasoning phase produces a document that:
+- maps sprint scope to governing contract requirements
+- justifies design decisions
+- defines evidence expectations
 
-### Execution
-Location: `ops/process/execute/`
+**Files:**
+- [reasoning-protocol.md](reasoning/reasoning-protocol.md)
+- [reasoning-template.md](reasoning/reasoning-template.md)
 
-The execution phase implements the work while adhering to the reasoning document and mapped requirements.
+### 2. Execution
+Location: `execute/`
 
-### Review
-Location: `ops/process/review/`
+The execution phase implements work while:
+- adhering to the reasoning document
+- preserving constraints and invariants
+- collecting review evidence
 
-The review phase verifies conformance to the reasoning document and governing contracts, and produces a structured report.
+**Files:**
+- [execution-protocol.md](execute/execution-protocol.md)
+- [tracker-template.md](execute/tracker-template.md)
+
+### 3. Review
+Location: `review/`
+
+The review phase:
+- verifies conformance to reasoning and contracts
+- produces a structured report
+
+**Files:**
+- [review-protocol.md](review/review-protocol.md)
+- [contract-review-protocol.md](review/contract-review-protocol.md)
+- [report-template.md](review/report-template.md)
 
 ## Contract-Agnostic Process
 
 The process is contract-agnostic:
 - it does not hard-code specific operational contracts
-- reasoning documents map to whichever contracts apply to the sprint scope
-- review verifies conformance against the requirements mapped in reasoning
+- reasoning documents map to whichever contracts apply
+- review verifies conformance against mapped requirements
 
 ## Artifacts
 
-- `reasoning.md` - Sprint reasoning document (requirement mapping and decision rationale)
-- `tracker.md` - Sprint tracker (tasks and progress)
-- `report.md` - Sprint report (conformance verification and findings)
+| Artifact | Location | Description |
+|---|---|---|
+| `reasoning.md` | Per-sprint | Requirement mapping and decision rationale |
+| `tracker.md` | Per-sprint | Tasks and progress |
+| `report.md` | Per-sprint | Conformance verification and findings |
+
+## Related Docs
+
+- [ops/operational-contract/README.md](../operational-contract/README.md) - Contracts
