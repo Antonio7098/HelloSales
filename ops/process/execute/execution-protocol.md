@@ -67,6 +67,7 @@ During implementation:
 - keep implementation aligned with the recorded reasoning
 - collect the execution evidence the reasoning document says review will need later
 - keep implementation grounded in the actual codebase rather than improvising a parallel pattern
+- consider using `scripts/scaffold_module.py` to bootstrap new modules
 
 ### Step 3: Handle Discoveries And Deviations Explicitly
 
