@@ -11,6 +11,11 @@
 - **Depends On:** [Earlier sprint outputs or "None"]
 - **Status:** [Not Started / In Progress / Completed / Blocked]
 
+## Feature Links
+
+- `ops/features/[feature-slug].md` - [How this sprint researches, builds, revises, ships, or supports the feature]
+- [Use "None - [reason]" when this sprint has no direct product feature link]
+
 ## Sprint Goals
 
 - **Primary Goal:** [Clear end-of-sprint backend outcome]

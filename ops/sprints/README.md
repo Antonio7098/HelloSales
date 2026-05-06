@@ -8,13 +8,24 @@ The sprints have built a complete pre-brief foundation for a sales application, 
 
 The work follows a contract-driven operational process with reasoning, execution, and review phases.
 
-## Sprints
+Product feature requirements live in `ops/features/`. When a sprint supports a feature, the feature document should list the sprint and the sprint's `research.md`, `reasoning.md`, and `tracker.md` should backlink to the feature.
+
+## Directory Structure
+
+```
+sprints/
+├── active/    # Sprints currently in progress
+├── backlog/   # Sprints planned but not started
+└── done/      # Completed sprints
+```
+
+## Active Sprints
 
 ### sprint-11: Voice Primitives
 
 Provider-neutral voice primitives: speech-to-text, text-to-speech, streaming LLM-to-TTS, duplex session and interruption control.
 
-**Location:** `ops/sprints/sprint-11-voice-primitives/`
+**Location:** `ops/sprints/active/sprint-11-voice-primitives/`
 
 ---
 
@@ -22,15 +33,27 @@ Provider-neutral voice primitives: speech-to-text, text-to-speech, streaming LLM
 
 Flexible, modular, provider-neutral retrieval-augmented generation primitives for future memory, document, and conversation retrieval.
 
-**Location:** `ops/sprints/sprint-10-rag-primitives/`
+**Location:** `ops/sprints/active/sprint-10-rag-primitives/`
 
 ---
+
+## Backlog Sprints
+
+### sprint-12: Runtime Unification
+
+Unification of agent and worker runtimes under a shared runtime substrate with consistent execution semantics, lifecycle management, and resource governance.
+
+**Location:** `ops/sprints/backlog/sprint-12-runtime-unification/`
+
+---
+
+## Done Sprints
 
 ### sprint-09: Context Engineering
 
 Flexible, extendable context and prompt assembly system for the conversational agent runtime.
 
-**Location:** `ops/sprints/sprint-09-context-engineering/`
+**Location:** `ops/sprints/done/sprint-09-context-engineering/`
 
 ---
 
@@ -38,7 +61,7 @@ Flexible, extendable context and prompt assembly system for the conversational a
 
 First real authentication and authorization foundation with WorkOS adapter, API auth middleware, and permission propagation.
 
-**Location:** `ops/sprints/sprint-08-workos-auth-foundation/`
+**Location:** `ops/sprints/done/sprint-08-workos-auth-foundation/`
 
 ---
 
@@ -46,7 +69,7 @@ First real authentication and authorization foundation with WorkOS adapter, API 
 
 Canonical semantic data catalog with generic entity create/edit tools and undo mechanics.
 
-**Location:** `ops/sprints/sprint-07-semantic-catalog-entity-mutations/`
+**Location:** `ops/sprints/done/sprint-07-semantic-catalog-entity-mutations/`
 
 ---
 
@@ -54,7 +77,7 @@ Canonical semantic data catalog with generic entity create/edit tools and undo m
 
 Provider-neutral web search service, agent tool, and design seam for later batch search and research workflows.
 
-**Location:** `ops/sprints/sprint-06-web-search-capabilities/`
+**Location:** `ops/sprints/done/sprint-06-web-search-capabilities/`
 
 ---
 
@@ -62,7 +85,7 @@ Provider-neutral web search service, agent tool, and design seam for later batch
 
 Governed read-only SQL tool for analytics questions against curated views.
 
-**Location:** `ops/sprints/sprint-05-governed-sql-tool/`
+**Location:** `ops/sprints/done/sprint-05-governed-sql-tool/`
 
 ---
 
@@ -70,7 +93,7 @@ Governed read-only SQL tool for analytics questions against curated views.
 
 First-class session substrate for conversational chronology, summaries, and trusted context.
 
-**Location:** `ops/sprints/sprint-04-session-substrate-foundation/`
+**Location:** `ops/sprints/done/sprint-04-session-substrate-foundation/`
 
 ---
 
@@ -78,7 +101,7 @@ First-class session substrate for conversational chronology, summaries, and trus
 
 Self-hosted observability pipeline with Grafana, Prometheus, Loki, and Tempo.
 
-**Location:** `ops/sprints/sprint-03-self-hosted-monitoring-dashboard/`
+**Location:** `ops/sprints/done/sprint-03-self-hosted-monitoring-dashboard/`
 
 ---
 
@@ -86,7 +109,7 @@ Self-hosted observability pipeline with Grafana, Prometheus, Loki, and Tempo.
 
 Structured worker runtime as sibling to conversational agent runtime, grounded in neutral LLM substrate.
 
-**Location:** `ops/sprints/sprint-02-worker-runtime-foundation/`
+**Location:** `ops/sprints/done/sprint-02-worker-runtime-foundation/`
 
 ---
 
@@ -94,11 +117,12 @@ Structured worker runtime as sibling to conversational agent runtime, grounded i
 
 Scaffold-stage monitoring, telemetry, and metrics infrastructure.
 
-**Location:** `ops/sprints/sprint-01-observability-foundation/`
+**Location:** `ops/sprints/done/sprint-01-observability-foundation/`
 
 ---
 
 ## Related Docs
 
+- [ops/features/README.md](../features/README.md) - Product feature documents and sprint linking rules
 - [ops/process/README.md](../process/README.md) - Operational process
 - [ops/process/execute/execution-protocol.md](../process/execute/execution-protocol.md) - Execution protocol

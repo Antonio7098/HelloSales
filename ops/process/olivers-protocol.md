@@ -36,7 +36,11 @@ The most important starting points are:
 - `ops/operational-contract/observability.md`
 - `ops/operational-contract/workflows.md`
 - `ops/operational-contract/llm.md`
+<<<<<<< HEAD
+- `ops/process/plan-sprint.md`
+=======
 - `ops/plan-sprint.md`
+>>>>>>> origin/main
 
 ## Collaboration With Oliver
 
@@ -54,6 +58,85 @@ When explaining technical choices to Oliver:
 
 Claude may help Oliver draft feature ideas, acceptance criteria, and product notes, but implementation must still follow the process below.
 
+<<<<<<< HEAD
+## Feature Discovery With Oliver
+
+When Oliver wants to create, shape, or evaluate a product feature, Claude should use the feature process:
+
+- `ops/process/feature/feature-protocol.md`
+- `ops/process/feature/feature-template.md`
+- `ops/features/README.md`
+
+The default behavior is to coach Oliver through the feature thinking before writing the final document.
+
+Claude should guide the conversation through:
+- the user problem and why it matters now
+- the desired product or business outcome
+- the target user, stakeholder, and job to be done
+- the trigger or context where the need appears
+- the current workaround or pain without the feature
+- the smallest useful V1
+- later phases and out-of-scope boundaries
+- observable product requirements
+- permissions, roles, and visibility
+- edge cases and exception behavior
+- success criteria, adoption signals, and rollout considerations
+- risks, assumptions, and open questions
+
+Do not turn this into a long questionnaire by default. Ask the next highest-value question, explain why the answer matters when useful, and keep a running view of what is known, assumed, and unresolved.
+
+If Oliver says he wants a lighter version, fewer details, or wants Claude to fill in gaps, Claude should comply. In that case:
+- ask only the minimum clarifying questions needed to avoid misleading requirements
+- mark inferred content as assumptions
+- keep unresolved decisions visible
+- create a usable draft even if the maturity score is lower
+
+### Feature Maturity Scoring
+
+Every feature document should receive a maturity score from 0 to 100.
+
+Claude should be ready to provide or update this score while the feature is being developed, not only at the end. The score is a readiness signal, not a personal grade.
+
+Use these bands:
+- **0-24: Raw idea** - mostly a concept; user, problem, and outcome are unclear.
+- **25-49: Shaped draft** - problem and user are emerging, but requirements, risks, or scope are still thin.
+- **50-69: Product-defined** - main product thinking is present; some assumptions or edge cases remain.
+- **70-84: Sprint-planning ready** - product intent, requirements, success criteria, risks, and scope are clear enough for research/reasoning.
+- **85-100: Delivery mature** - strong product clarity, validated assumptions where possible, crisp V1 scope, and current sprint links.
+
+Score across ten dimensions worth 10 points each:
+- problem clarity
+- outcome clarity
+- user and job-to-be-done clarity
+- journey clarity
+- observable requirement quality
+- rules, permissions, and visibility
+- scope control across V1, later phases, and out-of-scope items
+- edge cases and exception behavior
+- risks and assumptions
+- delivery linkage, rollout, adoption, and dependencies
+
+When giving a score, Claude should include:
+- the numeric score and band
+- the top reasons for the score
+- the biggest maturity gaps
+- the next few questions or edits that would raise the score most
+
+### Feature To Sprint Handoff
+
+A feature usually should not move into sprint planning until it is at least **70: Sprint-planning ready**.
+
+Oliver can explicitly choose to proceed below 70, but Claude must make the trade-off visible:
+- what assumptions sprint research must validate
+- what product decisions remain unresolved
+- what risk the team is accepting by planning early
+
+When a sprint is created for a feature, Claude must keep links current both ways:
+- the feature document lists the related sprint
+- sprint `research.md`, `reasoning.md`, and `tracker.md` each include a **Feature Links** section
+
+=======
+>>>>>>> origin/main
 ## Work Classification
 
 ### Small Frontend Changes
@@ -81,7 +164,14 @@ If a frontend change starts touching routing, data flow, API contracts, state ow
 
 ### Major Additions And New Features
 
+<<<<<<< HEAD
+Major additions, substantial new feature implementations, backend changes, workflow changes, LLM/provider changes, persistence changes, public API changes, or architecture changes must go through the sprint process in `ops/process/plan-sprint.md`.
+
+If the work is a substantial implementation of a product feature, the sprint process should start from one or more feature documents in `ops/features/`.
+The sprint plan should treat those feature documents as the product source of truth for the work being implemented.
+=======
 Major additions, new features, backend changes, workflow changes, LLM/provider changes, persistence changes, public API changes, or architecture changes must go through the sprint process in `ops/plan-sprint.md`.
+>>>>>>> origin/main
 
 This means:
 
@@ -293,7 +383,11 @@ For major work:
 
 1. Create a branch.
 2. Read applicable contracts.
+<<<<<<< HEAD
+3. Follow `ops/process/plan-sprint.md`.
+=======
 3. Follow `ops/plan-sprint.md`.
+>>>>>>> origin/main
 4. Stop for Antonio's review after planning unless Oliver explicitly asks to continue.
 5. Implement from the approved or acknowledged plan.
 6. Keep tracker evidence current.
@@ -301,4 +395,7 @@ For major work:
 8. Complete review artifacts.
 9. Open a PR.
 10. Wait for review and merge approval.
+<<<<<<< HEAD
+=======
 
+>>>>>>> origin/main
