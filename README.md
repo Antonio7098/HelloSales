@@ -21,6 +21,17 @@ HelloSales/
 └── docker-compose.dev.yml  # Local full-stack dev
 ```
 
+## Operations
+
+The `ops/` directory contains the operational infrastructure:
+- **operational-contract/** - Governance contracts defining must/must-not rules
+- **process/** - Protocols, templates, and process guides
+- **features/** - Product-focused feature documents
+- **sprints/** - Sprint artifacts (research, reasoning, trackers, reports)
+- **research/** - Standalone research documents
+
+See `ops/README.md` for detailed operational documentation.
+
 ## Pre-Brief Scope
 
 This project is built before the product brief is complete. Per the pre-brief scope contract:
@@ -116,6 +127,7 @@ make dev-ps         # Check container status
 
 ## Related Docs
 
+- `ops/README.md` - Operations overview (features, sprints, contracts, process)
 - `ops/operational-contract/pre-brief-scope.md` - Pre-brief scope contract
 - `backend/README.md` - Backend quickstart
 - `backend/docs/README.md` - Backend technical docs
