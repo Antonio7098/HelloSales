@@ -4,26 +4,39 @@ This directory contains the protocols and templates for the operational process.
 
 ## Prerequisites
 
-- Understanding of the sprint scope
-- Access to relevant contracts in `ops/operational-contract/`
+- A research brief, sprint scope, or implementation goal
+- For sprint work, access to relevant contracts in `ops/operational-contract/`
 
 ## Purpose
 
-The operational process defines how sprints are planned, executed, and reviewed in HelloSales.
+The operational process defines how research, sprint planning, execution, and review are run in HelloSales.
 
 ## Process Phases
 
-### 1. Research
+### General Research
 Location: `research/`
 
-The research phase produces a document that:
-- searches the codebase for key evidence
-- searches the web for current best practices, latest tools, latest guidance, key repositories, and useful implementation examples where relevant
-- hands off findings, options, risks, and evidence expectations to reasoning
+The general research process produces standalone documents in `ops/research/`.
+It is used when the user provides a research area, goals, key considerations, constraints, or non-goals outside a specific sprint.
+
+The general research process:
+- surveys the codebase and integration points first
+- searches the web for current guidance, tools, repositories, examples, and best practices where relevant
+- presents general findings first
+- then explains how those findings link to HelloSales and may be best implemented
 
 **Files:**
 - [research-protocol.md](research/research-protocol.md)
 - [research-template.md](research/research-template.md)
+
+### 1. Sprint Research
+Location: `sprint-research/`
+
+The sprint research phase produces a sprint-local `research.md` before reasoning begins.
+
+**Files:**
+- [sprint-research-protocol.md](sprint-research/sprint-research-protocol.md)
+- [sprint-research-template.md](sprint-research/sprint-research-template.md)
 
 ### 2. Reasoning
 Location: `reasoning/`
@@ -73,7 +86,8 @@ The process is contract-agnostic:
 
 | Artifact | Location | Description |
 |---|---|---|
-| `research.md` | Per-sprint | Codebase and external evidence gathered before reasoning |
+| `[research-area-slug].md` | `ops/research/` | Standalone research findings and codebase implementation implications |
+| `research.md` | Per-sprint | Sprint-specific codebase and external evidence gathered before reasoning |
 | `reasoning.md` | Per-sprint | Requirement mapping and decision rationale |
 | `tracker.md` | Per-sprint | Tasks and progress |
 | `report.md` | Per-sprint | Conformance verification and findings |

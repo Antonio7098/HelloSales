@@ -1,0 +1,13 @@
+# Research Documents
+
+This directory contains standalone research documents created with:
+
+`ops/process/research/research-protocol.md`
+
+Use one file per research area:
+
+`ops/research/[research-area-slug].md`
+
+Sprint-specific research stays with the relevant sprint:
+
+`ops/sprints/sprint-[XX]-[name]/research.md`

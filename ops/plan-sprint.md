@@ -29,8 +29,8 @@ The directory should contain:
 ## Step 1: Research
 
 Use:
-- `ops/process/research/research-protocol.md`
-- `ops/process/research/research-template.md`
+- `ops/process/sprint-research/sprint-research-protocol.md`
+- `ops/process/sprint-research/sprint-research-template.md`
 
 Create:
 
