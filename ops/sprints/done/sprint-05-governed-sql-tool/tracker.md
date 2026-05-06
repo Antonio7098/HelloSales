@@ -8,7 +8,7 @@
 
 - **Sprint Name:** Governed SQL Tool
 - **Sprint Focus:** Add one governed agent tool that executes validated read-only SQL against a curated analytics catalog through the existing native tool-calling runtime.
-- **Depends On:** `ops/sprints/sprint-01-observability-foundation/tracker.md`, `ops/sprints/sprint-02-worker-runtime-foundation/tracker.md`, `ops/sprints/sprint-04-session-substrate-foundation/tracker.md`
+- **Depends On:** `ops/sprints/done/sprint-01-observability-foundation/tracker.md`, `ops/sprints/done/sprint-02-worker-runtime-foundation/tracker.md`, `ops/sprints/done/sprint-04-session-substrate-foundation/tracker.md`
 - **Status:** Completed With Real-Provider Smoke Deferral
 
 ## Sprint Goals

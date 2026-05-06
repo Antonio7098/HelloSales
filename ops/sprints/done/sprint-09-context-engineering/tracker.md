@@ -8,7 +8,7 @@
 
 - **Sprint Name:** Context Engineering
 - **Sprint Focus:** Build an agent-agnostic context and prompt assembly system that can swap basic session context, memory, and future conversation retrieval options through profiles.
-- **Depends On:** `ops/sprints/sprint-04-session-substrate-foundation/tracker.md`, `ops/sprints/sprint-08-workos-auth-foundation/tracker.md`
+- **Depends On:** `ops/sprints/done/sprint-04-session-substrate-foundation/tracker.md`, `ops/sprints/done/sprint-08-workos-auth-foundation/tracker.md`
 - **Status:** Complete
 
 ## Sprint Goals

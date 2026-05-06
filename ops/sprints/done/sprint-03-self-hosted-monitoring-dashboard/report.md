@@ -2,14 +2,14 @@
 
 > Project: HelloSales
 > Sprint ID: sprint-03-self-hosted-monitoring-dashboard
-> Output: `ops/sprints/sprint-03-self-hosted-monitoring-dashboard/report.md`
+> Output: `ops/sprints/done/sprint-03-self-hosted-monitoring-dashboard/report.md`
 
 ## Overview
 
 **Sprint:** Self-Hosted Monitoring Dashboard
 **Status:** Completed
-**Tracker:** `ops/sprints/sprint-03-self-hosted-monitoring-dashboard/tracker.md`
-**Reasoning:** `ops/sprints/sprint-03-self-hosted-monitoring-dashboard/reasoning.md`
+**Tracker:** `ops/sprints/done/sprint-03-self-hosted-monitoring-dashboard/tracker.md`
+**Reasoning:** `ops/sprints/done/sprint-03-self-hosted-monitoring-dashboard/reasoning.md`
 
 ## TL;DR
 
@@ -61,7 +61,7 @@ Sprint 3 extended the existing observability runtime so tracing can export to an
 
 ### Medium
 
-- **[ops/sprints/sprint-03-self-hosted-monitoring-dashboard/reasoning.md]** The richer custom dashboard frontend was intentionally deferred. **Why it matters:** operator UX is still split between canonical diagnostics and future work. **Suggested fix:** build the dashboard UI over narrow backend-owned summary APIs in the next slice. **Evidence:** sprint tracker and reasoning deviation.
+- **[ops/sprints/done/sprint-03-self-hosted-monitoring-dashboard/reasoning.md]** The richer custom dashboard frontend was intentionally deferred. **Why it matters:** operator UX is still split between canonical diagnostics and future work. **Suggested fix:** build the dashboard UI over narrow backend-owned summary APIs in the next slice. **Evidence:** sprint tracker and reasoning deviation.
 
 ### Low / Nits
 

@@ -9,7 +9,7 @@
 **Sprint:** Semantic Catalog And Entity Mutations
 **Purpose:** Promote the current analytics-only catalog into one canonical semantic data catalog, then use projected views of that catalog to keep the governed SQL tool working while introducing generic, schema-driven entity create/edit tools with undo mechanics.
 **Tracker:** `ops/sprints/sprint-07-semantic-catalog-entity-mutations/tracker.md`
-**Depends On:** `ops/sprints/sprint-04-session-substrate-foundation/tracker.md`, `ops/sprints/sprint-05-governed-sql-tool/tracker.md`, `ops/sprints/sprint-06-web-search-capabilities/tracker.md`
+**Depends On:** `ops/sprints/done/sprint-04-session-substrate-foundation/tracker.md`, `ops/sprints/done/sprint-05-governed-sql-tool/tracker.md`, `ops/sprints/done/sprint-06-web-search-capabilities/tracker.md`
 
 This sprint addresses a schema ownership problem created by Sprint 5 and exposed by the planned edit/create tools.
 The current analytics catalog repeats field metadata that also appears in product-specific request models, SQLAlchemy records, and future entity mutation schemas.

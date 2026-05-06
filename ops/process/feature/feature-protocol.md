@@ -30,9 +30,17 @@ This protocol incorporates the product discovery guidance in `ops/research/deep-
 
 ## Output
 
-`ops/features/[feature-slug].md`
+`ops/features/[status]/[feature-slug].md`
 
 Use `ops/process/feature/feature-template.md`.
+
+## Feature Directory Structure
+
+Features are organized into three directories:
+
+- `ops/features/backlog/` - Features planned but not started
+- `ops/features/active/` - Features currently being implemented
+- `ops/features/done/` - Features delivered
 
 ## Procedure
 
@@ -213,6 +221,18 @@ Update:
 - final product summary when shipped
 
 Do not rewrite a shipped feature to hide earlier uncertainty. Preserve useful context and mark decisions as resolved.
+
+### Step 9.5: Move Feature Based On Sprint Status
+
+When a sprint starts that implements a feature:
+1. If the feature is in `ops/features/backlog/`, move it to `ops/features/active/`
+2. Update the feature file path in any sprint links
+
+When a sprint is signed off (moved to `ops/sprints/done/`):
+1. If all linked sprints are done, move the feature from `ops/features/active/` to `ops/features/done/`
+2. Update the feature file path in all sprint references
+3. Update `ops/features/README.md` to reflect the new location
+4. Update any references in `ops/process/` files if applicable
 
 ### Step 10: Verify Exit Criteria
 

@@ -8,7 +8,7 @@
 
 - **Sprint Name:** Voice Primitives
 - **Sprint Focus:** Add provider-neutral voice runtime primitives for STT, TTS, streaming `LLM -> TTS`, and duplex session control.
-- **Depends On:** `ops/sprints/sprint-01-observability-foundation/tracker.md`, `ops/sprints/sprint-02-worker-runtime-foundation/tracker.md`, `ops/sprints/sprint-04-session-substrate-foundation/tracker.md`, `ops/sprints/sprint-06-web-search-capabilities/tracker.md`, `ops/sprints/sprint-08-workos-auth-foundation/tracker.md`
+- **Depends On:** `ops/sprints/done/sprint-01-observability-foundation/tracker.md`, `ops/sprints/done/sprint-02-worker-runtime-foundation/tracker.md`, `ops/sprints/done/sprint-04-session-substrate-foundation/tracker.md`, `ops/sprints/done/sprint-06-web-search-capabilities/tracker.md`, `ops/sprints/done/sprint-08-workos-auth-foundation/tracker.md`
 - **Status:** Completed
 
 ## Sprint Goals

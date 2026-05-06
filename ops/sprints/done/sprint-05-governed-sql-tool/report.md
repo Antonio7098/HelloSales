@@ -219,7 +219,7 @@ None.
 - **Evidence:** Current unit tests confirm `star` is rejected implicitly via the forbidden-node walk.
 
 **M-2: Real-provider smoke for analytics-query path is deferred**
-- **Location:** `ops/sprints/sprint-05-governed-sql-tool/tracker.md`
+- **Location:** `ops/sprints/done/sprint-05-governed-sql-tool/tracker.md`
 - **Issue:** The tracker explicitly records that a provider-backed generic-agent smoke for the analytics-query scenario was not completed in this workspace.
 - **Why it matters:** `TEST-SMOKE-002` requires real-provider evidence for critical provider-backed paths. The deferral is justified by a pytest teardown stall, but the gap remains.
 - **Suggested fix:** Re-run the provider-backed generic-agent smoke for the analytics-query scenario once the teardown stall is fixed or in an environment closer to CI/runtime parity.

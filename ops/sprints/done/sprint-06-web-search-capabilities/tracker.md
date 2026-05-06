@@ -8,7 +8,7 @@
 
 - **Sprint Name:** Web Search Capabilities
 - **Sprint Focus:** Add provider-neutral web search primitives and one strict `search_web` agent tool, with explicit provider wiring, observability, tests, and a future path for fanout/research orchestration.
-- **Depends On:** `ops/sprints/sprint-01-observability-foundation/tracker.md`, `ops/sprints/sprint-02-worker-runtime-foundation/tracker.md`, `ops/sprints/sprint-04-session-substrate-foundation/tracker.md`, `ops/sprints/sprint-05-governed-sql-tool/tracker.md`
+- **Depends On:** `ops/sprints/done/sprint-01-observability-foundation/tracker.md`, `ops/sprints/done/sprint-02-worker-runtime-foundation/tracker.md`, `ops/sprints/done/sprint-04-session-substrate-foundation/tracker.md`, `ops/sprints/done/sprint-05-governed-sql-tool/tracker.md`
 - **Status:** Complete
 
 ## Sprint Goals

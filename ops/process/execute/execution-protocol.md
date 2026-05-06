@@ -17,6 +17,14 @@ If the sprint links to product feature documents in `ops/features/`, the executo
 - **Tracker** - `ops/sprints/sprint-[XX]-[name]/tracker.md`
 - **Reasoning** - `ops/sprints/sprint-[XX]-[name]/reasoning.md`
 
+## Sprint Directory Structure
+
+Sprints are organized into three directories:
+
+- `ops/sprints/backlog/` - Sprints planned but not started
+- `ops/sprints/active/` - Sprints currently in progress
+- `ops/sprints/done/` - Completed sprints
+
 ## Procedure
 
 ### Step 1: Read Documents And Confirm Entry Criteria
@@ -35,6 +43,15 @@ Before coding, confirm:
 - applicable requirements are identified
 - known risks, assumptions, ambiguities, and deviations are visible
 - you are on the correct git branch for the sprint (e.g., `sprint/sprint-XX-name`)
+
+### Step 1.5: Move Sprint To Active
+
+When starting execution of a sprint from backlog:
+1. Move the sprint directory from `ops/sprints/backlog/` to `ops/sprints/active/`
+2. Update any internal file references that point to the sprint (e.g., in other sprint tracker files)
+3. Update `ops/sprints/README.md` to reflect the new directory location
+4. Update any references in `ops/process/` files if applicable
+5. For any linked features in `ops/features/backlog/`, move them to `ops/features/active/`
 
 ### Step 2: Execute The Sprint Against The Reasoning
 
@@ -84,6 +101,15 @@ Before declaring the sprint execution complete, verify:
 - [ ] search for all README.md files in the repo and update any that are relevant to the changes made
 - [ ] execution evidence is ready for review
 - [ ] blockers, risks, and deviations are recorded in the sprint artifacts
+
+### Step 6: Move Sprint To Done After Sign-Off
+
+After the sprint is signed off (PR merged and review complete):
+1. Move the sprint directory from `ops/sprints/active/` to `ops/sprints/done/`
+2. Update any internal file references that point to the sprint (e.g., in other sprint tracker files)
+3. Update `ops/sprints/README.md` to reflect the new directory location
+4. Update any references in `ops/process/` files if applicable
+5. For any linked features where all sprints are now done, move them from `ops/features/active/` to `ops/features/done/`
 
 ## Output
 

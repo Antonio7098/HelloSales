@@ -9,7 +9,7 @@
 **Sprint:** Worker Runtime Foundation
 **Purpose:** Introduce a structured worker runtime as a sibling to the conversational agent runtime, grounded in a neutral LLM substrate and explicit pre-brief operational scaffolding.
 **Tracker:** `ops/sprints/sprint-02-worker-runtime-foundation/tracker.md`
-**Depends On:** `ops/sprints/sprint-01-observability-foundation/tracker.md`
+**Depends On:** `ops/sprints/done/sprint-01-observability-foundation/tracker.md`
 
 ## Requirement Map
 

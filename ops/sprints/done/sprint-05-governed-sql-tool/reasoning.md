@@ -9,7 +9,7 @@
 **Sprint:** Governed SQL Tool
 **Purpose:** Add one governed agent tool that lets the generic agent answer analytics questions by executing validated read-only SQL against curated analytics views, while keeping the capability schema-agnostic, operationally inspectable, and safe for scaffold-stage use.
 **Tracker:** `ops/sprints/sprint-05-governed-sql-tool/tracker.md`
-**Depends On:** `ops/sprints/sprint-01-observability-foundation/tracker.md`, `ops/sprints/sprint-02-worker-runtime-foundation/tracker.md`, `ops/sprints/sprint-04-session-substrate-foundation/tracker.md`
+**Depends On:** `ops/sprints/done/sprint-01-observability-foundation/tracker.md`, `ops/sprints/done/sprint-02-worker-runtime-foundation/tracker.md`, `ops/sprints/done/sprint-04-session-substrate-foundation/tracker.md`
 
 This sprint does not introduce a broad “database access” surface.
 It introduces one agent tool that accepts SQL within a governed boundary.
@@ -357,9 +357,9 @@ Sprint 5 builds on that runtime by adding one governed tool and the module-owned
 
 ### Dependencies
 
-- `ops/sprints/sprint-01-observability-foundation/`: provides the canonical event, metrics, tracing, and diagnostics seams Sprint 5 must reuse.
-- `ops/sprints/sprint-02-worker-runtime-foundation/`: established the shared LLM substrate and earlier runtime boundary rules that Sprint 5 must respect.
-- `ops/sprints/sprint-04-session-substrate-foundation/`: provides the session-first conversational API and attached execution surfaces through which the tool will be observed.
+- `ops/sprints/done/sprint-01-observability-foundation/`: provides the canonical event, metrics, tracing, and diagnostics seams Sprint 5 must reuse.
+- `ops/sprints/done/sprint-02-worker-runtime-foundation/`: established the shared LLM substrate and earlier runtime boundary rules that Sprint 5 must respect.
+- `ops/sprints/done/sprint-04-session-substrate-foundation/`: provides the session-first conversational API and attached execution surfaces through which the tool will be observed.
 - Current native tool-calling runtime on `main`: Sprint 5 assumes the provider-native tool loop and tool lifecycle persistence are already in place.
 - `sqlglot`: selected as the initial AST/parser dependency for SQL policy enforcement.
 - Hand-authored YAML manifest files: selected as the initial semantic catalog source.

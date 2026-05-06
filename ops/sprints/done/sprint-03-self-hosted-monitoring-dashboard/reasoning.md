@@ -9,7 +9,7 @@
 **Sprint:** Self-Hosted Monitoring Dashboard
 **Purpose:** Extend the existing backend telemetry foundation into a self-hosted observability pipeline and lay the backend and infrastructure groundwork for a custom internal monitoring dashboard.
 **Tracker:** `ops/sprints/sprint-03-self-hosted-monitoring-dashboard/tracker.md`
-**Depends On:** `ops/sprints/sprint-01-observability-foundation/tracker.md`
+**Depends On:** `ops/sprints/done/sprint-01-observability-foundation/tracker.md`
 
 ## Requirement Map
 
@@ -200,7 +200,7 @@
 
 ### Dependencies
 
-- `ops/sprints/sprint-01-observability-foundation/`: provides the canonical observability runtime this sprint extends.
+- `ops/sprints/done/sprint-01-observability-foundation/`: provides the canonical observability runtime this sprint extends.
 - `backend/docs/*`: must be updated to explain OTLP export and the self-hosted stack.
 
 ### Evidence Review Checklist

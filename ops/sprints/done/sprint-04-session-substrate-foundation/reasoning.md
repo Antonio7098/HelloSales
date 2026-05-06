@@ -9,7 +9,7 @@
 **Sprint:** Session Substrate Foundation
 **Purpose:** Introduce a first-class session substrate that owns conversational chronology, session summaries, and trusted user/org context, then move the public conversational HTTP surface to a session-first model instead of exposing agent runs as the top-level conversation API.
 **Tracker:** `ops/sprints/sprint-04-session-substrate-foundation/tracker.md`
-**Depends On:** `ops/sprints/sprint-01-observability-foundation/tracker.md`, `ops/sprints/sprint-02-worker-runtime-foundation/tracker.md`
+**Depends On:** `ops/sprints/done/sprint-01-observability-foundation/tracker.md`, `ops/sprints/done/sprint-02-worker-runtime-foundation/tracker.md`
 
 ## Requirement Map
 
@@ -343,8 +343,8 @@
 
 ### Dependencies
 
-- `ops/sprints/sprint-01-observability-foundation/`: provides the telemetry and background-task visibility this sprint will reuse.
-- `ops/sprints/sprint-02-worker-runtime-foundation/`: establishes the sibling-runtime pattern and prompt/version expectations this sprint extends.
+- `ops/sprints/done/sprint-01-observability-foundation/`: provides the telemetry and background-task visibility this sprint will reuse.
+- `ops/sprints/done/sprint-02-worker-runtime-foundation/`: establishes the sibling-runtime pattern and prompt/version expectations this sprint extends.
 - `backend/docs/api-and-runtime-surfaces.md`: will need to be updated so the documented public API matches the session-first design.
 - `backend/docs/runtime-overview.md`: will need to be updated so session ownership and attached execution are explained correctly.
 

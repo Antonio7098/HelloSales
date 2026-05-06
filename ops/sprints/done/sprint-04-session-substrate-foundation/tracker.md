@@ -8,7 +8,7 @@
 
 - **Sprint Name:** Session Substrate Foundation
 - **Sprint Focus:** Introduce a first-class session substrate and move the public conversational API surface to a session-first model.
-- **Depends On:** `ops/sprints/sprint-01-observability-foundation/tracker.md`, `ops/sprints/sprint-02-worker-runtime-foundation/tracker.md`
+- **Depends On:** `ops/sprints/done/sprint-01-observability-foundation/tracker.md`, `ops/sprints/done/sprint-02-worker-runtime-foundation/tracker.md`
 - **Status:** Complete
 
 ## Sprint Goals

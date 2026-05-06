@@ -8,7 +8,7 @@
 
 - **Sprint Name:** WorkOS Auth Foundation
 - **Sprint Focus:** Introduce provider-agnostic API auth with WorkOS as the first adapter and enforce backend permissions across product-facing routes.
-- **Depends On:** `ops/sprints/sprint-04-session-substrate-foundation/tracker.md`, `ops/sprints/sprint-06-web-search-capabilities/tracker.md`, `ops/sprints/sprint-07-semantic-catalog-entity-mutations/tracker.md`
+- **Depends On:** `ops/sprints/done/sprint-04-session-substrate-foundation/tracker.md`, `ops/sprints/done/sprint-06-web-search-capabilities/tracker.md`, `ops/sprints/done/sprint-07-semantic-catalog-entity-mutations/tracker.md`
 - **Status:** Complete
 
 ## Sprint Goals

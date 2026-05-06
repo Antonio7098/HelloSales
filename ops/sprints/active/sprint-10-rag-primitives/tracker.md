@@ -8,7 +8,7 @@
 
 - **Sprint Name:** RAG Primitives
 - **Sprint Focus:** Build provider-neutral retrieval, ingestion, embedding, indexing, provenance, and evaluation primitives that future context profiles can use without coupling agents to RAG infrastructure.
-- **Depends On:** `ops/sprints/sprint-09-context-engineering/tracker.md`
+- **Depends On:** `ops/sprints/done/sprint-09-context-engineering/tracker.md`
 - **Status:** Not Started
 
 ## Sprint Goals

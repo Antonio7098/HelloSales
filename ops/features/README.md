@@ -15,16 +15,25 @@ A feature can:
 - depend on earlier feature or sprint work
 - remain product-owned while technical implementation evolves through sprint artifacts
 
+## Directory Structure
+
+```
+features/
+├── active/    # Features currently being implemented
+├── backlog/   # Features planned but not started
+└── done/      # Features delivered
+```
+
 ## File Naming
 
 Create one Markdown file per feature:
 
-`ops/features/[feature-slug].md`
+`ops/features/[status]/[feature-slug].md`
 
 Examples:
-- `ops/features/lead-follow-up-reminders.md`
-- `ops/features/manager-pipeline-insights.md`
-- `ops/features/conversation-history-search.md`
+- `ops/features/active/lead-follow-up-reminders.md`
+- `ops/features/done/manager-pipeline-insights.md`
+- `ops/features/backlog/conversation-history-search.md`
 
 ## Required Links
 

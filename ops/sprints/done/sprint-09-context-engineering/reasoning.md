@@ -3,14 +3,14 @@
 > Project: HelloSales
 > Sprint ID: sprint-09-context-engineering
 > Created: 2026-04-24
-> Output: `ops/sprints/sprint-09-context-engineering/reasoning.md`
+> Output: `ops/sprints/done/sprint-09-context-engineering/reasoning.md`
 
 ## Overview
 
 **Sprint:** Context Engineering
 **Purpose:** Introduce a flexible, extendable context and prompt assembly system for the conversational agent runtime so context options can be swapped without coupling them to individual agent definitions.
-**Tracker:** `ops/sprints/sprint-09-context-engineering/tracker.md`
-**Depends On:** `ops/sprints/sprint-04-session-substrate-foundation/tracker.md`, `ops/sprints/sprint-08-workos-auth-foundation/tracker.md`
+**Tracker:** `ops/sprints/done/sprint-09-context-engineering/tracker.md`
+**Depends On:** `ops/sprints/done/sprint-04-session-substrate-foundation/tracker.md`, `ops/sprints/done/sprint-08-workos-auth-foundation/tracker.md`
 
 ## Sprint Scope
 

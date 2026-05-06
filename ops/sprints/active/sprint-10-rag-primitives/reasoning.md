@@ -10,7 +10,7 @@
 **Sprint:** RAG Primitives
 **Purpose:** Introduce flexible, modular, provider-neutral retrieval-augmented generation primitives that future memory, document, and conversation retrieval features can reuse without coupling retrieval infrastructure to concrete agents.
 **Tracker:** `ops/sprints/sprint-10-rag-primitives/tracker.md`
-**Depends On:** `ops/sprints/sprint-09-context-engineering/tracker.md`
+**Depends On:** `ops/sprints/done/sprint-09-context-engineering/tracker.md`
 
 ## Sprint Scope
 
@@ -498,7 +498,7 @@ The sprint explicitly excludes:
 
 ### Dependencies
 
-- `ops/sprints/sprint-09-context-engineering/`: context profiles and context-source extension points.
+- `ops/sprints/done/sprint-09-context-engineering/`: context profiles and context-source extension points.
 - Existing observability runtime: structured events and diagnostics should reuse this path.
 - Existing auth/session metadata: actor, org, permissions, and session ids should shape future retrieval scope.
 

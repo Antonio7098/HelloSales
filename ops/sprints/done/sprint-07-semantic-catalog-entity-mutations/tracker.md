@@ -8,7 +8,7 @@
 
 - **Sprint Name:** Semantic Catalog And Entity Mutations
 - **Sprint Focus:** Replace the analytics-only catalog with one canonical semantic catalog, preserve governed SQL through an analytics projection, and add generic schema-driven create/edit agent tools with context refs, validation, approval, undo mechanics, and audit/observability.
-- **Depends On:** `ops/sprints/sprint-04-session-substrate-foundation/tracker.md`, `ops/sprints/sprint-05-governed-sql-tool/tracker.md`, `ops/sprints/sprint-06-web-search-capabilities/tracker.md`
+- **Depends On:** `ops/sprints/done/sprint-04-session-substrate-foundation/tracker.md`, `ops/sprints/done/sprint-05-governed-sql-tool/tracker.md`, `ops/sprints/done/sprint-06-web-search-capabilities/tracker.md`
 - **Status:** Completed With Documented Deferrals
 
 ## Sprint Goals

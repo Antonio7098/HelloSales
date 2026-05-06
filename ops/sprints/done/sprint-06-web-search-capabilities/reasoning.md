@@ -9,7 +9,7 @@
 **Sprint:** Web Search Capabilities
 **Purpose:** Add provider-neutral web search capabilities for the agent and reusable workflow primitives, while preserving explicit tool lifecycle, replaceable provider adapters, operational visibility, and a clean path toward later subagent fanout or research orchestration.
 **Tracker:** `ops/sprints/sprint-06-web-search-capabilities/tracker.md`
-**Depends On:** `ops/sprints/sprint-01-observability-foundation/tracker.md`, `ops/sprints/sprint-02-worker-runtime-foundation/tracker.md`, `ops/sprints/sprint-04-session-substrate-foundation/tracker.md`, `ops/sprints/sprint-05-governed-sql-tool/tracker.md`
+**Depends On:** `ops/sprints/done/sprint-01-observability-foundation/tracker.md`, `ops/sprints/done/sprint-02-worker-runtime-foundation/tracker.md`, `ops/sprints/done/sprint-04-session-substrate-foundation/tracker.md`, `ops/sprints/done/sprint-05-governed-sql-tool/tracker.md`
 
 This sprint introduces public-web search as a bounded capability, not as hidden model behavior.
 The first deliverable is intentionally narrow:

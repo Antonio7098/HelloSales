@@ -8,7 +8,7 @@
 
 - **Sprint Name:** Self-Hosted Monitoring Dashboard
 - **Sprint Focus:** Extend the backend telemetry foundation into a self-hosted observability pipeline and lay the backend groundwork for a custom internal monitoring dashboard.
-- **Depends On:** `ops/sprints/sprint-01-observability-foundation/tracker.md`
+- **Depends On:** `ops/sprints/done/sprint-01-observability-foundation/tracker.md`
 - **Status:** In Progress
 
 ## Sprint Goals
