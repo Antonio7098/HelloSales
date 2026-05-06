@@ -111,5 +111,5 @@ The process is contract-agnostic:
 
 ## Related Docs
 
-- [ops/plan-sprint.md](../plan-sprint.md) - Sprint planning runbook
+- [ops/process/plan-sprint.md](plan-sprint.md) - Sprint planning runbook
 - [ops/operational-contract/README.md](../operational-contract/README.md) - Contracts

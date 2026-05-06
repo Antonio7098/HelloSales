@@ -12,7 +12,7 @@ The planning order is:
 ## Inputs
 
 - Sprint name or working topic
-- Related feature document in `ops/features/`, or enough product context to create one
+- One or more related feature documents in `ops/features/`, or enough product context to create them
 - Known sprint purpose and exclusions
 - Relevant prior sprint artifacts in `ops/sprints/`
 - Governing contracts in `ops/operational-contract/`
@@ -36,9 +36,13 @@ Use:
 
 Confirm whether the sprint supports an existing feature or needs a new feature document.
 
+For substantial new feature implementation work, the sprint should normally begin from one or more existing feature documents.
+If the feature documents do not exist yet, create or shape them first using the feature process before finalizing sprint planning.
+
 Feature linking must:
 - keep product requirements in `ops/features/[feature-slug].md`
 - keep implementation planning in sprint artifacts
+- support one feature, multiple features, or a clearly defined slice across features when needed
 - add the sprint to the feature document's **Sprint Links** table
 - add a **Feature Links** section to sprint `research.md`, `reasoning.md`, and `tracker.md`
 - state whether the sprint researches, builds, revises, ships, or supports the feature
@@ -59,6 +63,7 @@ The research phase must happen before reasoning.
 
 Research must:
 - read linked feature documents before codebase search when they exist
+- treat linked feature documents as product inputs when the sprint is implementing a substantial feature or feature slice
 - search the codebase for key evidence first
 - identify existing modules, tests, docs, prompts, settings, patterns, seams, and prior sprint artifacts
 - search the web for current best practices, latest tools, latest guidance, key repositories, relevant implementation examples, and focused code snippets where the topic may have changed
@@ -80,6 +85,7 @@ The reasoning phase must read `research.md` and reason with that information.
 
 Reasoning must:
 - preserve the product intent from linked feature documents
+- make clear which part of each linked feature the sprint is actually implementing when multiple feature docs are in scope
 - read every applicable governing contract
 - map sprint scope to explicit requirement IDs
 - use codebase and web research findings when evaluating options
@@ -102,6 +108,7 @@ The tracker is created after research and reasoning.
 
 Tracker creation must:
 - link back to related feature documents
+- make the implementation slice explicit when the sprint covers only part of a feature or spans multiple features
 - translate the chosen reasoning into concrete tasks and sub-tasks
 - keep tasks aligned with the decisions, constraints, and evidence expectations in `reasoning.md`
 - include testing, smoke, documentation, risk, blocker, success criteria, and execution evidence sections
