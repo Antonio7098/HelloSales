@@ -17,9 +17,10 @@ It is a structured evidence artifact whose job is to make reasoning current and 
 ## Inputs
 
 1. **Sprint scope or brief** - The proposed change, problem, or capability being planned
-2. **Existing codebase** - Source, tests, docs, configs, and sprint artifacts relevant to the scope
-3. **Governing contracts** - Contract documents that may constrain research focus
-4. **External sources** - Official docs, release notes, standards, current best-practice guidance, key repositories, and credible implementation examples
+2. **Linked feature documents** - Product-focused requirements in `ops/features/`, when the sprint supports one or more features
+3. **Existing codebase** - Source, tests, docs, configs, and sprint artifacts relevant to the scope
+4. **Governing contracts** - Contract documents that may constrain research focus
+5. **External sources** - Official docs, release notes, standards, current best-practice guidance, key repositories, and credible implementation examples
 
 ## Output
 
@@ -33,10 +34,13 @@ Identify the sprint topic, expected delivery surface, and likely affected areas.
 
 Record:
 - the sprint name or working title
+- linked feature documents, or why no direct feature link applies
 - the problem or capability being researched
 - known dependencies or prior sprint artifacts
 - any explicit exclusions
 - the questions reasoning must be able to answer later
+
+If linked feature documents exist, read them before searching the codebase and carry their product intent into the research questions. Do not convert the feature document into technical design; use it to understand the user outcome and product behavior the sprint may support.
 
 ### Step 2: Search The Codebase For Key Evidence
 
@@ -109,16 +113,18 @@ The reasoning document owns the decision and justification.
 ### Step 6: Write The Research Document
 
 Write the document using the template, ensuring:
-1. **Codebase evidence first** - local reality is documented before external guidance
-2. **Current external guidance** - latest relevant tools, technologies, options, best practices, and official guidance are researched where they could affect the sprint
-3. **Source-backed claims** - important claims cite code paths or external sources
-4. **Clear separation** - distinguish evidence, inference, recommendation, and open question
-5. **Reasoning handoff** - make it clear what the reasoning phase should use and what it still needs to decide
+1. **Feature links recorded** - product feature links are present or explicitly marked not applicable
+2. **Codebase evidence first** - local reality is documented before external guidance
+3. **Current external guidance** - latest relevant tools, technologies, options, best practices, and official guidance are researched where they could affect the sprint
+4. **Source-backed claims** - important claims cite code paths or external sources
+5. **Clear separation** - distinguish evidence, inference, recommendation, and open question
+6. **Reasoning handoff** - make it clear what the reasoning phase should use and what it still needs to decide
 
 ### Step 7: Verify Exit Criteria
 
 Before completing, verify:
 - [ ] Sprint scope and research questions are clear
+- [ ] Linked feature documents were read, or no direct feature link is recorded with reason
 - [ ] Codebase search was performed first
 - [ ] Relevant existing code, tests, docs, and sprint artifacts are cited
 - [ ] Current web research was performed or explicitly deemed unnecessary with reason
@@ -127,6 +133,7 @@ Before completing, verify:
 - [ ] Weak, obsolete, or inapplicable findings are rejected where relevant
 - [ ] Open questions and risks are visible
 - [ ] The reasoning handoff identifies what evidence should shape later decisions
+- [ ] Linked feature documents backlink to this sprint when applicable
 
 ## Key Principles
 

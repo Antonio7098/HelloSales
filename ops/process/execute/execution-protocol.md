@@ -10,6 +10,7 @@ A sprint is executed using two documents:
 2. **Reasoning** - Defines the requirement mapping, decision rationale, and evidence expectations for the sprint
 
 The executor works through the tracker tasks while adhering to the sprint reasoning document and the governing contracts in force for the work.
+If the sprint links to product feature documents in `ops/features/`, the executor preserves that product intent and keeps feature/sprint links current when scope changes.
 
 ## Input
 
@@ -22,11 +23,13 @@ The executor works through the tracker tasks while adhering to the sprint reason
 
 Read the tracker and reasoning document to understand:
 - what is in scope
+- which feature documents are linked, if any
 - what decisions were made and why
 - what governing requirements apply
 - what tests and evidence must be produced
 
 Before coding, confirm:
+- feature links are present or explicitly marked not applicable
 - the tracker scope is clear
 - the reasoning document exists and covers the sprint scope
 - applicable requirements are identified
@@ -52,6 +55,7 @@ During implementation:
 
 If implementation reveals that the reasoning document is incomplete or wrong:
 - pause and update the reasoning document before continuing with the affected work
+- update linked feature documents if the product requirement, scope, user journey, or success criteria changed
 - record newly discovered assumptions, risks, or blockers
 - document any required deviation or change in reasoning explicitly rather than hiding it in commit history or ad hoc notes
 
@@ -73,6 +77,7 @@ As tasks complete:
 
 Before declaring the sprint execution complete, verify:
 - [ ] tracker tasks are complete or explicitly deferred
+- [ ] linked feature documents still reflect the delivered product scope, or no direct feature link applies
 - [ ] code matches the agreed sprint reasoning or recorded deviations
 - [ ] unit, integration, smoke, and failure-path testing has been run or explicitly deferred with reason
 - [ ] documentation changes are complete

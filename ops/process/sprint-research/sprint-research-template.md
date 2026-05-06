@@ -12,6 +12,11 @@
 **Tracker Output:** `ops/sprints/sprint-[XX]-[name]/tracker.md`
 **Depends On:** [Earlier sprint outputs or "None"]
 
+## Feature Links
+
+- `ops/features/[feature-slug].md` - [How this sprint researches, builds, revises, ships, or supports the feature]
+- [Use "None - [reason]" when this sprint has no direct product feature link]
+
 ## Research Questions
 
 - [Question reasoning must answer later]

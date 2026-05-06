@@ -12,6 +12,11 @@
 **Tracker:** [Reference to tracker document]
 **Depends On:** [Earlier sprint outputs or "None"]
 
+## Feature Links
+
+- `ops/features/[feature-slug].md` - [How this sprint researches, builds, revises, ships, or supports the feature]
+- [Use "None - [reason]" when this sprint has no direct product feature link]
+
 ## Requirement Map
 
 ### Requirement Index Used In This Sprint

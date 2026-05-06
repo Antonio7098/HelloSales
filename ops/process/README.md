@@ -13,6 +13,22 @@ The operational process defines how research, sprint planning, execution, and re
 
 ## Process Phases
 
+### Product Features
+Location: `feature/`
+
+The feature process produces product-focused, non-technical requirements in `ops/features/`.
+It is used when a capability needs the user problem, desired outcome, product behavior, success criteria, and sprint relationships captured before or across sprint work.
+
+Feature documents:
+- describe product intent in plain language
+- avoid implementation design
+- can link to one or more sprints
+- must be backlinked from linked sprint artifacts
+
+**Files:**
+- [feature-protocol.md](feature/feature-protocol.md)
+- [feature-template.md](feature/feature-template.md)
+
 ### General Research
 Location: `research/`
 
@@ -86,6 +102,7 @@ The process is contract-agnostic:
 
 | Artifact | Location | Description |
 |---|---|---|
+| `[feature-slug].md` | `ops/features/` | Product-focused non-technical requirements, success criteria, and sprint links |
 | `[research-area-slug].md` | `ops/research/` | Standalone research findings and codebase implementation implications |
 | `research.md` | Per-sprint | Sprint-specific codebase and external evidence gathered before reasoning |
 | `reasoning.md` | Per-sprint | Requirement mapping and decision rationale |

@@ -132,7 +132,7 @@ The document may recommend likely implementation approaches, but it must separat
 
 ### Step 7: Write The Research Document
 
-Write the document using the template, ensuring:
+Write the document using `ops/process/research/research-template.md`, ensuring:
 1. **Brief captured** - user-provided area, goals, considerations, constraints, and non-goals are visible
 2. **Codebase surveyed first** - local reality is inspected before importing outside patterns
 3. **General findings first in the report** - external/current findings are presented before codebase-specific mapping

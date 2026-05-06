@@ -8,6 +8,8 @@ The sprints have built a complete pre-brief foundation for a sales application, 
 
 The work follows a contract-driven operational process with reasoning, execution, and review phases.
 
+Product feature requirements live in `ops/features/`. When a sprint supports a feature, the feature document should list the sprint and the sprint's `research.md`, `reasoning.md`, and `tracker.md` should backlink to the feature.
+
 ## Sprints
 
 ### sprint-11: Voice Primitives
@@ -100,5 +102,6 @@ Scaffold-stage monitoring, telemetry, and metrics infrastructure.
 
 ## Related Docs
 
+- [ops/features/README.md](../features/README.md) - Product feature documents and sprint linking rules
 - [ops/process/README.md](../process/README.md) - Operational process
 - [ops/process/execute/execution-protocol.md](../process/execute/execution-protocol.md) - Execution protocol
