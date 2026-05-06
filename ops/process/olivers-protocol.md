@@ -36,7 +36,11 @@ The most important starting points are:
 - `ops/operational-contract/observability.md`
 - `ops/operational-contract/workflows.md`
 - `ops/operational-contract/llm.md`
+<<<<<<< HEAD
 - `ops/process/plan-sprint.md`
+=======
+- `ops/plan-sprint.md`
+>>>>>>> origin/main
 
 ## Collaboration With Oliver
 
@@ -54,6 +58,7 @@ When explaining technical choices to Oliver:
 
 Claude may help Oliver draft feature ideas, acceptance criteria, and product notes, but implementation must still follow the process below.
 
+<<<<<<< HEAD
 ## Feature Discovery With Oliver
 
 When Oliver wants to create, shape, or evaluate a product feature, Claude should use the feature process:
@@ -130,6 +135,8 @@ When a sprint is created for a feature, Claude must keep links current both ways
 - the feature document lists the related sprint
 - sprint `research.md`, `reasoning.md`, and `tracker.md` each include a **Feature Links** section
 
+=======
+>>>>>>> origin/main
 ## Work Classification
 
 ### Small Frontend Changes
@@ -157,10 +164,14 @@ If a frontend change starts touching routing, data flow, API contracts, state ow
 
 ### Major Additions And New Features
 
+<<<<<<< HEAD
 Major additions, substantial new feature implementations, backend changes, workflow changes, LLM/provider changes, persistence changes, public API changes, or architecture changes must go through the sprint process in `ops/process/plan-sprint.md`.
 
 If the work is a substantial implementation of a product feature, the sprint process should start from one or more feature documents in `ops/features/`.
 The sprint plan should treat those feature documents as the product source of truth for the work being implemented.
+=======
+Major additions, new features, backend changes, workflow changes, LLM/provider changes, persistence changes, public API changes, or architecture changes must go through the sprint process in `ops/plan-sprint.md`.
+>>>>>>> origin/main
 
 This means:
 
@@ -372,7 +383,11 @@ For major work:
 
 1. Create a branch.
 2. Read applicable contracts.
+<<<<<<< HEAD
 3. Follow `ops/process/plan-sprint.md`.
+=======
+3. Follow `ops/plan-sprint.md`.
+>>>>>>> origin/main
 4. Stop for Antonio's review after planning unless Oliver explicitly asks to continue.
 5. Implement from the approved or acknowledged plan.
 6. Keep tracker evidence current.
@@ -380,3 +395,7 @@ For major work:
 8. Complete review artifacts.
 9. Open a PR.
 10. Wait for review and merge approval.
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/main

@@ -16,7 +16,7 @@ ops/process/
 ├── research/                  # General research process
 │   ├── README.md
 │   ├── research-protocol.md
-│   └── research-template.md
+│   └── research_template.md
 ├── sprint-research/            # Sprint-specific research phase
 │   ├── README.md
 │   ├── sprint-research-protocol.md
@@ -55,8 +55,6 @@ Research → Reason → Execute → Review
 | **Execute** | Implement while adhering to reasoning | Code + `tracker.md` |
 | **Review** | Verify conformance and produce findings | `report.md` |
 
-**Starting point:** A research brief, sprint scope, or implementation goal. For sprint work, access to relevant contracts in `ops/operational-contract/` is required.
-
 ### Supporting Processes
 
 Two additional processes support the core sprint workflow:
@@ -70,6 +68,25 @@ Two additional processes support the core sprint workflow:
 - **Oliver's Protocol** (`olivers-protocol.md`) - Claude's collaboration protocol for working with Oliver, the product lead. Defines how to translate product intent into scoped engineering work while preserving the repository's operating model.
 
 - **Plan Sprint** (`plan-sprint.md`) - Sprint planning runbook that ties together feature linking, research, reasoning, and tracker creation.
+
+## Contract-Agnostic Process
+
+The process is contract-agnostic:
+
+- it does not hard-code specific operational contracts
+- reasoning documents map to whichever contracts apply
+- review verifies conformance against mapped requirements
+
+## Artifacts
+
+| Artifact | Location | Description |
+|---|---|---|
+| `research.md` | Per-sprint | Codebase and external evidence gathered before reasoning |
+| `reasoning.md` | Per-sprint | Requirement mapping and decision rationale |
+| `tracker.md` | Per-sprint | Tasks and progress |
+| `report.md` | Per-sprint | Conformance verification and findings |
+
+**Starting point:** A research brief, sprint scope, or implementation goal. For sprint work, access to relevant contracts in `ops/operational-contract/` is required.
 
 ## Process Architecture
 
@@ -99,9 +116,8 @@ Sprint Planning                    Sprint Artifacts
      │                                    │
      ├── Sprint Execute ──→ tracker.md ────┤
      │                        code         │
-     │                                    │
-     ▼                                    ▼
-    Review ──────────────────────→ report.md ──┘
+     │                                    ▼
+     ▼                                   Review ──────────────────────→ report.md ──┘
 ```
 
 ### Bidirectional Traceability
