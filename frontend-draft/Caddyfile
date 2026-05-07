@@ -1,5 +1,13 @@
 :80 {
-    root * /var/www/html
-    file_server
-    try_files {path} /index.html
+    # Reverse proxy API requests to backend  
+    handle /api/* {
+        reverse_proxy hello-sales-backend.railway.internal
+    }
+    
+    # Serve static files
+    handle {
+        root * /usr/share/caddy
+        file_server
+        try_files {path} /index.html
+    }
 }
