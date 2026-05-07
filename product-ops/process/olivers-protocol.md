@@ -14,7 +14,7 @@ HelloSales is a pre-brief sales application scaffold. It currently contains:
 - `frontend/` - main React 19, TypeScript, Vite frontend scaffold.
 - `frontend-draft/` - draft/pre-brief React frontend.
 - `central-pulse/` - central operation frontend.
-- `ops/` - operational contracts, sprint process, templates, and sprint artifacts.
+- `product-product-ops/` - operational contracts, sprint process, templates, and sprint artifacts.
 - `.github/workflows/` - backend and frontend CI definitions.
 
 The project is still governed by the pre-brief scope rules unless Antonio says otherwise. Do not invent product-specific domain commitments, workflows, data models, prompts, or information architecture without a brief or explicit approval.
@@ -23,24 +23,20 @@ The project is still governed by the pre-brief scope rules unless Antonio says o
 
 Follow the repository's operating process before writing code.
 
-Claude must treat `ops/operational-contract/` as normative. The contracts define what implementation and review must accept or reject. Every meaningful change must preserve the applicable contract requirements.
+Claude must treat `product-ops/operational-contract/` as normative. The contracts define what implementation and review must accept or reject. Every meaningful change must preserve the applicable contract requirements.
 
 The most important starting points are:
 
-- `ops/operational-contract/README.md`
-- `ops/operational-contract/pre-brief-scope.md`
-- `ops/operational-contract/architecture.md`
-- `ops/operational-contract/frontend.md`
-- `ops/operational-contract/testing.md`
-- `ops/operational-contract/errors.md`
-- `ops/operational-contract/observability.md`
-- `ops/operational-contract/workflows.md`
-- `ops/operational-contract/llm.md`
-<<<<<<< HEAD
-- `ops/process/plan-sprint.md`
-=======
-- `ops/plan-sprint.md`
->>>>>>> origin/main
+- `product-ops/operational-contract/README.md`
+- `product-ops/operational-contract/pre-brief-scope.md`
+- `product-ops/operational-contract/architecture.md`
+- `product-ops/operational-contract/frontend.md`
+- `product-ops/operational-contract/testing.md`
+- `product-ops/operational-contract/errors.md`
+- `product-ops/operational-contract/observability.md`
+- `product-ops/operational-contract/workflows.md`
+- `product-ops/operational-contract/llm.md`
+- `product-ops/process/plan-sprint.md`
 
 ## Collaboration With Oliver
 
@@ -63,9 +59,9 @@ Claude may help Oliver draft feature ideas, acceptance criteria, and product not
 
 When Oliver wants to create, shape, or evaluate a product feature, Claude should use the feature process:
 
-- `ops/process/feature/feature-protocol.md`
-- `ops/process/feature/feature-template.md`
-- `ops/features/README.md`
+- `product-ops/process/feature/feature-protocol.md`
+- `product-ops/process/feature/feature-template.md`
+- `product-ops/features/README.md`
 
 The default behavior is to coach Oliver through the feature thinking before writing the final document.
 
@@ -164,14 +160,10 @@ If a frontend change starts touching routing, data flow, API contracts, state ow
 
 ### Major Additions And New Features
 
-<<<<<<< HEAD
-Major additions, substantial new feature implementations, backend changes, workflow changes, LLM/provider changes, persistence changes, public API changes, or architecture changes must go through the sprint process in `ops/process/plan-sprint.md`.
+Major additions, substantial new feature implementations, backend changes, workflow changes, LLM/provider changes, persistence changes, public API changes, or architecture changes must go through the sprint process in `product-ops/process/plan-sprint.md`.
 
-If the work is a substantial implementation of a product feature, the sprint process should start from one or more feature documents in `ops/features/`.
+If the work is a substantial implementation of a product feature, the sprint process should start from one or more feature documents in `product-ops/features/`.
 The sprint plan should treat those feature documents as the product source of truth for the work being implemented.
-=======
-Major additions, new features, backend changes, workflow changes, LLM/provider changes, persistence changes, public API changes, or architecture changes must go through the sprint process in `ops/plan-sprint.md`.
->>>>>>> origin/main
 
 This means:
 
@@ -184,7 +176,7 @@ This means:
 The sprint artifacts must live under:
 
 ```text
-ops/sprints/sprint-[XX]-[name]/
+product-ops/sprints/sprint-[XX]-[name]/
 ```
 
 Expected planning files:
@@ -275,7 +267,7 @@ If dependencies are missing, install them using the repository's documented pack
 
 New additions must be thoroughly tested at the right level.
 
-Use `ops/operational-contract/testing.md` as the baseline. In practice:
+Use `product-ops/operational-contract/testing.md` as the baseline. In practice:
 
 - business logic needs deterministic unit coverage
 - wiring, persistence, and adapter changes need integration coverage
@@ -296,8 +288,8 @@ Depending on the change, update the relevant docs:
 - `backend/README.md`
 - `frontend/README.md`
 - files under `backend/docs/`
-- files under `ops/`
-- sprint artifacts under `ops/sprints/`
+- files under `product-product-ops/`
+- sprint artifacts under `product-product-ops/sprints/`
 
 For sprint work, the documentation expectation should appear in `tracker.md`, and the completed documentation evidence should appear in the review/report output.
 
@@ -324,9 +316,9 @@ Before asking for PR review, Claude must perform a structured self-review.
 
 For sprint work, use the review process under:
 
-- `ops/process/review/review-protocol.md`
-- `ops/process/review/contract-review-protocol.md`
-- `ops/process/review/report-template.md`
+- `product-ops/process/review/review-protocol.md`
+- `product-ops/process/review/contract-review-protocol.md`
+- `product-ops/process/review/report-template.md`
 
 The review must verify:
 
@@ -358,7 +350,7 @@ For Oliver-facing work, the PR should also include a short product-language summ
 
 Claude must not:
 
-- bypass `ops/operational-contract/`
+- bypass `product-ops/operational-contract/`
 - invent product-specific requirements without approval
 - start major feature implementation without sprint planning
 - commit directly to `main`
@@ -383,11 +375,7 @@ For major work:
 
 1. Create a branch.
 2. Read applicable contracts.
-<<<<<<< HEAD
-3. Follow `ops/process/plan-sprint.md`.
-=======
-3. Follow `ops/plan-sprint.md`.
->>>>>>> origin/main
+3. Follow `product-ops/process/plan-sprint.md`.
 4. Stop for Antonio's review after planning unless Oliver explicitly asks to continue.
 5. Implement from the approved or acknowledged plan.
 6. Keep tracker evidence current.
@@ -395,7 +383,3 @@ For major work:
 8. Complete review artifacts.
 9. Open a PR.
 10. Wait for review and merge approval.
-<<<<<<< HEAD
-=======
-
->>>>>>> origin/main

@@ -5,8 +5,8 @@ This directory contains the operational infrastructure for HelloSales—includin
 ## What This Directory Contains
 
 ```
-ops/
-├── README.md                    # This file - ops overview
+product-ops/
+├── README.md                    # This file - product-ops overview
 ├── operational-contract/         # Governance contracts (requirements)
 │   ├── README.md
 │   ├── architecture.md
@@ -38,7 +38,7 @@ ops/
 
 ## Overview
 
-The ops directory is organized into five main areas:
+The product-ops directory is organized into five main areas:
 
 | Area | Purpose |
 |---|---|
@@ -50,7 +50,7 @@ The ops directory is organized into five main areas:
 
 ## Operational Contract
 
-**Location:** `ops/operational-contract/`
+**Location:** `product-ops/operational-contract/`
 
 The governance contracts define the normative rules that implementation must follow and review must verify. Each contract contains:
 
@@ -84,7 +84,7 @@ The process is contract-agnostic—reasoning documents explicitly map to whichev
 
 ## Operational Process
 
-**Location:** `ops/process/`
+**Location:** `product-ops/process/`
 
 The process directory defines how work flows through the system. It provides:
 
@@ -125,7 +125,7 @@ Each protocol pairs with a corresponding template:
 
 ## Features
 
-**Location:** `ops/features/`
+**Location:** `product-ops/features/`
 
 Product-focused feature documents capture non-technical requirements before implementation. They describe:
 
@@ -159,7 +159,7 @@ Features should reach at least **70** before moving to sprint planning.
 
 ## Sprints
 
-**Location:** `ops/sprints/`
+**Location:** `product-ops/sprints/`
 
 Sprint artifacts capture the complete lifecycle of implementation work:
 
@@ -189,7 +189,7 @@ sprints/
 
 ## Research
 
-**Location:** `ops/research/`
+**Location:** `product-ops/research/`
 
 Standalone research documents capture investigation into specific areas:
 
@@ -208,8 +208,8 @@ research/
 
 ### Research Types
 
-- **Standalone** - Created with `research/research-protocol.md`, stored in `ops/research/`
-- **Sprint-local** - Created with `sprint-research/sprint-research-protocol.md`, stored with sprint
+- **Standalone** - Created with `product-ops/process/research/research-protocol.md`, stored in `product-ops/research/`
+- **Sprint-local** - Created with `product-ops/process/sprint-research/sprint-research-protocol.md`, stored with sprint
 
 ## Process Architecture
 
@@ -257,16 +257,16 @@ Sprint Planning            Sprint Artifacts
 
 ### Starting Work
 
-1. **For a new feature**: Use `ops/process/feature/feature-protocol.md`
-2. **For a new sprint**: Use `ops/process/plan-sprint.md`
-3. **For standalone research**: Use `ops/process/research/research-protocol.md`
+1. **For a new feature**: Use `product-ops/process/feature/feature-protocol.md`
+2. **For a new sprint**: Use `product-ops/process/plan-sprint.md`
+3. **For standalone research**: Use `product-ops/process/research/research-protocol.md`
 
 ### Finding Context
 
-- **Product requirements**: See `ops/features/`
-- **Implementation planning**: See sprint artifacts in `ops/sprints/`
-- **Governance rules**: See `ops/operational-contract/`
-- **How to do something**: See `ops/process/`
+- **Product requirements**: See `product-ops/features/`
+- **Implementation planning**: See sprint artifacts in `product-ops/sprints/`
+- **Governance rules**: See `product-ops/operational-contract/`
+- **How to do something**: See `product-ops/process/`
 
 ### Linking Requirements
 
@@ -277,7 +277,7 @@ Sprint Planning            Sprint Artifacts
 
 ## Related Documentation
 
-- **[ops/process/README.md](process/README.md)** - Detailed process documentation
-- **[ops/operational-contract/README.md](operational-contract/README.md)** - Contract reference
-- **[ops/features/README.md](features/README.md)** - Feature management
-- **[ops/sprints/README.md](sprints/README.md)** - Sprint inventory
+- **[product-ops/process/README.md](process/README.md)** - Detailed process documentation
+- **[product-ops/operational-contract/README.md](operational-contract/README.md)** - Contract reference
+- **[product-ops/features/README.md](features/README.md)** - Feature management
+- **[product-ops/sprints/README.md](sprints/README.md)** - Sprint inventory

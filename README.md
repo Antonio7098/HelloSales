@@ -1,6 +1,6 @@
 # HelloSales
 
-Pre-brief scaffold for a sales application, built according to the operational contract defined in `ops/operational-contract/pre-brief-scope.md`.
+Pre-brief scaffold for a sales application, built according to the operational contract defined in `product-ops/operational-contract/pre-brief-scope.md`.
 
 ## Prerequisites
 
@@ -17,20 +17,20 @@ HelloSales/
 ├── frontend/         # React frontend scaffold (main)
 ├── frontend-draft/   # React frontend (draft/pre-brief)
 ├── central-pulse/    # Central operation frontend
-├── ops/              # Operational contracts and processes
+├── product-ops/              # Product operations (contracts, processes, features)
 └── docker-compose.dev.yml  # Local full-stack dev
 ```
 
-## Operations
+## Product Operations
 
-The `ops/` directory contains the operational infrastructure:
+The `product-ops/` directory contains the product operational infrastructure:
 - **operational-contract/** - Governance contracts defining must/must-not rules
 - **process/** - Protocols, templates, and process guides
 - **features/** - Product-focused feature documents
 - **sprints/** - Sprint artifacts (research, reasoning, trackers, reports)
 - **research/** - Standalone research documents
 
-See `ops/README.md` for detailed operational documentation.
+See `product-ops/README.md` for detailed operational documentation.
 
 ## Pre-Brief Scope
 
@@ -39,7 +39,7 @@ This project is built before the product brief is complete. Per the pre-brief sc
 - **Allowed**: Foundation work, scaffolding, operational infrastructure, generic patterns
 - **Deferred**: Product-specific domain logic, real bounded contexts, feature commitments
 
-See `ops/operational-contract/pre-brief-scope.md` for the full contract and requirements.
+See `product-ops/operational-contract/pre-brief-scope.md` for the full contract and requirements.
 
 ## What Works / What Doesn't
 
