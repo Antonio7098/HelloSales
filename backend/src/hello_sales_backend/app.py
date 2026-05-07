@@ -1,6 +1,5 @@
 """Application factory and ASGI entrypoint."""
 
-# CI trigger
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
