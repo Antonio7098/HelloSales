@@ -2,7 +2,7 @@ FROM node:22-bullseye AS builder
 WORKDIR /app/frontend-draft
 COPY package*.json ./
 RUN npm install
-COPY ./
+COPY . ./
 RUN npm run build
 
 FROM caddy:2-alpine
