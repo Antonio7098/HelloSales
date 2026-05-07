@@ -271,3 +271,4 @@ This scaffold currently provides:
 trigger
 trigger
 trigger
+trigger
