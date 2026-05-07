@@ -12,6 +12,7 @@ RUN apt-get update \
 COPY pyproject.toml /app/backend/pyproject.toml
 COPY alembic.ini /app/backend/alembic.ini
 COPY alembic /app/backend/alembic
+COPY catalogs /app/backend/catalogs
 COPY src /app/backend/src
 
 RUN pip install --no-cache-dir -e /app/backend
