@@ -254,9 +254,14 @@ Reject a change if it:
 - puts bounded-context behavior into `shared/` or `platform/`
 
 ## Related Contracts
-- [errors.md](/home/antonioborgerees/coding/HelloSales/ops/operational-contract/errors.md)
-- [observability.md](/home/antonioborgerees/coding/HelloSales/ops/operational-contract/observability.md)
-- [testing.md](/home/antonioborgerees/coding/HelloSales/ops/operational-contract/testing.md)
-- [workflows.md](/home/antonioborgerees/coding/HelloSales/ops/operational-contract/workflows.md)
-- [llm.md](/home/antonioborgerees/coding/HelloSales/ops/operational-contract/llm.md)
-- [pre-brief-scope.md](/home/antonioborgerees/coding/HelloSales/ops/operational-contract/pre-brief-scope.md)
+- [errors.md](/home/antonioborgerees/coding/HelloSales/product-ops/operational-contract/errors.md)
+
+- [observability.md](/home/antonioborgerees/coding/HelloSales/product-ops/operational-contract/observability.md)
+
+- [testing.md](/home/antonioborgerees/coding/HelloSales/product-ops/operational-contract/testing.md)
+
+- [workflows.md](/home/antonioborgerees/coding/HelloSales/product-ops/operational-contract/workflows.md)
+
+- [llm.md](/home/antonioborgerees/coding/HelloSales/product-ops/operational-contract/llm.md)
+
+- [pre-brief-scope.md](/home/antonioborgerees/coding/HelloSales/product-ops/operational-contract/pre-brief-scope.md)

@@ -20,7 +20,7 @@
 
 ## Change Summary
 
-Sprint 3 extended the existing observability runtime so tracing can export to an OTLP HTTP endpoint suitable for a self-hosted OpenTelemetry Collector, added self-hosted stack scaffolding under `backend/ops/observability/`, added production-oriented Kubernetes deployment manifests and storage-hardening defaults under `backend/ops/observability/production/`, added `dev` / `staging` / `prod` overlays, added starter Grafana dashboard provisioning and Prometheus alert rules, and updated the canonical backend docs to explain the collector-oriented path and the role of future custom dashboard surfaces. The sprint did not implement a rich dashboard frontend; that remains follow-up work built on this backend and ops foundation.
+Sprint 3 extended the existing observability runtime so tracing can export to an OTLP HTTP endpoint suitable for a self-hosted OpenTelemetry Collector, added self-hosted stack scaffolding under `backend/ops/observability/`, added production-oriented Kubernetes deployment manifests and storage-hardening defaults under `backend/ops/observability/production/`, added `dev` / `staging` / `prod` overlays, added starter Grafana dashboard provisioning and Prometheus alert rules, and updated the canonical backend docs to explain the collector-oriented path and the role of future custom dashboard surfaces. The sprint did not implement a rich dashboard frontend; that remains follow-up work built on this backend and product-ops foundation.
 
 ## Planned vs Delivered
 

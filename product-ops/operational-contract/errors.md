@@ -11,9 +11,11 @@ It governs:
 - transport, background, provider, and persistence failure handling
 - redaction and anti-silent-failure rules
 
-Use [architecture.md](/home/antonioborgerees/coding/HelloSales/ops/operational-contract/architecture.md) for structural rules.
-Use [observability.md](/home/antonioborgerees/coding/HelloSales/ops/operational-contract/observability.md) for signal and diagnostics rules.
-Use [testing.md](/home/antonioborgerees/coding/HelloSales/ops/operational-contract/testing.md) for verification requirements.
+Use [architecture.md](/home/antonioborgerees/coding/HelloSales/product-ops/operational-contract/architecture.md) for structural rules.
+
+Use [observability.md](/home/antonioborgerees/coding/HelloSales/product-ops/operational-contract/observability.md) for signal and diagnostics rules.
+
+Use [testing.md](/home/antonioborgerees/coding/HelloSales/product-ops/operational-contract/testing.md) for verification requirements.
 
 Implementation anchors and scaffold-specific runtime locations belong in docs, not in this contract.
 
