@@ -9,6 +9,7 @@ ops/process/
 ├── README.md                    # This file - process overview
 ├── plan-sprint.md              # Sprint planning runbook
 ├── olivers-protocol.md        # Collaboration protocol for working with Oliver
+├── pr-protocol.md             # Pull request validation protocol
 ├── feature/                  # Product feature process
 │   ├── README.md
 │   ├── feature-protocol.md
@@ -68,6 +69,7 @@ Two additional processes support the core sprint workflow:
 - **Oliver's Protocol** (`olivers-protocol.md`) - Claude's collaboration protocol for working with Oliver, the product lead. Defines how to translate product intent into scoped engineering work while preserving the repository's operating model.
 
 - **Plan Sprint** (`plan-sprint.md`) - Sprint planning runbook that ties together feature linking, research, reasoning, and tracker creation.
+- **PR Protocol** (`pr-protocol.md`) - Full PR workflow: validate, commit, push, open PR, monitor CI, merge, and cleanup.
 
 ## Contract-Agnostic Process
 
@@ -203,6 +205,22 @@ Describes how to execute a sprint. The executor:
 4. Handles discoveries and deviations explicitly
 5. Updates progress continuously
 6. Verifies exit criteria before marking complete
+
+### PR Protocol
+
+**Location:** `pr-protocol.md`
+
+Defines how to prepare, validate, and merge a pull request. The PR agent:
+
+1. Reviews changes with `git diff` and `git status`
+2. Runs all active CI checks locally (discovers workflows from `.github/workflows/`)
+3. Validates documentation with grep and README inspection
+4. Verifies project structure matches docs
+5. Notes changelog status (not yet implemented)
+6. Commits, pushes, creates PR with gh cli
+7. Monitors CI, merges when green, deletes branch
+
+**Output:** Merged PR and cleaned up branch
 
 ### Review Protocol
 
