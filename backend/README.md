@@ -267,4 +267,4 @@ This scaffold currently provides:
 - [backend/docs/runtime-overview.md](docs/runtime-overview.md) - Runtime architecture
 - [backend/docs/agent-runtime.md](docs/agent-runtime.md) - Agent runtime details
 - [backend/docs/testing-and-operations.md](docs/testing-and-operations.md) - Testing and ops
-- [backend/docs/observability-hosting-guide.md](docs/observability-hosting-guide.md) - Self-hosted observability
+- [backend/docs/observability-hosting-guide.md](docs/observability-hosting-guide.md) - Self-hosted observability# trigger
