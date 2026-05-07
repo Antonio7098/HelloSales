@@ -270,3 +270,4 @@ This scaffold currently provides:
 - [backend/docs/observability-hosting-guide.md](docs/observability-hosting-guide.md) - Self-hosted observability# trigger
 trigger
 trigger
+trigger
