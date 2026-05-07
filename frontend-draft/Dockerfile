@@ -3,7 +3,7 @@ WORKDIR /app/frontend-draft
 COPY package*.json ./
 RUN npm install
 COPY . ./
-RUN npm run build
+RUN npx vite build
 
 FROM caddy:2-alpine
 COPY --from=builder /app/frontend-draft/dist /var/www/html
