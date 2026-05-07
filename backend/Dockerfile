@@ -18,4 +18,4 @@ RUN pip install --no-cache-dir -e /app/backend
 
 EXPOSE 8000
 
-CMD ["uvicorn", "hello_sales_backend.main:app", "--host", "0.0.0.0", "--port", "$PORT"]
+CMD uvicorn hello_sales_backend.main:app --host 0.0.0.0 --port $PORT
