@@ -1,6 +1,6 @@
 # Backend Documentation
 
-This is the canonical documentation set for the HelloSales backend codebase.
+This is the canonical documentation set for the HelloSales backend codebase. Updated.
 
 Use these docs to understand the implemented backend, its runtime boundaries, its public surfaces, and how to extend it safely.
 
