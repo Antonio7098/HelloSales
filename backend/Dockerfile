@@ -9,10 +9,10 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends build-essential curl libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-COPY backend/pyproject.toml /app/backend/pyproject.toml
-COPY backend/alembic.ini /app/backend/alembic.ini
-COPY backend/alembic /app/backend/alembic
-COPY backend/src /app/backend/src
+COPY pyproject.toml /app/backend/pyproject.toml
+COPY alembic.ini /app/backend/alembic.ini
+COPY alembic /app/backend/alembic
+COPY src /app/backend/src
 
 RUN pip install --no-cache-dir -e /app/backend
 
