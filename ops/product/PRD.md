@@ -1,5 +1,7 @@
 # Product Requirements Document (PRD) Skeleton
 
+**Version:** 1.0.0
+
 > Based on the Ultimate PRD Framework (Amazon, Stripe, Marty Cagan, Reforge)
 
 ---
@@ -157,3 +159,10 @@ _One declarative sentence defining the product purpose or release "elevator pitc
 ---
 
 > **Note:** This PRD is a living document. Update continuously through versioning and changelogs. Match fidelity to risk level (Ref: Marty Cagan's Risk-Matching Fidelity principle).
+
+---
+
+> **Versioning Note:** When editing this document, increment the version using semantic versioning (MAJOR.MINOR.PATCH):
+> - MAJOR: Incompatible structural changes to the document
+> - MINOR: New sections or significant content changes
+> - PATCH: Minor corrections, typos, or small updates
