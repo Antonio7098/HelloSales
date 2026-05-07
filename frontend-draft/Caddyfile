@@ -1,7 +1,7 @@
 :80 {
     # Reverse proxy API requests to backend  
     handle /api/* {
-        reverse_proxy hello-sales-backend.railway.internal
+        reverse_proxy {$VITE_API_URL}
     }
     
     # Serve static files
