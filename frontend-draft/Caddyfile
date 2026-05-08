@@ -1,9 +1,11 @@
 :80 {
-	reverse_proxy /api/* {
-		to hello-sales-backend.railway.internal:8080
+	handle /api/* {
+		reverse_proxy hello-sales-backend.railway.internal:8080
 	}
 
-	root * /usr/share/caddy
-	try_files {path} /index.html
-	file_server
+	handle {
+		root * /usr/share/caddy
+		try_files {path} /index.html
+		file_server
+	}
 }
