@@ -1,6 +1,6 @@
 """HelloSales backend package."""
 
-# Trigger CI for caddyfile fix
+# Trigger CI for caddyfile format fix
 
 __all__ = ["__version__"]
 
