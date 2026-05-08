@@ -1,6 +1,6 @@
 """HelloSales backend package."""
 
-# Trigger CI for to directive
+# Trigger CI for handle block
 
 __all__ = ["__version__"]
 
