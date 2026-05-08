@@ -1,6 +1,6 @@
 """HelloSales backend package."""
 
-# Trigger CI for frontend-only PR merge
+# Trigger CI for caddyfile fix
 
 __all__ = ["__version__"]
 
