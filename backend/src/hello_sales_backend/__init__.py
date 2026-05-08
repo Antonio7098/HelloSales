@@ -1,6 +1,6 @@
 """HelloSales backend package."""
 
-# Trigger CI for runtime migrations
+# Trigger CI for dev compose cleanup
 
 __all__ = ["__version__"]
 
