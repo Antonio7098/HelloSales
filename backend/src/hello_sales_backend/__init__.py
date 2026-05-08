@@ -1,6 +1,6 @@
 """HelloSales backend package."""
 
-# Trigger CI for handle block
+# Trigger CI for migrations fix
 
 __all__ = ["__version__"]
 

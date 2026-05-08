@@ -19,4 +19,6 @@ RUN pip install --no-cache-dir -e /app/backend
 
 EXPOSE 8000
 
+RUN cd /app/backend && alembic upgrade head
+
 CMD uvicorn hello_sales_backend.app:app --host 0.0.0.0 --port $PORT
