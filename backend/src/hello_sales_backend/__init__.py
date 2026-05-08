@@ -1,6 +1,6 @@
 """HelloSales backend package."""
 
-# Trigger CI for path_prefix fix
+# Trigger CI for direct proxy syntax
 
 __all__ = ["__version__"]
 
