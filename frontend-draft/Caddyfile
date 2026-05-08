@@ -1,6 +1,6 @@
 :80 {
 	@api {
-		path /api/*
+		path_prefix /api/
 	}
 	reverse_proxy @api hello-sales-backend.railway.internal:8080
 
