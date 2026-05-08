@@ -1,13 +1,10 @@
 :80 {
-    # Reverse proxy API requests to backend  
-    handle /api/* {
-        reverse_proxy hello-sales-backend.railway.internal:8080
+    @apiPath {
+        path /api/*
     }
-    
-    # Serve static files
-    handle {
-        root * /usr/share/caddy
-        file_server
-        try_files {path} /index.html
-    }
+    reverse_proxy @apiPath hello-sales-backend.railway.internal:8080
+
+    root * /usr/share/caddy
+    file_server
+    try_files {path} /index.html
 }
