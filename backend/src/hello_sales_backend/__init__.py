@@ -1,6 +1,6 @@
 """HelloSales backend package."""
 
-# Trigger CI for direct proxy syntax
+# Trigger CI for to directive
 
 __all__ = ["__version__"]
 
