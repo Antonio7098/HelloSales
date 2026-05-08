@@ -1,6 +1,6 @@
 """HelloSales backend package."""
 
-# Trigger CI for migrations fix
+# Trigger CI for runtime migrations
 
 __all__ = ["__version__"]
 
