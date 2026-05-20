@@ -10,9 +10,13 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from decimal import Decimal
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from sqlalchemy import delete, select
+
+if TYPE_CHECKING:
+    from hello_sales_backend.modules.company_profile import CompanyProfileService
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from hello_sales_backend.modules.salesbook.infra.persistence import (
@@ -403,14 +407,22 @@ class SqlAlchemySalesbookPipelineRepository(SalesbookPipelineRepositoryPort):
                     r.stage_entered_at = now
                 if request.stage in ("closed_won", "closed_lost") and r.closed_at is None:
                     r.closed_at = now
-            if request.lead_source is not None: r.lead_source = request.lead_source
-            if request.lead_score is not None: r.lead_score = request.lead_score
-            if request.assigned_agent is not None: r.assigned_agent = request.assigned_agent
-            if request.deal_value is not None: r.deal_value = request.deal_value
-            if request.deal_probability is not None: r.deal_probability = request.deal_probability
-            if request.next_action is not None: r.next_action = request.next_action
-            if request.next_action_date is not None: r.next_action_date = request.next_action_date
-            if request.close_reason is not None: r.close_reason = request.close_reason
+            if request.lead_source is not None:
+                r.lead_source = request.lead_source
+            if request.lead_score is not None:
+                r.lead_score = request.lead_score
+            if request.assigned_agent is not None:
+                r.assigned_agent = request.assigned_agent
+            if request.deal_value is not None:
+                r.deal_value = request.deal_value
+            if request.deal_probability is not None:
+                r.deal_probability = request.deal_probability
+            if request.next_action is not None:
+                r.next_action = request.next_action
+            if request.next_action_date is not None:
+                r.next_action_date = request.next_action_date
+            if request.close_reason is not None:
+                r.close_reason = request.close_reason
             await session.commit()
             await session.refresh(r)
             return _deal_view(r)
@@ -513,7 +525,7 @@ class SqlAlchemySalesbookTeamMembershipRepository(SalesbookTeamMembershipReposit
 class CompanyProfileProductReadAdapter(SalesbookProductReadPort):
     """Adapts modules.company_profile.CompanyProfileService.list_products() to the salesbook port."""
 
-    def __init__(self, company_profile_service) -> None:
+    def __init__(self, company_profile_service: CompanyProfileService) -> None:
         self._svc = company_profile_service
 
     async def list_products_for_profile(self, profile_id: str) -> list[SalesbookExhaustiveProductEntry]:

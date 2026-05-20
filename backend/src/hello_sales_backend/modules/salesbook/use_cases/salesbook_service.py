@@ -9,6 +9,7 @@ roster, and the exhaustive view that drives the searchable salesbook frontend.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
@@ -82,7 +83,7 @@ class SalesbookService:
         product_read: SalesbookProductReadPort,
         comment_repo: SalesbookCommentRepositoryPort,
         pin_repo: SalesbookPinRepositoryPort,
-        sheets_provider: "SalesbookSheetsProvider | None" = None,
+        sheets_provider: SalesbookSheetsProvider | None = None,
     ) -> None:
         self._contact = contact_repo
         self._onboarding = onboarding_repo
@@ -95,7 +96,7 @@ class SalesbookService:
         self._sheets = sheets_provider
 
     # ---- Onboarding registry passthrough (avoids importing in route layer) ----
-    def get_onboarding_registry(self, phase: int | None = None) -> dict[str, dict]:
+    def get_onboarding_registry(self, phase: int | None = None) -> dict[str, dict[str, object]]:
         from hello_sales_backend.modules.salesbook.domain.onboarding_registry import (
             ONBOARDING_QUESTIONS,
             get_phase_questions,
@@ -251,13 +252,22 @@ class SalesbookService:
         onboarding_entries: list[SalesbookExhaustiveOnboardingEntry] = []
         for key, meta in registry.items():
             r = answer_by_key.get(key)
+            raw_phase = meta.get("phase")
+            phase_val = int(raw_phase) if isinstance(raw_phase, (int, float, str)) else 0
+            section_val = meta.get("section")
+            question_val = meta.get("question") or meta.get("question_text")
+            type_val = (
+                (r.response_type if r else None)
+                or meta.get("answer_type")
+                or meta.get("type")
+            )
             onboarding_entries.append(SalesbookExhaustiveOnboardingEntry(
-                phase=int(meta.get("phase")),
-                section=meta.get("section"),
+                phase=phase_val,
+                section=str(section_val) if section_val is not None else None,
                 question_key=key,
-                question_text=meta.get("question") or meta.get("question_text"),
+                question_text=str(question_val) if question_val is not None else None,
                 response_value=r.response_value if r else None,
-                response_type=(r.response_type if r else None) or meta.get("answer_type") or meta.get("type"),
+                response_type=str(type_val) if type_val is not None else None,
                 answered_at=r.answered_at if r else None,
             ))
         return SalesbookExhaustiveView(
@@ -317,14 +327,12 @@ class SalesbookService:
         })
 
     # ---- Sheets sync (fire-and-forget; safe when provider is None) ----
-    def _maybe_push(self, action: str, payload: dict) -> None:
+    def _maybe_push(self, action: str, payload: dict[str, object]) -> None:
         if self._sheets is None:
             return
-        try:
+        # No running loop is a no-op — we only push when called from an async handler.
+        with contextlib.suppress(RuntimeError):
             asyncio.get_running_loop().create_task(self._sheets.push(action, payload))
-        except RuntimeError:
-            # No running loop — skip silently. We only push when called from an async handler.
-            pass
 
 
 __all__ = ["SalesbookService"]

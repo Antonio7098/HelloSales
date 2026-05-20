@@ -35,7 +35,14 @@ from hello_sales_backend.modules.salesbook.infra.repository import (
     SqlAlchemySalesbookTeamMembershipRepository,
 )
 from hello_sales_backend.modules.salesbook.use_cases.ports import (
+    SalesbookClientContactRepositoryPort,
+    SalesbookCommentRepositoryPort,
+    SalesbookEngagementRepositoryPort,
+    SalesbookOnboardingRepositoryPort,
+    SalesbookPinRepositoryPort,
+    SalesbookPipelineRepositoryPort,
     SalesbookProductReadPort,
+    SalesbookTeamMembershipRepositoryPort,
 )
 from hello_sales_backend.modules.salesbook.use_cases.salesbook_service import (
     SalesbookService,
@@ -57,7 +64,7 @@ def build_salesbook_module(
     *,
     settings: Settings,
     session_factory: async_sessionmaker[AsyncSession],
-    company_profile_service: "CompanyProfileService | None" = None,
+    company_profile_service: CompanyProfileService | None = None,
 ) -> SalesbookModule:
     """Build the salesbook module.
 
@@ -67,6 +74,17 @@ def build_salesbook_module(
     """
 
     on_sqlite = settings.database_url.startswith("sqlite+aiosqlite")
+
+    # Type the repos against their ports so the in-memory/sqlalchemy swap is
+    # type-safe (otherwise mypy infers the first branch's concrete type and
+    # complains when the else branch reassigns to a sibling concrete type).
+    contact_repo: SalesbookClientContactRepositoryPort
+    onboarding_repo: SalesbookOnboardingRepositoryPort
+    pipeline_repo: SalesbookPipelineRepositoryPort
+    engagement_repo: SalesbookEngagementRepositoryPort
+    team_repo: SalesbookTeamMembershipRepositoryPort
+    comment_repo: SalesbookCommentRepositoryPort
+    pin_repo: SalesbookPinRepositoryPort
 
     if on_sqlite:
         contact_repo = InMemorySalesbookClientContactRepository()

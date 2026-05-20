@@ -268,14 +268,14 @@ class InMemorySalesbookEngagementRepository(SalesbookEngagementRepositoryPort):
     async def list_for_profile(
         self, profile_id: str, deal_id: str | None = None, limit: int = 100
     ) -> list[EngagementLogView]:
-        rows = [l for l in self._logs if l.profile_id == profile_id]
+        rows = [entry for entry in self._logs if entry.profile_id == profile_id]
         if deal_id is not None:
-            rows = [l for l in rows if l.deal_id == deal_id]
-        rows.sort(key=lambda l: l.timestamp, reverse=True)
+            rows = [entry for entry in rows if entry.deal_id == deal_id]
+        rows.sort(key=lambda entry: entry.timestamp, reverse=True)
         return rows[:limit]
 
     async def list_all(self, limit: int = 200) -> list[EngagementLogView]:
-        rows = sorted(self._logs, key=lambda l: l.timestamp, reverse=True)
+        rows = sorted(self._logs, key=lambda entry: entry.timestamp, reverse=True)
         return rows[:limit]
 
 
