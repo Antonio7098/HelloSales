@@ -7,6 +7,7 @@ from hello_sales_backend.entrypoints.http.routes import (
     company_profile,
     health,
     jobs,
+    salesbook,  # /Oliviercontribution
     sessions,
     system,
     worker_runs,
@@ -19,4 +20,5 @@ api_router.include_router(company_profile.router, tags=["company-profile"])
 api_router.include_router(sessions.router, prefix="/sessions", tags=["sessions"])
 api_router.include_router(worker_runs.router, prefix="/worker-runs", tags=["worker-runs"])
 api_router.include_router(jobs.router, prefix="/jobs", tags=["jobs"])
+api_router.include_router(salesbook.router, prefix="/salesbook", tags=["salesbook"])  # /Oliviercontribution
 api_router.include_router(system.router, prefix="/system", tags=["system"])

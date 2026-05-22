@@ -11,6 +11,7 @@ from hello_sales_backend.modules.agent_runs import AgentRunService
 from hello_sales_backend.modules.auth import AuthService
 from hello_sales_backend.modules.company_profile import CompanyProfileService
 from hello_sales_backend.modules.jobs import JobsService
+from hello_sales_backend.modules.salesbook import SalesbookService  # /Oliviercontribution
 from hello_sales_backend.modules.sessions import SessionService
 from hello_sales_backend.modules.system import SystemService
 from hello_sales_backend.modules.worker_runs import WorkerRunService
@@ -35,6 +36,12 @@ async def get_auth_service(request: Request) -> AuthService:
     """Resolve the auth service from the container."""
 
     return (await get_container(request)).modules.auth.service
+
+
+async def get_salesbook_service(request: Request) -> SalesbookService:  # /Oliviercontribution
+    """Resolve the salesbook service from the container."""
+
+    return (await get_container(request)).modules.salesbook.service
 
 
 async def get_current_auth_context(request: Request) -> AuthContext | None:

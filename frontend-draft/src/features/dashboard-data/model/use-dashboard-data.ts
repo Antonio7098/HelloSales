@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getDashboardData } from "@/features/dashboard-data/api/get-dashboard-data";
+import { useAppData } from "@/shared/data/context";
 import type { CompanyProfileResponse } from "@/features/dashboard-data/model/types";
 
 type DashboardDataState = {
@@ -16,6 +16,7 @@ const initialState: DashboardDataState = {
 
 export function useDashboardData() {
   const [state, setState] = useState<DashboardDataState>(initialState);
+  const provider = useAppData();
 
   useEffect(() => {
     let cancelled = false;
@@ -23,19 +24,11 @@ export function useDashboardData() {
     async function load() {
       setState((current) => ({ ...current, isLoading: true, error: null }));
       try {
-        const data = await getDashboardData();
-        if (cancelled) {
-          return;
-        }
-        setState({
-          data,
-          isLoading: false,
-          error: null,
-        });
+        const data = await provider.getDashboardData();
+        if (cancelled) return;
+        setState({ data, isLoading: false, error: null });
       } catch (error) {
-        if (cancelled) {
-          return;
-        }
+        if (cancelled) return;
         setState({
           data: null,
           isLoading: false,
@@ -48,7 +41,7 @@ export function useDashboardData() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [provider]);
 
   return state;
 }

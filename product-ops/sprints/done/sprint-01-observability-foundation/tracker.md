@@ -7,7 +7,7 @@
 ## Sprint Overview
 
 - **Sprint Name:** Observability Foundation
-- **Sprint Focus:** Establish scaffold-stage monitoring, telemetry, and metrics infrastructure without making product-specific commitments.
+- **Sprint Focus:** Establish monitoring, telemetry, and metrics infrastructure.
 - **Depends On:** None
 - **Status:** Completed
 
@@ -17,7 +17,7 @@
 - **Secondary Goals:**
   - Add a narrow operational metrics surface and environment-driven telemetry configuration.
   - Instrument the highest-signal scaffold boundaries first: HTTP requests, health/readiness, and background tasks.
-  - Preserve contract conformance for correlation, diagnostics, alertable signals, and pre-brief operational scope.
+  - Preserve contract conformance for correlation, diagnostics, alertable signals, and operational scope.
 
 ## Execution Checklist
 

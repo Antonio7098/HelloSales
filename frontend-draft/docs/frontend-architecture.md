@@ -1,11 +1,10 @@
 # Frontend Architecture
 
 ## Purpose
-This document explains the intended frontend architecture for HelloSales before the product brief is finalized.
+This document explains the intended frontend architecture for HelloSales.
 
 It complements:
 - `ops/operational-contract/frontend.md`
-- `ops/operational-contract/pre-brief-scope.md`
 
 ## High-Level Shape
 

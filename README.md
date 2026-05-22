@@ -13,6 +13,8 @@ Pre-brief scaffold for a sales application, built according to the operational c
 
 ```
 HelloSales/
+```
+HelloSales/
 ├── backend/          # Python/FastAPI backend scaffold
 ├── frontend/         # React frontend scaffold (main)
 ├── frontend-draft/   # React frontend (draft/pre-brief)
@@ -55,7 +57,6 @@ See `product-ops/operational-contract/pre-brief-scope.md` for the full contract 
 - Production deployment (observability K8s manifests need customization)
 - Real authentication (dev provider only)
 - Product-specific domain modules (deals, contacts, etc.)
-
 ## Getting Started
 
 ### Root Commands
@@ -127,8 +128,8 @@ make dev-ps         # Check container status
 
 ## Related Docs
 
-- `ops/README.md` - Operations overview (features, sprints, contracts, process)
-- `ops/operational-contract/pre-brief-scope.md` - Pre-brief scope contract
+- `product-ops/README.md` - Operations overview (features, sprints, contracts, process)
+- `product-ops/operational-contract/pre-brief-scope.md` - Pre-brief scope contract
 - `backend/README.md` - Backend quickstart
 - `backend/docs/README.md` - Backend technical docs
 - `frontend/README.md` - Frontend quickstart

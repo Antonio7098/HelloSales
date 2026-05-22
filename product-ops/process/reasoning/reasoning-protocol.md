@@ -17,16 +17,13 @@ It is a structured reasoning artifact whose job is to force deep analysis before
 ## Inputs
 
 1. **Governing contracts** - The contract documents currently in force for the work being reviewed
-<<<<<<< HEAD
 2. **Linked feature documents** - Product requirements in `ops/features/`, when the sprint supports one or more features
 3. **Sprint research** - `ops/sprints/sprint-[XX]-[name]/research.md`, containing codebase evidence and current external guidance gathered before reasoning
 4. **Relevant existing code** - Code and tests relevant to the sprint scope, used to verify and deepen the research where needed
 5. **Known dependencies or unfinished work** - Existing constraints that affect delivery
-=======
 2. **Sprint research** - `ops/sprints/sprint-[XX]-[name]/research.md`, containing codebase evidence and current external guidance gathered before reasoning
 3. **Relevant existing code** - Code and tests relevant to the sprint scope, used to verify and deepen the research where needed
 4. **Known dependencies or unfinished work** - Existing constraints that affect delivery
->>>>>>> origin/main
 
 ## Output
 
@@ -54,7 +51,6 @@ For each applicable requirement, determine:
 
 ### Step 2: Read Linked Feature Documents
 
-<<<<<<< HEAD
 Read every feature document linked from the sprint research, tracker, or planning brief.
 
 Extract:
@@ -69,8 +65,6 @@ Reasoning must preserve the product intent while translating the sprint's portio
 
 ### Step 3: Read Relevant Existing Code
 
-=======
->>>>>>> origin/main
 Read the codebase evidence in the sprint research document, then examine relevant code and tests as needed to verify or deepen that evidence.
 
 Understand:
@@ -81,11 +75,8 @@ Understand:
 
 The reasoning must stay grounded in the actual codebase rather than idealised structure.
 
-<<<<<<< HEAD
 ### Step 4: Read Sprint Research And Identify Decision Inputs
-=======
 ### Step 3: Read Sprint Research And Identify Decision Inputs
->>>>>>> origin/main
 
 Read `research.md` before making design decisions.
 
@@ -99,11 +90,8 @@ Extract:
 Reasoning must explicitly use the research where relevant.
 If the research is incomplete, stale, or missing evidence needed for a confident decision, update or request an update to `research.md` before finalizing the affected reasoning.
 
-<<<<<<< HEAD
 ### Step 5: Analyse Each Feature Against The Requirements
-=======
 ### Step 4: Analyse Each Feature Against The Requirements
->>>>>>> origin/main
 
 For each in-scope feature, analyse:
 - which linked product feature document it supports, if any
@@ -150,7 +138,6 @@ Also record:
 
 Write the document using the template, ensuring:
 1. **Readable prose format** - easy to read under delivery pressure
-<<<<<<< HEAD
 2. **Feature links recorded** - linked product feature docs are present or explicitly marked not applicable
 3. **Clear requirement mapping** - show which requirements apply and how they shape the change
 4. **Deep reasoning** - explain why each important decision follows from product intent, requirements, and codebase reality
@@ -159,7 +146,6 @@ Write the document using the template, ensuring:
 7. **Explicit evidence expectations** - define what execution and review must later verify
 8. **Trade-offs documented** - any deviations or compromises are explicit
 9. **Research reflected** - findings from `research.md` are tied to decisions, alternatives, risks, and evidence expectations
-=======
 2. **Clear requirement mapping** - show which requirements apply and how they shape the change
 3. **Deep reasoning** - explain why each important decision follows from the requirements and codebase reality
 4. **Explicit alternatives** - show what was considered and rejected when the choice is non-trivial
@@ -167,16 +153,12 @@ Write the document using the template, ensuring:
 6. **Explicit evidence expectations** - define what execution and review must later verify
 7. **Trade-offs documented** - any deviations or compromises are explicit
 8. **Research reflected** - findings from `research.md` are tied to decisions, alternatives, risks, and evidence expectations
->>>>>>> origin/main
 
 ### Step 9: Verify Exit Criteria
 
 Before completing, verify:
 - [ ] Every governing contract document was read in full
-<<<<<<< HEAD
 - [ ] Linked feature documents were read, or no direct feature link is recorded with reason
-=======
->>>>>>> origin/main
 - [ ] Sprint research was read and used
 - [ ] Sprint scope is covered
 - [ ] Applicable requirements are mapped
@@ -192,17 +174,14 @@ Before completing, verify:
 
 1. **Be thorough** - the document is a reasoning artifact, not a shallow checklist
 2. **Be requirement-driven** - map sprint scope to specific governing requirements
-<<<<<<< HEAD
 3. **Preserve product intent** - use linked feature documents as the product source of truth
 4. **Stay grounded** - reference actual code patterns and seams
 5. **Reason from research** - use `research.md` as the source of current codebase and external evidence
 6. **Justify decisions explicitly** - do not jump from requirement to conclusion without explanation
 7. **Record deviations explicitly** - do not bury them in prose
 8. **Design for reviewability** - define evidence that later review can verify
-=======
 3. **Stay grounded** - reference actual code patterns and seams
 4. **Reason from research** - use `research.md` as the source of current codebase and external evidence
 5. **Justify decisions explicitly** - do not jump from requirement to conclusion without explanation
 6. **Record deviations explicitly** - do not bury them in prose
 7. **Design for reviewability** - define evidence that later review can verify
->>>>>>> origin/main

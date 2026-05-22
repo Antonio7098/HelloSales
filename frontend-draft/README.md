@@ -24,7 +24,7 @@ frontend-draft/
 └── vite.config.ts
 ```
 
-This frontend is scaffolded as a pre-brief, contract-driven React application.
+This frontend is a contract-driven React application.
 
 ## What Works / What Doesn't
 

@@ -12,7 +12,7 @@ Use:
 
 ## Rationale
 
-This keeps the pre-brief frontend:
+This keeps the frontend:
 - fast to scaffold
 - strict about ownership
 - easy to evolve

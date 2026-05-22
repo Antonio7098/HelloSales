@@ -140,7 +140,7 @@ services:
 
 volumes:
   frontend_draft_node_modules:
-  grafana_data:
+  frontend_draft_node_modules:
   hello_sales_postgres_data:
   loki_data:
   minio_data:

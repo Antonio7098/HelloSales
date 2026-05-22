@@ -1,7 +1,42 @@
-"""Migration metadata helpers."""
+"""Migration metadata helpers.
 
-from hello_sales_backend.platform.db.base import metadata
-from hello_sales_backend.platform.db.models import (
+Provides the shared ``metadata`` object used by Alembic. Salesbook ORM Records
+are registered lazily the first time ``metadata`` is accessed to avoid importing
+module infra at platform load time.
+"""
+from __future__ import annotations
+
+from typing import Any
+
+from hello_sales_backend.platform.db.base import metadata as _base_metadata
+
+_loaded = False
+
+
+def _ensure_salesbook_models_registered() -> None:
+    global _loaded
+    if _loaded:
+        return
+    from hello_sales_backend.modules.salesbook.infra import persistence
+
+    for name in persistence.__all__:
+        model_cls = getattr(persistence, name)
+        model_cls.__table__.tometadata(_base_metadata)
+    _loaded = True
+
+
+class _MetadataWrapper:
+    """Lazy-load wrapper that triggers salesbook model registration on first access."""
+
+    def __getattr__(self, name: str) -> Any:
+        _ensure_salesbook_models_registered()
+        return getattr(_base_metadata, name)
+
+
+metadata = _MetadataWrapper()
+
+
+from hello_sales_backend.platform.db.models import (  # noqa: E402
     AgentArtifactRecord,
     AgentRunRecord,
     AgentStreamEventRecord,

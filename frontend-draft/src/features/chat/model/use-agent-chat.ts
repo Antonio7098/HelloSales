@@ -1,14 +1,6 @@
-import { useEffect, useState } from "react";
-import {
-  appendChatMessage,
-  createChatSession,
-  decideSessionApproval,
-  getSessionEvents,
-  getSession,
-  getSessionItems,
-  subscribeToSessionEvents,
-} from "@/features/chat/api/chat-client";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiRequestError } from "@/shared/api/http-client";
+import { useAppData } from "@/shared/data/context";
 import type {
   SessionEvent,
   SessionItem,
@@ -32,10 +24,7 @@ const initialState: AgentChatState = {
   session: null,
   items: [],
   events: [],
-  streamedAssistantDraft: {
-    turnId: null,
-    text: "",
-  },
+  streamedAssistantDraft: { turnId: null, text: "" },
   isConnecting: false,
   isSending: false,
   subscriptionNonce: 0,
@@ -77,12 +66,8 @@ function activeSessionWarning(
   items: SessionItem[],
   events: SessionEvent[],
 ): Error | null {
-  if (session.status !== "active") {
-    return null;
-  }
-  if (Date.now() - latestProgressAt(session, items, events) < stalledTurnWarningMs) {
-    return null;
-  }
+  if (session.status !== "active") return null;
+  if (Date.now() - latestProgressAt(session, items, events) < stalledTurnWarningMs) return null;
   return new Error(
     "The analyst is still marked active, but no new activity has arrived. This turn may be stalled.",
   );
@@ -98,23 +83,15 @@ function resolveSessionError(
     return new Error(session.error_message ?? "The analyst failed to complete the turn.");
   }
   const warning = activeSessionWarning(session, items, events);
-  if (warning !== null) {
-    return warning;
-  }
-  if (currentError instanceof ApiRequestError) {
-    return currentError;
-  }
+  if (warning !== null) return warning;
+  if (currentError instanceof ApiRequestError) return currentError;
   return null;
 }
 
 function readCompletedAssistantItem(event: SessionEvent): SessionItem | null {
-  if (event.event_type !== "agent.turn.completed") {
-    return null;
-  }
+  if (event.event_type !== "agent.turn.completed") return null;
   const value = event.payload.assistant_item;
-  if (value === null || typeof value !== "object" || Array.isArray(value)) {
-    return null;
-  }
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return null;
   const item = value as Partial<SessionItem>;
   if (
     typeof item.item_id !== "string" ||
@@ -124,9 +101,8 @@ function readCompletedAssistantItem(event: SessionEvent): SessionItem | null {
     item.payload === null ||
     typeof item.payload !== "object" ||
     Array.isArray(item.payload)
-  ) {
+  )
     return null;
-  }
   return {
     item_id: item.item_id,
     sequence_no: item.sequence_no,
@@ -152,14 +128,11 @@ function upsertSessionItem(items: SessionItem[], item: SessionItem): SessionItem
 
 export function useAgentChat() {
   const [state, setState] = useState<AgentChatState>(initialState);
+  const provider = useAppData();
 
   useEffect(() => {
-    if (!state.session) {
-      return;
-    }
-    if (terminalSessionStatuses.has(state.session.status)) {
-      return;
-    }
+    if (!state.session) return;
+    if (terminalSessionStatuses.has(state.session.status)) return;
 
     const sessionId = state.session.session_id;
     const lastSequence = state.events.at(-1)?.sequence_no ?? 0;
@@ -168,17 +141,13 @@ export function useAgentChat() {
     async function refreshSessionState({ force = false }: { force?: boolean } = {}) {
       try {
         const [session, items, events] = await Promise.all([
-          getSession(sessionId),
-          getSessionItems(sessionId),
-          getSessionEvents(sessionId),
+          provider.getChatSession(sessionId),
+          provider.getChatSessionItems(sessionId),
+          provider.getChatSessionEvents(sessionId),
         ]);
-        if (isClosed && !force) {
-          return;
-        }
+        if (isClosed && !force) return;
         setState((current) => {
-          if (current.session?.session_id !== sessionId) {
-            return current;
-          }
+          if (current.session?.session_id !== sessionId) return current;
           return {
             ...current,
             session,
@@ -196,15 +165,13 @@ export function useAgentChat() {
     }
 
     let unsubscribe = () => {};
-    unsubscribe = subscribeToSessionEvents(sessionId, lastSequence, (event) => {
+    unsubscribe = provider.subscribeToChatSessionEvents(sessionId, lastSequence, (event) => {
       setState((current) => {
         const latestSequence = current.events.at(-1)?.sequence_no ?? 0;
         const alreadySeen =
           current.events.some((existing) => existing.event_id === event.event_id) ||
           event.sequence_no <= latestSequence;
-        if (alreadySeen) {
-          return current;
-        }
+        if (alreadySeen) return current;
 
         const eventTurnId = typeof event.payload.turn_id === "string" ? event.payload.turn_id : event.turn_id;
         const completedAssistantItem = readCompletedAssistantItem(event);
@@ -213,7 +180,8 @@ export function useAgentChat() {
             ? current.items
             : upsertSessionItem(current.items, completedAssistantItem);
         const hasPersistedTurn =
-          eventTurnId != null && items.some((item) => item.turn_id === eventTurnId && item.item_type === "assistant_message");
+          eventTurnId != null &&
+          items.some((item) => item.turn_id === eventTurnId && item.item_type === "assistant_message");
 
         let streamedAssistantDraft = current.streamedAssistantDraft;
         if (event.event_type === "agent.turn.started") {
@@ -283,151 +251,147 @@ export function useAgentChat() {
       window.clearInterval(pollHandle);
       unsubscribe();
     };
-  }, [state.session?.session_id, state.session?.status, state.subscriptionNonce]);
+  }, [state.session?.session_id, state.session?.status, state.subscriptionNonce, provider]);
 
-  async function startSession(inputText: string) {
-    setState((current) => ({
-      ...current,
-      isConnecting: true,
-      error: null,
-    }));
-    try {
-      const session = await createChatSession({ inputText });
-      const items = await getSessionItems(session.session_id);
-      setState((current) => ({
-        session,
-        items,
-        events: current.session?.session_id === session.session_id ? current.events : [],
-        streamedAssistantDraft:
-          current.session?.session_id === session.session_id && !shouldClearDraft(items, current.streamedAssistantDraft)
-            ? current.streamedAssistantDraft
-            : {
-                turnId: null,
-                text: "",
-              },
-        isConnecting: false,
-        isSending: false,
-        subscriptionNonce: current.subscriptionNonce + 1,
-        approvalDecisionById: {},
-        error: null,
-      }));
-      return session;
-    } catch (error) {
-      const resolvedError = error instanceof Error ? error : new Error("Failed to create chat session");
+  const startSession = useCallback(
+    async (inputText: string) => {
       setState((current) => ({
         ...current,
-        isConnecting: false,
-        error: resolvedError,
-      }));
-      throw resolvedError;
-    }
-  }
-
-  async function sendMessage(inputText: string) {
-    if (!state.session) {
-      return startSession(inputText);
-    }
-
-    setState((current) => ({
-      ...current,
-      isSending: true,
-      error: null,
-    }));
-    try {
-      const session = await appendChatMessage(state.session.session_id, inputText);
-      const items = await getSessionItems(session.session_id);
-      setState((current) => ({
-        ...current,
-        session,
-        items,
-        subscriptionNonce: current.subscriptionNonce + 1,
-        streamedAssistantDraft: shouldClearDraft(items, current.streamedAssistantDraft)
-          ? { turnId: null, text: "" }
-          : current.streamedAssistantDraft,
-        isSending: false,
+        isConnecting: true,
         error: null,
       }));
-      return session;
-    } catch (error) {
-      if (state.session) {
-        try {
-          const [session, items, events] = await Promise.all([
-            getSession(state.session.session_id),
-            getSessionItems(state.session.session_id),
-            getSessionEvents(state.session.session_id),
-          ]);
-          const resolvedError = error instanceof Error ? error : new Error("Failed to send chat message");
-          setState((current) => ({
+      try {
+        const session = await provider.createChatSession({ inputText });
+        const items = await provider.getChatSessionItems(session.session_id);
+        setState((current) => ({
+          session,
+          items,
+          events: current.session?.session_id === session.session_id ? current.events : [],
+          streamedAssistantDraft:
+            current.session?.session_id === session.session_id && !shouldClearDraft(items, current.streamedAssistantDraft)
+              ? current.streamedAssistantDraft
+              : { turnId: null, text: "" },
+          isConnecting: false,
+          isSending: false,
+          subscriptionNonce: current.subscriptionNonce + 1,
+          approvalDecisionById: {},
+          error: null,
+        }));
+        return session;
+      } catch (error) {
+        const resolvedError = error instanceof Error ? error : new Error("Failed to create chat session");
+        setState((current) => ({
+          ...current,
+          isConnecting: false,
+          error: resolvedError,
+        }));
+        throw resolvedError;
+      }
+    },
+    [provider],
+  );
+
+  const sendMessage = useCallback(
+    async (inputText: string) => {
+      if (!state.session) return startSession(inputText);
+
+      setState((current) => ({
+        ...current,
+        isSending: true,
+        error: null,
+      }));
+      try {
+        const session = await provider.sendChatMessage(state.session.session_id, inputText);
+        const items = await provider.getChatSessionItems(session.session_id);
+        setState((current) => ({
+          ...current,
+          session,
+          items,
+          subscriptionNonce: current.subscriptionNonce + 1,
+          streamedAssistantDraft: shouldClearDraft(items, current.streamedAssistantDraft)
+            ? { turnId: null, text: "" }
+            : current.streamedAssistantDraft,
+          isSending: false,
+          error: null,
+        }));
+        return session;
+      } catch (error) {
+        if (state.session) {
+          try {
+            const [session, items, events] = await Promise.all([
+              provider.getChatSession(state.session.session_id),
+              provider.getChatSessionItems(state.session.session_id),
+              provider.getChatSessionEvents(state.session.session_id),
+            ]);
+            const resolvedError = error instanceof Error ? error : new Error("Failed to send chat message");
+            setState((current) => ({
+              ...current,
+              session,
+              items,
+              events,
+              isSending: false,
+              error: resolveSessionError(session, items, events, resolvedError),
+            }));
+            throw resolvedError;
+          } catch {
+            // Fall through to the original transport error if the recovery refresh fails.
+          }
+        }
+        const resolvedError = error instanceof Error ? error : new Error("Failed to send chat message");
+        setState((current) => ({
+          ...current,
+          isSending: false,
+          error: resolvedError,
+        }));
+        throw resolvedError;
+      }
+    },
+    [state.session, startSession, provider],
+  );
+
+  const respondToApproval = useCallback(
+    async (approvalId: string, approved: boolean) => {
+      const sessionId = state.session?.session_id;
+      if (!sessionId) throw new Error("Cannot submit an approval decision without an active session");
+
+      setState((current) => ({
+        ...current,
+        approvalDecisionById: { ...current.approvalDecisionById, [approvalId]: true },
+        error: null,
+      }));
+      try {
+        await provider.decideChatApproval(approvalId, { approved });
+        const [session, items, events] = await Promise.all([
+          provider.getChatSession(sessionId),
+          provider.getChatSessionItems(sessionId),
+          provider.getChatSessionEvents(sessionId),
+        ]);
+        setState((current) => {
+          const nextDecisionState = { ...current.approvalDecisionById };
+          delete nextDecisionState[approvalId];
+          return {
             ...current,
             session,
             items,
             events,
-            isSending: false,
-            error: resolveSessionError(session, items, events, resolvedError),
-          }));
-          throw resolvedError;
-        } catch {
-          // Fall through to the original transport error if the recovery refresh fails.
-        }
+            subscriptionNonce: current.subscriptionNonce + 1,
+            approvalDecisionById: nextDecisionState,
+            error: resolveSessionError(session, items, events, null),
+          };
+        });
+        return session;
+      } catch (error) {
+        const resolvedError = error instanceof Error ? error : new Error("Failed to submit approval decision");
+        setState((current) => {
+          const nextDecisionState = { ...current.approvalDecisionById };
+          delete nextDecisionState[approvalId];
+          return { ...current, approvalDecisionById: nextDecisionState, error: resolvedError };
+        });
+        throw resolvedError;
       }
-      const resolvedError = error instanceof Error ? error : new Error("Failed to send chat message");
-      setState((current) => ({
-        ...current,
-        isSending: false,
-        error: resolvedError,
-      }));
-      throw resolvedError;
-    }
-  }
-
-  async function respondToApproval(approvalId: string, approved: boolean) {
-    const sessionId = state.session?.session_id;
-    if (!sessionId) {
-      throw new Error("Cannot submit an approval decision without an active session");
-    }
-    setState((current) => ({
-      ...current,
-      approvalDecisionById: {
-        ...current.approvalDecisionById,
-        [approvalId]: true,
-      },
-      error: null,
-    }));
-    try {
-      await decideSessionApproval(approvalId, { approved });
-      const [session, items, events] = await Promise.all([
-        getSession(sessionId),
-        getSessionItems(sessionId),
-        getSessionEvents(sessionId),
-      ]);
-      setState((current) => {
-        const nextDecisionState = { ...current.approvalDecisionById };
-        delete nextDecisionState[approvalId];
-        return {
-          ...current,
-          session,
-          items,
-          events,
-          subscriptionNonce: current.subscriptionNonce + 1,
-          approvalDecisionById: nextDecisionState,
-          error: resolveSessionError(session, items, events, null),
-        };
-      });
-      return session;
-    } catch (error) {
-      const resolvedError = error instanceof Error ? error : new Error("Failed to submit approval decision");
-      setState((current) => {
-        const nextDecisionState = { ...current.approvalDecisionById };
-        delete nextDecisionState[approvalId];
-        return {
-          ...current,
-          approvalDecisionById: nextDecisionState,
-          error: resolvedError,
-        };
-      });
-      throw resolvedError;
-    }
-  }
+    },
+    [state.session, provider],
+  );
 
   return {
     ...state,

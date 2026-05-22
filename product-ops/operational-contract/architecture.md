@@ -12,7 +12,7 @@ It governs:
 - shared vs platform ownership
 
 It does not own every operational concern.
-Use the specialized contracts in `ops/operational-contract/` for failures, observability, testing, workflows, agents, and pre-brief scope.
+Use the specialized contracts in `ops/operational-contract/` for failures, observability, testing, workflows, and agents.
 
 ## Scope
 This contract applies when a change:
@@ -253,6 +253,7 @@ Reject a change if it:
 - creates cross-module dependencies through private internals
 - puts bounded-context behavior into `shared/` or `platform/`
 
+## Related Contracts
 ## Related Contracts
 - [errors.md](/home/antonioborgerees/coding/HelloSales/product-ops/operational-contract/errors.md)
 

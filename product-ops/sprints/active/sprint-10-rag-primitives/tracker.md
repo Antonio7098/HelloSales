@@ -15,7 +15,7 @@
 
 - **Primary Goal:** Add a modular `platform/rag` substrate with contracts, deterministic fakes, retrieval orchestration, provenance, and tests.
 - **Secondary Goals:**
-  - Keep RAG generic and pre-brief safe, with no product-specific document sources or public UX commitments.
+  - Keep RAG generic and safe, with no product-specific document sources or public UX commitments.
   - Make retrieval results citation-ready and context-source-ready without generating answers inside the RAG layer.
   - Add deterministic retrieval evaluation helpers so ranking quality can be tested before real provider integration.
   - Preserve observability and redaction discipline for ingestion, indexing, and retrieval failures.

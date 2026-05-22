@@ -14,6 +14,9 @@ from hello_sales_backend.modules.auth.bootstrap import build_auth_module
 from hello_sales_backend.modules.company_profile.bootstrap import build_company_profile_module
 from hello_sales_backend.modules.entity_operations.bootstrap import build_entity_operations_module
 from hello_sales_backend.modules.jobs.bootstrap import build_jobs_module
+from hello_sales_backend.modules.salesbook.bootstrap import (
+    build_salesbook_module,  # /Oliviercontribution
+)
 from hello_sales_backend.modules.semantic_catalog.bootstrap import build_semantic_catalog_module
 from hello_sales_backend.modules.sessions.bootstrap import build_sessions_module
 from hello_sales_backend.modules.system.bootstrap import build_system_module
@@ -182,18 +185,6 @@ def build_app_container(settings: Settings, overrides: AppOverrides | None = Non
         observability=observability,
     )
     agent_registry_diagnostics = AgentRegistryDiagnosticsAdapter()
-    system_module = build_system_module(
-        settings=settings,
-        providers=providers,
-        tasks=tasks,
-        workflow_runtime=workflow_runtime,
-        observability=observability,
-        agent_diagnostics=agent_store,
-        session_diagnostics=session_store,
-        worker_diagnostics=worker_store,
-        agent_registry=agent_registry_diagnostics,
-        clock=resolved_overrides.system_clock,
-    )
     semantic_catalog_module = build_semantic_catalog_module(settings=settings)
     analytics_query_module = build_analytics_query_module(
         settings=settings,
@@ -213,6 +204,25 @@ def build_app_container(settings: Settings, overrides: AppOverrides | None = Non
     company_profile_module = build_company_profile_module(
         settings=settings,
         session_factory=db.session_factory,
+    )
+    salesbook_module = build_salesbook_module(  # /Oliviercontribution
+        settings=settings,
+        session_factory=db.session_factory,
+        tasks=tasks,
+        company_profile_service=company_profile_module.service,
+    )
+    system_module = build_system_module(
+        settings=settings,
+        providers=providers,
+        tasks=tasks,
+        workflow_runtime=workflow_runtime,
+        observability=observability,
+        agent_diagnostics=agent_store,
+        session_diagnostics=session_store,
+        worker_diagnostics=worker_store,
+        agent_registry=agent_registry_diagnostics,
+        salesbook_diagnostics=salesbook_module.diagnostics,
+        clock=resolved_overrides.system_clock,
     )
     entity_operations_module = build_entity_operations_module(
         settings=settings,
@@ -274,6 +284,7 @@ def build_app_container(settings: Settings, overrides: AppOverrides | None = Non
         company_profile=company_profile_module,
         entity_operations=entity_operations_module,
         jobs=jobs_module,
+        salesbook=salesbook_module,  # /Oliviercontribution
         semantic_catalog=semantic_catalog_module,
         sessions=sessions_module,
         system=system_module,
