@@ -79,7 +79,7 @@ export function AppShell() {
               <div className="row row--gap-xs">
                 <StatusDot tone="success" pulse />
                 <span className="text-mono text-body-muted" style={{ fontSize: 11 }}>
-                  Demo · no auth
+                  Signed in (demo)
                 </span>
               </div>
               <button type="button" onClick={signOut} className="app-signout">

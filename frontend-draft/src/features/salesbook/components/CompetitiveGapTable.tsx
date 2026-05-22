@@ -32,14 +32,14 @@ export function CompetitiveGapTable() {
               </tr>
             </thead>
             <tbody>
-              {COMPETITIVE_GAP.map(([cat, doe, miss], idx) => (
+              {COMPETITIVE_GAP.map(([cat, action, miss], idx) => (
                 <tr
                   key={cat}
                   className="stagger-row"
                   style={{ transitionDelay: `${100 + idx * 150}ms` }}
                 >
                   <td>{cat}</td>
-                  <td>{doe}</td>
+                  <td>{action}</td>
                   <td className="funnel-gap-missing">{miss}</td>
                 </tr>
               ))}

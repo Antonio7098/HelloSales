@@ -628,16 +628,28 @@ class SalesbookService:
                 "severity": "error",
             },
         )
-        self._tasks.start(
-            TaskMetadata(
-                task_id=new_id(),
-                purpose="salesbook.operational_event.emit",
-                request_id=request_id,
+        try:
+            self._tasks.start(
+                TaskMetadata(
+                    task_id=new_id(),
+                    purpose="salesbook.operational_event.emit",
+                    request_id=request_id,
+                    trace_id=trace_id,
+                    actor_id=None,
+                ),
+                self._tasks._observability.emit(event),
+            )
+        except Exception as emit_exc:
+            self._logger.error(
+                "salesbook.operational_event.enqueue_failed",
+                code="salesbook.operational_event.enqueue_failed",
+                component="salesbook",
+                operation=f"salesbook.sheets.push.{action}",
+                correlation_id=request_id,
                 trace_id=trace_id,
-                actor_id=None,
-            ),
-            self._tasks._observability.emit(event),
-        )
+                error_type=emit_exc.__class__.__name__,
+                error_message=str(emit_exc),
+            )
 
     async def _emit_operational_event(
         self,

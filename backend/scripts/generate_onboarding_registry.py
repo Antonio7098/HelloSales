@@ -81,7 +81,10 @@ def extract() -> list[dict[str, Any]]:
     expected = (57, 22, 35)
     actual = (len(p1), len(p2), len(p3))
     if actual != expected:
-        print(f"WARNING: counts mismatch — got {actual}, expected {expected}", file=sys.stderr)
+        raise RuntimeError(
+            f"Onboarding registry shape changed: got {actual}, expected {expected}. "
+            "Update extractor offsets before regenerating outputs."
+        )
 
     return p1 + p2 + p3
 

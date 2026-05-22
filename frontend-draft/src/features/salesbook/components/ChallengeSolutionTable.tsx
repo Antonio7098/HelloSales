@@ -21,11 +21,12 @@ export function ChallengeSolutionTable() {
 
         <div className="funnel-table-wrap stagger-child" style={{ transitionDelay: "100ms" }}>
           <table className="funnel-challenge-table">
+            <caption>Common sales challenges, business impact, and Hello Sales solutions</caption>
             <thead>
               <tr>
-                <th className="th-dark">Challenge</th>
-                <th className="th-dark">Impact on Business</th>
-                <th className="th-green">Hello Sales</th>
+                <th scope="col" className="th-dark">Challenge</th>
+                <th scope="col" className="th-dark">Impact on Business</th>
+                <th scope="col" className="th-green">Hello Sales</th>
               </tr>
             </thead>
             <tbody>

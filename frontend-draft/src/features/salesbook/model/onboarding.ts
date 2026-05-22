@@ -22,5 +22,6 @@ export function groupBySection(registry: Registry): SectionGroup[] {
 
 export function pctNumber(value: number | string | null | undefined): number {
   if (value === null || value === undefined) return 0;
-  return typeof value === "number" ? value : Number(value);
+  const n = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(n) ? n : 0;
 }

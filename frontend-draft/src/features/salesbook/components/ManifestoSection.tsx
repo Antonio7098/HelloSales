@@ -28,11 +28,11 @@ export function ManifestoSection() {
         <article className="funnel-book stagger-tilt" style={{ transitionDelay: "0ms" }} aria-label="Hello Sales manifesto">
           <div className="funnel-book-margin" aria-hidden="true" />
           <div className="funnel-book-lines">
-            {BOOK_LINES.map((rest, i) => (
+            {BOOK_LINES.map((rest) => (
               <div
-                key={i}
+                key={rest}
                 className="funnel-book-line stagger-write"
-                style={{ transitionDelay: `${200 + i * 60}ms` }}
+                style={{ transitionDelay: `${200 + BOOK_LINES.indexOf(rest) * 60}ms` }}
               >
                 <strong>Hello Sales</strong>&nbsp;&nbsp;{rest}
               </div>

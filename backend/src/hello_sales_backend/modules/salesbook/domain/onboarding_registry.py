@@ -25,7 +25,14 @@ def _load_registry() -> list[dict[str, Any]]:
 
 def _ensure_loaded() -> None:
     if not ONBOARDING_QUESTIONS:
-        ONBOARDING_QUESTIONS.update({q["key"]: q for q in _load_registry()})
+        loaded = _load_registry()
+        by_key: dict[str, dict[str, Any]] = {}
+        for question in loaded:
+            key = question["key"]
+            if key in by_key:
+                raise ValueError(f"Duplicate onboarding question key: {key}")
+            by_key[key] = question
+        ONBOARDING_QUESTIONS.update(by_key)
 
 
 def get_onboarding_questions() -> dict[str, dict[str, Any]]:

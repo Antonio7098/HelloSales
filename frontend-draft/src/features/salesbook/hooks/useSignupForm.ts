@@ -16,6 +16,17 @@ export function useSignupForm() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (submitting) return;
+
+    if (!name.trim() || !email.trim() || !companyName.trim()) {
+      setError("Please fill in all required fields.");
+      return;
+    }
+    if (!email.includes("@")) {
+      setError("Please enter a valid email address.");
+      return;
+    }
+
     setError(null);
     setSubmitting(true);
 

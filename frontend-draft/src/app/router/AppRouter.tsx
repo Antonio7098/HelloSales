@@ -64,7 +64,14 @@ export function AppRouter() {
             </RequireUser>
           }
         />
-        <Route path="chat" element={<ChatPage />} />
+        <Route
+          path="chat"
+          element={
+            <RequireUser>
+              <ChatPage />
+            </RequireUser>
+          }
+        />
         <Route path="404" element={<NotFoundPage />} />
       </Route>
 

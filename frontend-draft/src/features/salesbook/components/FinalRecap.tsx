@@ -17,8 +17,9 @@ export function FinalRecap({
   onDone: () => void;
 }) {
   const groups = groupBySection(registry);
-  const totalAnswered = Object.values(responses).filter((value) => value.trim() !== "").length;
-  const totalQuestions = Object.keys(registry).length;
+  const registryKeys = Object.keys(registry);
+  const totalAnswered = registryKeys.filter((key) => (responses[key] ?? "").trim() !== "").length;
+  const totalQuestions = registryKeys.length;
 
   return (
     <div className="onboarding-final">

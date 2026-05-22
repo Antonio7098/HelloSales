@@ -111,7 +111,12 @@ function renderControl(
   ) {
     const items = asArray(value);
     return (
-      <BulletEditor id={id} items={items} onChange={(arr) => onChange(JSON.stringify(arr))} />
+      <BulletEditor
+              id={id}
+              items={items}
+              onChange={(arr) => onChange(JSON.stringify(arr))}
+              inputId={id}
+            />
     );
   }
   if (t === "text upload" || t === "text_upload") {
@@ -151,10 +156,12 @@ function BulletEditor({
   id,
   items,
   onChange,
+  inputId,
 }: {
   id: string;
   items: string[];
   onChange: (next: string[]) => void;
+  inputId?: string;
 }) {
   const list = items.length > 0 ? items : [""];
   return (
@@ -165,7 +172,7 @@ function BulletEditor({
             {idx + 1}.
           </span>
           <Input
-            value={item}
+            id={inputId ? (idx === 0 ? inputId : `${inputId}-${idx}`) : undefined}
             onChange={(e) => {
               const next = [...list];
               next[idx] = e.target.value;

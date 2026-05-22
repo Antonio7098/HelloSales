@@ -16,7 +16,7 @@ export function OnboardingLayout() {
     <div className="onboarding-layout">
       <header className="onboarding-header">
         <Link to="/" className="onboarding-brand">
-          <img src="/hello-sales-icon.png" alt="" className="onboarding-brand-icon" />
+          <img src="/hello-sales-icon.png" alt="Hello Sales logo" className="onboarding-brand-icon" />
           <span>
             Hello<em>Sales</em>
           </span>

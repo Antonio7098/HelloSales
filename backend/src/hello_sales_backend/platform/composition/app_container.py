@@ -185,18 +185,6 @@ def build_app_container(settings: Settings, overrides: AppOverrides | None = Non
         observability=observability,
     )
     agent_registry_diagnostics = AgentRegistryDiagnosticsAdapter()
-    system_module = build_system_module(
-        settings=settings,
-        providers=providers,
-        tasks=tasks,
-        workflow_runtime=workflow_runtime,
-        observability=observability,
-        agent_diagnostics=agent_store,
-        session_diagnostics=session_store,
-        worker_diagnostics=worker_store,
-        agent_registry=agent_registry_diagnostics,
-        clock=resolved_overrides.system_clock,
-    )
     semantic_catalog_module = build_semantic_catalog_module(settings=settings)
     analytics_query_module = build_analytics_query_module(
         settings=settings,

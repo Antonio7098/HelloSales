@@ -409,6 +409,9 @@ class SqlAlchemySalesbookPipelineRepository(SalesbookPipelineRepositoryPort):
                 r.stage = request.stage
                 if request.stage != old_stage:
                     r.stage_entered_at = now
+                    if request.stage not in ("closed_won", "closed_lost"):
+                        r.closed_at = None
+                        r.close_reason = None
                 if request.stage in ("closed_won", "closed_lost") and r.closed_at is None:
                     r.closed_at = now
             if request.lead_source is not None:

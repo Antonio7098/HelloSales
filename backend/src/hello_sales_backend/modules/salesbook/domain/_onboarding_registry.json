@@ -65,7 +65,7 @@
     "section": "Sales Team",
     "subsection": null,
     "question": "What roles are on the sales team?",
-    "answer_type": "Numeric",
+    "answer_type": "Editable bullets",
     "example": "SDR, AE, Closer",
     "key": "sales_roles"
   },

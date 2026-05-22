@@ -26,12 +26,15 @@ export function HeroSection() {
     const id = setInterval(() => {
       if (typeof document !== "undefined" && document.hidden) return;
       setKeywordPhase("out");
-      window.setTimeout(() => {
+      let timeoutId: ReturnType<typeof setTimeout> | undefined;
+      timeoutId = window.setTimeout(() => {
         setKeywordIndex((i) => (i + 1) % KEYWORDS.length);
         setKeywordPhase("in");
       }, 200);
     }, 3000);
-    return () => clearInterval(id);
+    return () => {
+      clearInterval(id);
+    };
   }, []);
 
   return (

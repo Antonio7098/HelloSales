@@ -444,9 +444,11 @@ export const mockDataProvider: AppDataProvider = {
   },
   async listComments(profileId, opts) {
     const allComments = readJson<Record<string, SalesbookComment[]>>(COMMENTS_KEY, {});
-    return (allComments[profileId] ?? []).filter((c) =>
-      opts?.status ? c.status === opts.status : opts?.targetId ? c.target_id === opts.targetId : true,
-    );
+    return (allComments[profileId] ?? []).filter((c) => {
+      if (opts?.status && c.status !== opts.status) return false;
+      if (opts?.targetId && c.target_id !== opts.targetId) return false;
+      return true;
+    });
   },
   async reviewComment(commentId, body) {
     const allComments = readJson<Record<string, SalesbookComment[]>>(COMMENTS_KEY, {});

@@ -227,8 +227,12 @@ class InMemorySalesbookPipelineRepository(SalesbookPipelineRepositoryPort):
         new_stage = request.stage if request.stage is not None else existing.stage
         stage_entered = now if (request.stage and request.stage != old_stage) else existing.stage_entered_at
         closed_at = existing.closed_at
+        close_reason = existing.close_reason
         if new_stage in ("closed_won", "closed_lost") and closed_at is None:
             closed_at = now
+        elif new_stage not in ("closed_won", "closed_lost") and old_stage in ("closed_won", "closed_lost"):
+            closed_at = None
+            close_reason = None
         view = existing.model_copy(update={
             "stage": new_stage,
             "lead_source": request.lead_source if request.lead_source is not None else existing.lead_source,
@@ -240,7 +244,7 @@ class InMemorySalesbookPipelineRepository(SalesbookPipelineRepositoryPort):
             "next_action_date": request.next_action_date if request.next_action_date is not None else existing.next_action_date,
             "stage_entered_at": stage_entered,
             "closed_at": closed_at,
-            "close_reason": request.close_reason if request.close_reason is not None else existing.close_reason,
+            "close_reason": close_reason,
         })
         self._deals[deal_id] = view
         return view

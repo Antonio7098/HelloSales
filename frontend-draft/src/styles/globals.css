@@ -2167,7 +2167,6 @@ button { font: inherit; color: inherit; }
   border-bottom: 1px solid #d4c9b8;
   padding: 4px 0;
   /* Allow natural wrapping — no truncation, no overflow hiding */
-  word-wrap: break-word;
   overflow-wrap: break-word;
   white-space: normal;
   overflow: visible;
