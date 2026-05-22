@@ -21,10 +21,10 @@ from hello_sales_backend.modules.salesbook.use_cases.views import (
     PipelineDealView,
     SalesbookCommentCreateRequest,
     SalesbookCommentView,
+    SalesbookDiagnosticsSummary,
     SalesbookExhaustiveProductEntry,
     SalesbookPinRequest,
     SalesbookPinView,
-    SalesbookDiagnosticsSummary,
     TeamMembershipCreateRequest,
     TeamMembershipView,
 )

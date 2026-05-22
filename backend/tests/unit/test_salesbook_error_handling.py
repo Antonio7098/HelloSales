@@ -10,8 +10,8 @@ from hello_sales_backend.modules.salesbook.infra.memory import (
     InMemorySalesbookCommentRepository,
     InMemorySalesbookEngagementRepository,
     InMemorySalesbookOnboardingRepository,
-    InMemorySalesbookPipelineRepository,
     InMemorySalesbookPinRepository,
+    InMemorySalesbookPipelineRepository,
     InMemorySalesbookTeamMembershipRepository,
     NullProductReadPort,
 )

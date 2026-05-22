@@ -6,7 +6,9 @@ module infra at platform load time.
 """
 from __future__ import annotations
 
-from hello_sales_backend.platform.db.base import Base, metadata as _base_metadata
+from typing import Any
+
+from hello_sales_backend.platform.db.base import metadata as _base_metadata
 
 _loaded = False
 
@@ -26,7 +28,7 @@ def _ensure_salesbook_models_registered() -> None:
 class _MetadataWrapper:
     """Lazy-load wrapper that triggers salesbook model registration on first access."""
 
-    def __getattr__(self, name: str):
+    def __getattr__(self, name: str) -> Any:
         _ensure_salesbook_models_registered()
         return getattr(_base_metadata, name)
 
@@ -34,7 +36,7 @@ class _MetadataWrapper:
 metadata = _MetadataWrapper()
 
 
-from hello_sales_backend.platform.db.models import (
+from hello_sales_backend.platform.db.models import (  # noqa: E402
     AgentArtifactRecord,
     AgentRunRecord,
     AgentStreamEventRecord,

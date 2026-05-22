@@ -13,13 +13,12 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-
 ONBOARDING_QUESTIONS: dict[str, dict[str, Any]] = {}
 
 
 @lru_cache(maxsize=1)
 def _load_registry() -> list[dict[str, Any]]:
-    return json.loads(
+    return json.loads(  # type: ignore[no-any-return]
         (Path(__file__).parent / "_onboarding_registry.json").read_text(encoding="utf-8")
     )
 

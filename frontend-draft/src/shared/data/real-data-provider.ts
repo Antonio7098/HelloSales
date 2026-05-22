@@ -19,6 +19,7 @@ import type {
 import type { CompanyProfileResponse } from "@/features/dashboard-data/model/types";
 import type { ApprovalDecision, ApprovalDecisionInput, CreateChatSessionInput, SessionEvent, SessionItem, SessionSummary } from "@/features/chat/model/types";
 import { getSalesbookApi, isSheetsMode } from "@/features/salesbook/api/salesbook-api";
+import { getFrontendEnv } from "@/shared/config/env";
 import { requestJson } from "@/shared/api/http-client";
 import type { CurrentUser } from "@/shared/auth/types";
 import type { AppDataProvider, SignupInput } from "@/shared/data/provider";
@@ -234,7 +235,7 @@ export const realDataProvider: AppDataProvider = {
     return response.data;
   },
   subscribeToChatSessionEvents(sessionId: string, afterSequence: number, onEvent: (event: SessionEvent) => void): () => void {
-    const url = new URL(`/sessions/${sessionId}/events/stream?after_sequence=${afterSequence}`, window.location.origin);
+    const url = `${getFrontendEnv().apiBaseUrl}/sessions/${sessionId}/events/stream?after_sequence=${afterSequence}`;
     const source = new EventSource(url);
     const eventTypes = [
       "agent.tool.queued", "agent.approval.requested", "agent.tool.started", "agent.tool.failed",

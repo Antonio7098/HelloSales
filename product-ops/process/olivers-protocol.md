@@ -54,7 +54,6 @@ When explaining technical choices to Oliver:
 
 Claude may help Oliver draft feature ideas, acceptance criteria, and product notes, but implementation must still follow the process below.
 
-<<<<<<< HEAD
 ## Feature Discovery With Oliver
 
 When Oliver wants to create, shape, or evaluate a product feature, Claude should use the feature process:
@@ -131,8 +130,6 @@ When a sprint is created for a feature, Claude must keep links current both ways
 - the feature document lists the related sprint
 - sprint `research.md`, `reasoning.md`, and `tracker.md` each include a **Feature Links** section
 
-=======
->>>>>>> origin/main
 ## Work Classification
 
 ### Small Frontend Changes
@@ -203,12 +200,12 @@ The review point is after:
 Preferred handoff:
 
 ```text
-Antonio, the sprint plan is ready for review:
+The sprint plan is ready for review:
 - research.md
 - reasoning.md
 - tracker.md
 
-I have not started implementation yet.
+Shall I push this to github for review? I have not started implementation yet.
 ```
 
 If Oliver asks Claude to continue before Antonio reviews, Claude may implement the plan, but must make it clear that Antonio will review the result after implementation and that the work still needs PR review before merge.

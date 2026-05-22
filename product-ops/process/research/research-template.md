@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Research: [Research Area]
 
 > Project: HelloSales
@@ -54,7 +53,6 @@
 ## Codebase Survey
 
 **Codebase Survey Status:** [Completed / Partial with reason / Not needed with reason]
-=======
 # Sprint Research: [Sprint Name]
 
 > Project: HelloSales
@@ -78,7 +76,6 @@
 ## Codebase Research
 
 **Codebase Search Status:** [Completed / Partial with reason / Not needed with reason]
->>>>>>> origin/main
 
 ### Searches Run
 
@@ -87,7 +84,6 @@
 
 ### Key Codebase Evidence
 
-<<<<<<< HEAD
 | Evidence | Location | Finding | Relevance |
 | --- | --- | --- | --- |
 | [Module/service/test/doc/config] | `[path]` | [What exists] | [How it affects the research area] |
@@ -97,36 +93,30 @@
 
 - **[Integration point]:** [Relevant files, interfaces, workflows, or runtime paths]
 - **[Integration point]:** [Relevant files, interfaces, workflows, or runtime paths]
-=======
 | Evidence | Location | Finding | Relevance For Reasoning |
 | --- | --- | --- | --- |
 | [Module/service/test/doc] | `[path]` | [What exists] | [How it should shape reasoning] |
 | [Module/service/test/doc] | `[path]` | [What exists] | [How it should shape reasoning] |
->>>>>>> origin/main
 
 ### Existing Patterns To Preserve
 
 - **[Pattern]:** [Where it appears and why it matters]
 - **[Pattern]:** [Where it appears and why it matters]
 
-<<<<<<< HEAD
 ### Constraints And Gaps
 
 - **[Constraint or gap]:** [Evidence and implication]
 - **[Constraint or gap]:** [Evidence and implication]
-=======
 ### Constraints, Gaps, And Integration Points
 
 - **[Constraint or gap]:** [Evidence and implication]
 - **[Integration point]:** [Evidence and implication]
->>>>>>> origin/main
 
 ### Nearby Tests And Evidence Paths
 
 - `[test path or smoke command]`: [What it already verifies]
 - `[test path or smoke command]`: [How it may need to change]
 
-<<<<<<< HEAD
 ## Codebase Implications
 
 ### How The Findings Map To HelloSales
@@ -179,7 +169,6 @@
 - [ ] Codebase integration points and implementation paths are identified
 - [ ] Weak, obsolete, or inapplicable findings are rejected where relevant
 - [ ] Risks, open questions, and evidence gaps are visible
-=======
 ## Web Research
 
 **Web Research Status:** [Completed / Not needed because current verified context is sufficient / Deferred with reason]
@@ -247,4 +236,3 @@
 - [ ] Weak, obsolete, or inapplicable findings are rejected where relevant
 - [ ] Open questions and risks are visible
 - [ ] The reasoning handoff identifies what evidence should shape later decisions
->>>>>>> origin/main

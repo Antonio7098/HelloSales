@@ -7,7 +7,10 @@ import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from hello_sales_backend.modules.salesbook.domain.exceptions import UnknownCommentError, UnknownDealError
+from hello_sales_backend.modules.salesbook.domain.exceptions import (
+    UnknownCommentError,
+    UnknownDealError,
+)
 from hello_sales_backend.modules.salesbook.infra.repository import (
     SqlAlchemySalesbookClientContactRepository,
     SqlAlchemySalesbookCommentRepository,

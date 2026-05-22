@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from hello_sales_backend.modules.salesbook.use_cases.ports import SalesbookDiagnosticsPort
+from hello_sales_backend.modules.salesbook.use_cases.views import SalesbookDiagnosticsSummary
 from hello_sales_backend.modules.system.infra.clock import UtcClock
 from hello_sales_backend.modules.system.use_cases.ports import (
     AgentDiagnosticsPort,
@@ -20,8 +22,6 @@ from hello_sales_backend.platform.sessions.memory import InMemorySessionStore
 from hello_sales_backend.platform.tasks.runner import BackgroundTaskRunner
 from hello_sales_backend.platform.workers.models import WorkerDiagnosticsSummary
 from hello_sales_backend.platform.workflows.runtime import WorkflowRuntime
-from hello_sales_backend.modules.salesbook.use_cases.ports import SalesbookDiagnosticsPort
-from hello_sales_backend.modules.salesbook.use_cases.views import SalesbookDiagnosticsSummary
 
 
 @dataclass(slots=True)

@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from decimal import Decimal
 import sys
+from datetime import UTC, date, datetime
+from decimal import Decimal
 from pathlib import Path
-from datetime import UTC, datetime, date
 
 import pytest
 
@@ -11,32 +11,31 @@ SRC_PATH = Path(__file__).resolve().parents[1] / "src"
 if str(SRC_PATH) not in sys.path:
     sys.path.insert(0, str(SRC_PATH))
 
-from hello_sales_backend.modules.salesbook.domain.value_objects import (
-    ClientStatus,
-    PipelineStage,
+from hello_sales_backend.modules.salesbook.domain.entities import (  # noqa: E402
+    ClientContact,
+    EngagementEntry,
+    OnboardingProgress,
+    PipelineDeal,
+    TeamMember,
+)
+from hello_sales_backend.modules.salesbook.domain.exceptions import (  # noqa: E402
+    InvalidPhaseError,
+    SalesbookError,
+    UnknownDealError,
+    UnknownMembershipError,
+    UnknownProfileError,
+    UnknownQuestionKeyError,
+)
+from hello_sales_backend.modules.salesbook.domain.value_objects import (  # noqa: E402
     CLOSED_STAGES,
-    RoleLevel,
-    ActionType,
     PHASE_1_TOTAL_QUESTIONS,
     PHASE_2_TOTAL_QUESTIONS,
     PHASE_3_TOTAL_QUESTIONS,
     TOTAL_ONBOARDING_QUESTIONS,
-)
-from hello_sales_backend.modules.salesbook.domain.entities import (
-    ClientContact,
-    OnboardingProgress,
-    OnboardingResponse,
-    PipelineDeal,
-    EngagementEntry,
-    TeamMember,
-)
-from hello_sales_backend.modules.salesbook.domain.exceptions import (
-    SalesbookError,
-    UnknownProfileError,
-    UnknownDealError,
-    UnknownMembershipError,
-    UnknownQuestionKeyError,
-    InvalidPhaseError,
+    ActionType,
+    ClientStatus,
+    PipelineStage,
+    RoleLevel,
 )
 
 
@@ -86,25 +85,25 @@ class TestEntities:
         return datetime.now(UTC)
 
     def _make_client_contact(self, **overrides) -> ClientContact:
-        defaults = dict(
-            extension_id="ext_1",
-            profile_id="prof_1",
-            primary_email="test@example.com",
-            contact_name="Test User",
-            contact_role="CEO",
-            phone="+1234567890",
-            company_size="50-100",
-            geography="US",
-            status=ClientStatus.ACTIVE,
-            created_at=self._now(),
-            updated_at=self._now(),
-        )
+        defaults = {
+            "extension_id": "ext_1",
+            "profile_id": "prof_1",
+            "primary_email": "test@example.com",
+            "contact_name": "Test User",
+            "contact_role": "CEO",
+            "phone": "+1234567890",
+            "company_size": "50-100",
+            "geography": "US",
+            "status": ClientStatus.ACTIVE,
+            "created_at": self._now(),
+            "updated_at": self._now(),
+        }
         defaults.update(overrides)
         return ClientContact(**defaults)
 
     def test_client_contact_is_frozen(self) -> None:
         contact = self._make_client_contact()
-        with pytest.raises(Exception):  # frozen dataclass
+        with pytest.raises(AttributeError):  # frozen dataclass
             contact.contact_name = "Changed"
 
     def test_client_contact_str_enum_status(self) -> None:

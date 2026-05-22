@@ -4,17 +4,17 @@ from decimal import Decimal
 
 import pytest
 
+from hello_sales_backend.modules.salesbook.domain.onboarding_registry import get_phase_questions
 from hello_sales_backend.modules.salesbook.infra.memory import (
     InMemorySalesbookClientContactRepository,
     InMemorySalesbookCommentRepository,
     InMemorySalesbookEngagementRepository,
     InMemorySalesbookOnboardingRepository,
-    InMemorySalesbookPipelineRepository,
     InMemorySalesbookPinRepository,
+    InMemorySalesbookPipelineRepository,
     InMemorySalesbookTeamMembershipRepository,
     NullProductReadPort,
 )
-from hello_sales_backend.modules.salesbook.domain.onboarding_registry import get_phase_questions
 from hello_sales_backend.modules.salesbook.use_cases.salesbook_service import SalesbookService
 from hello_sales_backend.modules.salesbook.use_cases.views import (
     ClientContactUpsertRequest,

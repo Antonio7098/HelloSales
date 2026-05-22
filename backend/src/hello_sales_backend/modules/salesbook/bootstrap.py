@@ -83,7 +83,7 @@ class SalesbookEngagementDiagnosticsAdapter:
 
     async def summarize(self, limit: int = 10) -> SalesbookDiagnosticsSummary:
         logs = await self._engagement.list_all(limit=200)
-        recent = sorted(logs, key=lambda l: l.timestamp, reverse=True)[:limit]
+        recent = sorted(logs, key=lambda e: e.timestamp, reverse=True)[:limit]
         return SalesbookDiagnosticsSummary(
             active_count=len(logs),
             total_count=len(logs),

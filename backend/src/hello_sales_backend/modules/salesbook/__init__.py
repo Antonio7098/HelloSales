@@ -4,6 +4,21 @@ from hello_sales_backend.modules.salesbook.bootstrap import (
     SalesbookModule,
     build_salesbook_module,
 )
+from hello_sales_backend.modules.salesbook.permissions import (
+    COMMENT_APPROVE_PERMISSION,
+    COMMENT_WRITE_PERMISSION,
+    ENGAGEMENT_READ_PERMISSION,
+    ENGAGEMENT_WRITE_PERMISSION,
+    ONBOARDING_READ_PERMISSION,
+    ONBOARDING_WRITE_PERMISSION,
+    PIN_READ_PERMISSION,
+    PIN_WRITE_PERMISSION,
+    PIPELINE_READ_PERMISSION,
+    PIPELINE_WRITE_PERMISSION,
+    SALESBOOK_READ_PERMISSION,
+    TEAM_READ_PERMISSION,
+    TEAM_WRITE_PERMISSION,
+)
 from hello_sales_backend.modules.salesbook.use_cases.salesbook_service import (
     SalesbookService,
 )
@@ -29,22 +44,6 @@ from hello_sales_backend.modules.salesbook.use_cases.views import (
     SalesbookPinView,
     TeamMembershipCreateRequest,
     TeamMembershipView,
-)
-
-from hello_sales_backend.modules.salesbook.permissions import (
-    COMMENT_APPROVE_PERMISSION,
-    COMMENT_WRITE_PERMISSION,
-    ENGAGEMENT_READ_PERMISSION,
-    ENGAGEMENT_WRITE_PERMISSION,
-    ONBOARDING_READ_PERMISSION,
-    ONBOARDING_WRITE_PERMISSION,
-    PIN_READ_PERMISSION,
-    PIN_WRITE_PERMISSION,
-    PIPELINE_READ_PERMISSION,
-    PIPELINE_WRITE_PERMISSION,
-    SALESBOOK_READ_PERMISSION,
-    TEAM_READ_PERMISSION,
-    TEAM_WRITE_PERMISSION,
 )
 
 __all__ = [

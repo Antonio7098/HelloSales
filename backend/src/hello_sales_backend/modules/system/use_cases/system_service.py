@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from dataclasses import asdict
 
+from hello_sales_backend.modules.salesbook.use_cases.ports import (
+    SalesbookDiagnosticsPort,
+)
 from hello_sales_backend.modules.system.domain.entities import (
     ProviderRuntimeStatus,
     RuntimeStatus,
@@ -17,9 +20,6 @@ from hello_sales_backend.modules.system.use_cases.ports import (
     ObservabilityPort,
     SessionDiagnosticsPort,
     WorkerDiagnosticsPort,
-)
-from hello_sales_backend.modules.salesbook.use_cases.ports import (
-    SalesbookDiagnosticsPort,
 )
 from hello_sales_backend.modules.system.use_cases.views import (
     AgentDiagnosticsView,

@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # General Research Protocol
 
 This protocol defines how to create a standalone research document.
@@ -49,7 +48,6 @@ Record:
 If important inputs are missing, make conservative assumptions and label them clearly unless the missing detail would make the research misleading.
 
 ### Step 2: Survey The Codebase And Integration Points
-=======
 # Sprint Research Protocol
 
 This protocol defines how to create the Sprint Research document.
@@ -91,29 +89,24 @@ Record:
 - the questions reasoning must be able to answer later
 
 ### Step 2: Search The Codebase For Key Evidence
->>>>>>> origin/main
 
 Search the codebase before searching externally.
 
 Use repository search and file reads to find:
-<<<<<<< HEAD
 - existing modules, services, routes, tools, workflows, tests, prompts, settings, diagnostics, docs, and operational contracts related to the area
 - similar implemented features or prior work
 - existing abstractions, seams, ownership boundaries, naming patterns, error handling, observability, testing, and documentation conventions
 - direct integration points the research may affect
 - constraints, TODOs, gaps, brittle areas, and compatibility concerns
-=======
 - existing modules, services, routes, tools, workflows, tests, prompts, settings, diagnostics, and docs related to the scope
 - similar implemented features or prior sprint artifacts
 - established naming, layering, composition, error, observability, testing, and documentation patterns
 - current seams that can be reused
 - constraints, TODOs, gaps, brittle areas, and likely integration points
->>>>>>> origin/main
 
 Record codebase evidence with file paths and concise notes.
 Distinguish direct evidence from inference.
 
-<<<<<<< HEAD
 The codebase survey must answer:
 - what already exists
 - which integration points matter
@@ -125,7 +118,6 @@ The codebase survey must answer:
 ### Step 3: Search The Web For Current Guidance
 
 Search the web for current information when the research touches technologies, tools, providers, security practices, standards, model behavior, frameworks, third-party APIs, product practices, or implementation patterns that may have changed.
-=======
 The research must answer:
 - what already exists
 - what should probably be reused
@@ -136,7 +128,6 @@ The research must answer:
 ### Step 3: Search The Web For Current Guidance
 
 Search the web for current information when the sprint touches technologies, tools, providers, security practices, standards, model behavior, frameworks, third-party APIs, or implementation patterns that may have changed.
->>>>>>> origin/main
 
 Research should cover, where relevant:
 - official documentation and release notes
@@ -144,13 +135,10 @@ Research should cover, where relevant:
 - latest supported tools, SDKs, APIs, models, frameworks, or provider capabilities
 - deprecations, migrations, pricing or quota constraints, and breaking changes
 - key repositories that show mature implementation patterns
-<<<<<<< HEAD
 - focused code snippets that demonstrate concrete integrations or edge cases
 - credible comparison material for options the user may need to choose between
-=======
 - focused code snippets that demonstrate a concrete integration or edge case
 - credible comparison material for options the reasoning phase may need to choose between
->>>>>>> origin/main
 
 Prefer authoritative sources:
 - official docs and API references
@@ -166,7 +154,6 @@ For each important finding, record:
 - **Source** - where it came from
 - **Finding** - what it says
 - **Credibility** - why the source is reliable enough to matter
-<<<<<<< HEAD
 - **Relevance** - how it relates to the user's goals and constraints
 - **Limits** - uncertainty, version constraints, missing context, or reasons it may not apply
 
@@ -236,7 +223,6 @@ Before completing, verify:
 6. **Separate evidence from recommendation** - make clear what was found, what is inferred, and what is advised
 7. **Reject distractions** - researched but unsuitable options should be recorded and set aside
 8. **Make implementation concrete** - tie findings to real codebase integration points and likely implementation paths
-=======
 - **Relevance** - how it affects this sprint
 - **Limits** - uncertainty, version constraints, missing context, or reasons it may not apply
 
@@ -288,4 +274,3 @@ Before completing, verify:
 5. **Preserve context** - include enough source detail for reasoning and review to verify claims
 6. **Reject distractions** - researched but unsuitable options should be recorded and set aside
 7. **Hand off cleanly** - the research document should make reasoning faster, sharper, and less assumption-driven
->>>>>>> origin/main
