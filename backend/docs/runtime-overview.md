@@ -174,7 +174,7 @@ The runtime wrapper:
 
 ## Application Capability Modules
 
-The backend currently exposes seven modules:
+The backend currently exposes thirteen modules:
 
 ### `modules/auth`
 Purpose:
@@ -186,7 +186,7 @@ Purpose:
 ### `modules/analytics_query`
 Purpose:
 - governed analytics-query capability for the conversational runtime
-- semantic catalog loading from YAML manifests
+- semantic catalog projection
 - `sqlglot`-backed read-only validation against approved relations and columns
 - bounded execution, result truncation, and semantics-aware redaction
 - machine-usable query observability events such as `analytics_query.succeeded` and `analytics_query.failed`
@@ -233,6 +233,38 @@ Purpose:
 - run creation, inspection, event listing, and cancellation
 
 The worker-runs module is the public application facade over the worker runtime.
+
+### `modules/semantic_catalog`
+Purpose:
+- canonical semantic catalog loading and validation
+- entity and field metadata management
+- projection definitions for analytics and mutations
+
+### `modules/entity_operations`
+Purpose:
+- generic create/edit orchestration
+- field validation against semantic catalog
+- opaque entity ref handling and signing
+- optimistic concurrency via expected_version
+- undo record capture and conflict handling
+
+### `modules/web_search`
+Purpose:
+- provider-neutral web search capability
+- reusable search service primitive for agents
+- provider diagnostics and failure handling
+
+### `modules/voice`
+Purpose:
+- STT, TTS, and streaming text-to-speech primitives
+- fake duplex session runtime for testing
+- provider-neutral voice contracts and lifecycle states
+
+### `modules/company_profile`
+Purpose:
+- company data management
+- product catalog management
+- company context view for agent sessions
 
 ## Session And Agent Execution Model
 

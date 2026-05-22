@@ -101,8 +101,8 @@ services:
       PYTHONPATH=src uvicorn hello_sales_backend.app:app --host 0.0.0.0 --port 8000 --reload"
     environment:
       HELLO_SALES_DATABASE_URL: postgresql+asyncpg://hello_sales:hello_sales@postgres:5432/hello_sales
-      HELLO_SALES_CORS_ALLOWED_ORIGINS: '["http://localhost:5173", "http://localhost:5174"]'
-      HELLO_SALES_AUTH_PROVIDER: dev
+      HELLO_SALES_CORS_ALLOWED_ORIGINS: '["http://localhost:5173"]'
+      HELLO_SALES_AUTH_PROVIDER: workos
       HELLO_SALES_OBSERVABILITY_METRICS_ENABLED: "true"
       HELLO_SALES_OBSERVABILITY_METRICS_ENDPOINT_ENABLED: "true"
       HELLO_SALES_OBSERVABILITY_TRACING_ENABLED: "true"
@@ -140,8 +140,7 @@ services:
 
 volumes:
   frontend_draft_node_modules:
-
-  grafana_data:
+  frontend_draft_node_modules:
   hello_sales_postgres_data:
   loki_data:
   minio_data:

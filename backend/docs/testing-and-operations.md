@@ -63,7 +63,11 @@ Current provider-backed suites include:
 - `generic-agent-provider-approval-boundary`
 - `generic-agent-provider-event-stream`
 - `generic-agent-provider` scenario `analytics_query_completion`
+- `generic-agent-web-search`
+- `generic-agent-semantic-catalog-read`
+- `generic-agent-entity-mutation`
 - `worker-provider-baseline`
+- `worker-campaign-workflow`
 - `voice-stt`
 - `voice-tts`
 - `voice-llm-to-tts`
@@ -154,6 +158,7 @@ The scaffold currently provides:
 - an agent-runs module exposing the generic agent runtime
 - a worker-runs module exposing the worker runtime
 - a voice module exposing STT, TTS, streaming text-to-TTS, and fake duplex primitives
+- a company_profile module for company data and product catalog management
 
 ## Recommended Reading With This Doc
 

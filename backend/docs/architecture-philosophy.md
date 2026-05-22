@@ -34,9 +34,18 @@ Routes should resolve dependencies, call a module service, and translate the res
 This layer owns the application-facing capabilities exposed by the system.
 
 Current modules are:
-- `system`
+- `auth`
+- `analytics_query`
+- `company_profile`
+- `entity_operations`
 - `jobs`
+- `semantic_catalog`
+- `sessions`
 - `agent_runs`
+- `system`
+- `voice`
+- `web_search`
+- `worker_runs`
 
 A module is the right place for:
 - public use cases

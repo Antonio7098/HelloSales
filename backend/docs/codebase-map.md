@@ -86,6 +86,45 @@ Owns:
 - worker event inspection
 - cancellation surface
 
+#### `modules/analytics_query/`
+Owns:
+- governed analytics-query capability for conversational runtime
+- semantic catalog projection
+- SQL validation and execution
+- result redaction
+
+#### `modules/semantic_catalog/`
+Owns:
+- canonical semantic catalog loading and validation
+- entity and field metadata
+- projection definitions for analytics and mutations
+
+#### `modules/entity_operations/`
+Owns:
+- generic create/edit orchestration
+- field validation against semantic catalog
+- opaque entity ref handling
+- optimistic concurrency
+- undo semantics
+
+#### `modules/web_search/`
+Owns:
+- provider-neutral web search capability
+- provider diagnostics
+- reusable search service primitive
+
+#### `modules/voice/`
+Owns:
+- STT, TTS, and streaming text-to-speech primitives
+- fake duplex session runtime
+- provider-neutral voice contracts
+
+#### `modules/company_profile/`
+Owns:
+- company data management
+- product catalog management
+- company context for agent sessions
+
 ### `platform/`
 Owns runtime infrastructure.
 
