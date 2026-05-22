@@ -2,7 +2,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import type { ReactNode } from "react";
 import { AppShell } from "@/shared/ui/AppShell";
 import { PublicLayout } from "@/shared/ui/layouts/PublicLayout";
-import { OnboardingLayout } from "@/shared/ui/layouts/OnboardingLayout";
+import { OnboardingLayout } from "@/features/salesbook";
 import { ChatPage } from "@/pages/chat";
 import { DashboardPage } from "@/pages/dashboard";
 import { NotFoundPage } from "@/pages/not-found";

@@ -96,6 +96,28 @@ async def test_unhandled_exceptions_are_returned_as_internal_errors(tmp_path: Pa
 
 
 @pytest.mark.asyncio
+async def test_system_diagnostics_exposes_salesbook_section(tmp_path: Path) -> None:
+    settings = Settings(
+        environment="test",
+        database_url=f"sqlite+aiosqlite:///{tmp_path / 'salesbook-diagnostics.db'}",
+    )
+    app = create_app(settings, overrides=AppOverrides(auth_provider=build_test_auth_provider()))
+
+    async with app.router.lifespan_context(app):
+        transport = ASGITransport(app=app, raise_app_exceptions=False)
+        async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+            attach_test_session_cookie(client)
+            diagnostics = await client.get("/api/system/diagnostics")
+
+    assert diagnostics.status_code == 200
+    payload = diagnostics.json()["data"]
+    assert "salesbook" in payload
+    assert payload["salesbook"]["active_count"] >= 0
+    assert payload["salesbook"]["total_count"] >= 0
+    assert isinstance(payload["salesbook"]["recent"], list)
+
+
+@pytest.mark.asyncio
 async def test_partial_llm_configuration_fails_startup(tmp_path: Path) -> None:
     app = create_app(
         Settings(

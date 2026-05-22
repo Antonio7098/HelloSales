@@ -11,6 +11,10 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import uuid4
 
+from hello_sales_backend.modules.salesbook.domain.exceptions import (
+    UnknownCommentError,
+    UnknownDealError,
+)
 from hello_sales_backend.modules.salesbook.use_cases.ports import (
     SalesbookClientContactRepositoryPort,
     SalesbookCommentRepositoryPort,
@@ -215,7 +219,9 @@ class InMemorySalesbookPipelineRepository(SalesbookPipelineRepositoryPort):
     async def update_deal(
         self, deal_id: str, request: PipelineDealUpdateRequest
     ) -> PipelineDealView:
-        existing = self._deals[deal_id]
+        existing = self._deals.get(deal_id)
+        if existing is None:
+            raise UnknownDealError(deal_id)
         now = _now()
         old_stage = existing.stage
         new_stage = request.stage if request.stage is not None else existing.stage
@@ -361,7 +367,9 @@ class InMemorySalesbookCommentRepository(SalesbookCommentRepositoryPort):
     async def update_status(
         self, comment_id: str, *, status: str, approved_by: str | None,
     ) -> SalesbookCommentView:
-        existing = self._comments[comment_id]
+        existing = self._comments.get(comment_id)
+        if existing is None:
+            raise UnknownCommentError(comment_id)
         view = existing.model_copy(update={
             "status": status,
             "approved_by": approved_by,

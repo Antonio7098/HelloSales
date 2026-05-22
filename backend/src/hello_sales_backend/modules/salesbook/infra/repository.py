@@ -19,6 +19,10 @@ if TYPE_CHECKING:
     from hello_sales_backend.modules.company_profile import CompanyProfileService
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from hello_sales_backend.modules.salesbook.domain.exceptions import (
+    UnknownCommentError,
+    UnknownDealError,
+)
 from hello_sales_backend.modules.salesbook.infra.persistence import (
     SalesbookClientContactExtensionRecord,
     SalesbookCommentRecord,
@@ -398,7 +402,7 @@ class SqlAlchemySalesbookPipelineRepository(SalesbookPipelineRepositoryPort):
                 select(SalesbookPipelineDealRecord).where(SalesbookPipelineDealRecord.deal_id == deal_id)
             )
             if r is None:
-                raise KeyError(f"deal not found: {deal_id}")
+                raise UnknownDealError(deal_id)
             now = _now()
             old_stage = r.stage
             if request.stage is not None:
@@ -631,7 +635,7 @@ class SqlAlchemySalesbookCommentRepository(SalesbookCommentRepositoryPort):
                 select(SalesbookCommentRecord).where(SalesbookCommentRecord.comment_id == comment_id)
             )
             if r is None:
-                raise KeyError(f"comment not found: {comment_id}")
+                raise UnknownCommentError(comment_id)
             r.status = status
             r.approved_by = approved_by
             r.approved_at = _now() if status == "approved" else None

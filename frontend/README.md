@@ -2,12 +2,11 @@
 
 > **Note**: Project overview lives in the root [README.md](../README.md).
 
-This frontend is scaffolded as a pre-brief, contract-driven React application.
+This frontend is a contract-driven React application.
 
 ## Goals
 
 - stay highly organized from day one
-- keep product assumptions minimal before the brief arrives
 - make future extension and possible rehosting straightforward
 
 ## Start

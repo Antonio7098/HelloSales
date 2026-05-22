@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal
 
@@ -321,6 +322,13 @@ class SalesbookPinView(BaseModel):
     pinned_at: datetime
 
 
+@dataclass
+class SalesbookDiagnosticsSummary:
+    active_count: int
+    total_count: int
+    recent_runs: list[EngagementLogView]
+
+
 __all__ = [
     "ClientContactUpsertRequest",
     "ClientContactView",
@@ -343,6 +351,7 @@ __all__ = [
     "SalesbookCommentView",
     "SalesbookPinRequest",
     "SalesbookPinView",
+    "SalesbookDiagnosticsSummary",
 ]
 
 

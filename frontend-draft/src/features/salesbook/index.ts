@@ -1,0 +1,13 @@
+export { getSalesbookApi, isSheetsMode, type SalesbookApi } from "./api/salesbook-api";
+export { OnboardingLayout } from "./OnboardingLayout";
+export { HeroSection } from "./components/HeroSection";
+export { CompetitiveGapTable } from "./components/CompetitiveGapTable";
+export { ManifestoSection } from "./components/ManifestoSection";
+export { ChallengeSolutionTable } from "./components/ChallengeSolutionTable";
+export { SignupForm } from "./components/SignupForm";
+export { RoleButton } from "./components/RoleButton";
+export { FinalRecap } from "./components/FinalRecap";
+export { PhaseDot } from "./components/PhaseDot";
+export { useSignupForm } from "./hooks/useSignupForm";
+export { useOnboardingFlow } from "./hooks/useOnboardingFlow";
+export { groupBySection, pctNumber, type SectionGroup } from "./model/onboarding";

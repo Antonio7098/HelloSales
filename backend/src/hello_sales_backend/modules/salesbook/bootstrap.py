@@ -37,6 +37,7 @@ from hello_sales_backend.modules.salesbook.infra.repository import (
 from hello_sales_backend.modules.salesbook.use_cases.ports import (
     SalesbookClientContactRepositoryPort,
     SalesbookCommentRepositoryPort,
+    SalesbookDiagnosticsPort,
     SalesbookEngagementRepositoryPort,
     SalesbookOnboardingRepositoryPort,
     SalesbookPinRepositoryPort,
@@ -47,7 +48,11 @@ from hello_sales_backend.modules.salesbook.use_cases.ports import (
 from hello_sales_backend.modules.salesbook.use_cases.salesbook_service import (
     SalesbookService,
 )
+from hello_sales_backend.modules.salesbook.use_cases.views import (
+    SalesbookDiagnosticsSummary,
+)
 from hello_sales_backend.platform.config.settings import Settings
+from hello_sales_backend.platform.tasks.runner import BackgroundTaskRunner
 
 if TYPE_CHECKING:
     from hello_sales_backend.modules.company_profile import CompanyProfileService
@@ -58,12 +63,39 @@ class SalesbookModule:
     """Resolved salesbook module bundle."""
 
     service: SalesbookService
+    diagnostics: SalesbookDiagnosticsPort
+
+
+class _NoOpSalesbookDiagnostics:
+    """Compatibility shim for tests and bootstrap paths without salesbook wiring."""
+
+    async def summarize(self, limit: int = 10) -> SalesbookDiagnosticsSummary:
+        return SalesbookDiagnosticsSummary(
+            active_count=0, total_count=0, recent_runs=[]
+        )
+
+
+class SalesbookEngagementDiagnosticsAdapter:
+    """Adapter that exposes engagement logs as salesbook diagnostics."""
+
+    def __init__(self, engagement_repo: SalesbookEngagementRepositoryPort) -> None:
+        self._engagement = engagement_repo
+
+    async def summarize(self, limit: int = 10) -> SalesbookDiagnosticsSummary:
+        logs = await self._engagement.list_all(limit=200)
+        recent = sorted(logs, key=lambda l: l.timestamp, reverse=True)[:limit]
+        return SalesbookDiagnosticsSummary(
+            active_count=len(logs),
+            total_count=len(logs),
+            recent_runs=recent,
+        )
 
 
 def build_salesbook_module(
     *,
     settings: Settings,
     session_factory: async_sessionmaker[AsyncSession],
+    tasks: BackgroundTaskRunner,
     company_profile_service: CompanyProfileService | None = None,
 ) -> SalesbookModule:
     """Build the salesbook module.
@@ -112,11 +144,16 @@ def build_salesbook_module(
     sheets_provider = None
     sheets_url = os.getenv("HELLO_SALES_SHEETS_WEBHOOK_URL")
     if sheets_url:
-        # Lazy import to avoid forcing httpx at import-time when feature is off.
-        from hello_sales_backend.modules.salesbook.infra.sheets_provider import (  # noqa: E402
+        from hello_sales_backend.modules.salesbook.infra.sheets_provider import (
             SalesbookSheetsProvider,
         )
         sheets_provider = SalesbookSheetsProvider(webhook_url=sheets_url)
+
+    salesbook_diagnostics: SalesbookDiagnosticsPort = (
+        SalesbookEngagementDiagnosticsAdapter(engagement_repo)
+        if engagement_repo is not None
+        else _NoOpSalesbookDiagnostics()
+    )
 
     return SalesbookModule(
         service=SalesbookService(
@@ -129,7 +166,9 @@ def build_salesbook_module(
             comment_repo=comment_repo,
             pin_repo=pin_repo,
             sheets_provider=sheets_provider,
-        )
+            tasks=tasks,
+        ),
+        diagnostics=salesbook_diagnostics,
     )
 
 

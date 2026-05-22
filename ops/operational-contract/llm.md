@@ -264,7 +264,7 @@ LLM-backed runtime capabilities must be exposed through application modules rath
 **Required**
 - expose public use cases through module-owned services or facades
 - keep routes and transport concerns thin over those modules
-- keep pre-brief public surfaces intentionally narrow and operational
+- keep public surfaces intentionally narrow and operational
 
 **Forbidden**
 - transport code reaching directly into generic runtime internals

@@ -1,4 +1,4 @@
-.PHONY: dev-up dev-down dev-logs dev-ps
+.PHONY: dev-up dev-down dev-logs dev-ps dev-restart
 
 COMPOSE := docker compose -f docker-compose.dev.yml
 
@@ -13,3 +13,6 @@ dev-logs:
 
 dev-ps:
 	$(COMPOSE) ps
+
+dev-restart:
+	$(COMPOSE) restart $(S)

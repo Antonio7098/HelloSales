@@ -11,65 +11,31 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
+import type { CurrentUser, UserRole } from "@/shared/auth/types";
+import { useAppData } from "@/shared/data/context";
 
-export type UserRole = "admin" | "rep";
-
-export type CurrentUser = {
-  profileId: string;
-  email: string;
-  name: string;
-  companyName: string;
-  role: UserRole;
-  signedUpAt: string;
-};
-
-const LS_KEY = "hs:user";
-
-function load(): CurrentUser | null {
-  if (typeof window === "undefined") return null;
-  const raw = window.localStorage.getItem(LS_KEY);
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw) as CurrentUser;
-  } catch {
-    return null;
-  }
-}
-
-function save(user: CurrentUser | null): void {
-  if (typeof window === "undefined") return;
-  if (user === null) {
-    window.localStorage.removeItem(LS_KEY);
-  } else {
-    window.localStorage.setItem(LS_KEY, JSON.stringify(user));
-  }
-  window.dispatchEvent(new CustomEvent("hs:user-changed"));
-}
+export type { CurrentUser, UserRole };
 
 export function useCurrentUser() {
-  const [user, setUser] = useState<CurrentUser | null>(() => load());
+  const provider = useAppData();
+  const [user, setUser] = useState<CurrentUser | null>(() => provider.getCurrentUser());
 
   useEffect(() => {
-    function refresh() {
-      setUser(load());
-    }
-    window.addEventListener("hs:user-changed", refresh);
-    window.addEventListener("storage", refresh);
-    return () => {
-      window.removeEventListener("hs:user-changed", refresh);
-      window.removeEventListener("storage", refresh);
-    };
-  }, []);
+    setUser(provider.getCurrentUser());
+    return provider.subscribeCurrentUser(() => {
+      setUser(provider.getCurrentUser());
+    });
+  }, [provider]);
 
   const signIn = useCallback((next: CurrentUser) => {
-    save(next);
+    provider.signIn(next);
     setUser(next);
-  }, []);
+  }, [provider]);
 
   const signOut = useCallback(() => {
-    save(null);
+    provider.signOut();
     setUser(null);
-  }, []);
+  }, [provider]);
 
   return { user, signIn, signOut };
 }

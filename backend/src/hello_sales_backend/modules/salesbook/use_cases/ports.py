@@ -24,6 +24,7 @@ from hello_sales_backend.modules.salesbook.use_cases.views import (
     SalesbookExhaustiveProductEntry,
     SalesbookPinRequest,
     SalesbookPinView,
+    SalesbookDiagnosticsSummary,
     TeamMembershipCreateRequest,
     TeamMembershipView,
 )
@@ -116,6 +117,22 @@ class SalesbookPinRepositoryPort(Protocol):
     ) -> None: ...
 
 
+class SalesbookDiagnosticsPort(Protocol):
+    """Provides operator-facing salesbook diagnostics."""
+
+    async def summarize(self, limit: int = 10) -> SalesbookDiagnosticsSummary: ...
+
+
+class SheetPushPort(Protocol):
+    """Port for pushing salesbook events to an external sheet provider.
+
+    The concrete implementation (e.g. SalesbookSheetsProvider) lives in infra/
+    and is injected at composition time.
+    """
+
+    async def push(self, action: str, payload: dict[str, object]) -> None: ...
+
+
 __all__ = [
     "SalesbookClientContactRepositoryPort",
     "SalesbookOnboardingRepositoryPort",
@@ -125,4 +142,6 @@ __all__ = [
     "SalesbookProductReadPort",
     "SalesbookCommentRepositoryPort",
     "SalesbookPinRepositoryPort",
+    "SalesbookDiagnosticsPort",
+    "SheetPushPort",
 ]

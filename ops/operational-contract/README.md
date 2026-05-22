@@ -21,7 +21,6 @@ They are structured with:
 - `testing.md` - Test seams, coverage, and determinism requirements
 - `workflows.md` - Workflow eligibility, boundaries, and retry/cancellation semantics
 - `llm.md` - Agent and worker runtime boundaries, prompt versioning and propagation rules, tool and structured-output rules, lifecycle semantics, and operational exposure
-- `pre-brief-scope.md` - What is safe to build before the product brief exists
 
 ## How To Use Contracts
 

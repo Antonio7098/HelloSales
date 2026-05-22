@@ -220,6 +220,29 @@ class ObservabilityDiagnosticsView(BaseModel):
     tracing: TracingDiagnosticsView
 
 
+class SalesbookRunSnapshotView(BaseModel):
+    """Engagement log summary for diagnostics."""
+
+    log_id: str
+    profile_id: str
+    deal_id: str | None = None
+    action_type: str
+    action_detail: str | None = None
+    action_result: str | None = None
+    next_step: str | None = None
+    channel: str | None = None
+    agent_id: str | None = None
+    timestamp: str
+
+
+class SalesbookDiagnosticsView(BaseModel):
+    """Salesbook runtime diagnostics summary."""
+
+    active_count: int
+    total_count: int
+    recent: list[SalesbookRunSnapshotView]
+
+
 class SystemDiagnosticsView(BaseModel):
     """Detailed operational diagnostics."""
 
@@ -238,3 +261,4 @@ class SystemDiagnosticsView(BaseModel):
     observability: ObservabilityDiagnosticsView
     events: list[OperationalEventView]
     alerts: list[AlertView]
+    salesbook: SalesbookDiagnosticsView

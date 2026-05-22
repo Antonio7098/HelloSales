@@ -220,7 +220,21 @@ def build_app_container(settings: Settings, overrides: AppOverrides | None = Non
     salesbook_module = build_salesbook_module(  # /Oliviercontribution
         settings=settings,
         session_factory=db.session_factory,
+        tasks=tasks,
         company_profile_service=company_profile_module.service,
+    )
+    system_module = build_system_module(
+        settings=settings,
+        providers=providers,
+        tasks=tasks,
+        workflow_runtime=workflow_runtime,
+        observability=observability,
+        agent_diagnostics=agent_store,
+        session_diagnostics=session_store,
+        worker_diagnostics=worker_store,
+        agent_registry=agent_registry_diagnostics,
+        salesbook_diagnostics=salesbook_module.diagnostics,
+        clock=resolved_overrides.system_clock,
     )
     entity_operations_module = build_entity_operations_module(
         settings=settings,

@@ -1,31 +1,22 @@
 # HelloSales
 
-Pre-brief scaffold for a sales application, built according to the operational contract defined in `ops/operational-contract/pre-brief-scope.md`.
+A sales application, built according to the operational contracts defined in `ops/operational-contract/`.
 
 ## Architecture
 
 ```
 HelloSales/
-├── backend/          # Python/FastAPI backend scaffold
-├── frontend/         # React frontend scaffold
+├── backend/          # Python/FastAPI backend
+├── frontend/         # React frontend
 └── ops/              # Operational contracts and processes
 ```
-
-## Pre-Brief Scope
-
-This project is built before the product brief is complete. Per the pre-brief scope contract:
-
-- **Allowed**: Foundation work, scaffolding, operational infrastructure, generic patterns
-- **Deferred**: Product-specific domain logic, real bounded contexts, feature commitments
-
-See `ops/operational-contract/pre-brief-scope.md` for the full contract and requirements.
 
 ## Getting Started
 
 ### Root Commands
 
 ```bash
-make dev-up          # Start full local stack (Postgres, backend, frontend-draft, observability)
+make dev-up          # Start full local stack (Postgres, backend, frontend, observability)
 make dev-down        # Stop local stack
 make dev-logs        # View logs
 make dev-ps          # Show running containers

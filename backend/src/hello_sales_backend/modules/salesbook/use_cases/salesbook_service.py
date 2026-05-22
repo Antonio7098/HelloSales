@@ -9,9 +9,7 @@ roster, and the exhaustive view that drives the searchable salesbook frontend.
 from __future__ import annotations
 
 import asyncio
-import contextlib
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
 
 from hello_sales_backend.modules.salesbook.domain.value_objects import (
     PHASE_1_TOTAL_QUESTIONS,
@@ -28,6 +26,7 @@ from hello_sales_backend.modules.salesbook.use_cases.ports import (
     SalesbookPipelineRepositoryPort,
     SalesbookProductReadPort,
     SalesbookTeamMembershipRepositoryPort,
+    SheetPushPort,
 )
 from hello_sales_backend.modules.salesbook.use_cases.views import (
     ClientContactUpsertRequest,
@@ -51,18 +50,20 @@ from hello_sales_backend.modules.salesbook.use_cases.views import (
     TeamMembershipCreateRequest,
     TeamMembershipView,
 )
-
-if TYPE_CHECKING:
-    from hello_sales_backend.modules.salesbook.infra.sheets_provider import (
-        SalesbookSheetsProvider,
-    )
-
+from hello_sales_backend.platform.observability.events import OperationalEvent
+from hello_sales_backend.platform.observability.logging import get_logger
+from hello_sales_backend.platform.tasks.models import TaskMetadata
+from hello_sales_backend.platform.tasks.runner import BackgroundTaskRunner
+from hello_sales_backend.shared.errors import AppError, app_error, internal_error
+from hello_sales_backend.shared.ids import new_id
 
 PHASE_TOTALS = {
     1: PHASE_1_TOTAL_QUESTIONS,
     2: PHASE_2_TOTAL_QUESTIONS,
     3: PHASE_3_TOTAL_QUESTIONS,
 }
+SHEETS_PUSH_MAX_ATTEMPTS = 3
+SHEETS_PUSH_RETRY_BACKOFF_SECONDS = 0.05
 
 
 def _utc_now_iso() -> str:
@@ -71,6 +72,8 @@ def _utc_now_iso() -> str:
 
 class SalesbookService:
     """Main service facade for the salesbook bounded context."""
+
+    _logger = get_logger("hello_sales_backend.salesbook")
 
     def __init__(
         self,
@@ -83,7 +86,8 @@ class SalesbookService:
         product_read: SalesbookProductReadPort,
         comment_repo: SalesbookCommentRepositoryPort,
         pin_repo: SalesbookPinRepositoryPort,
-        sheets_provider: SalesbookSheetsProvider | None = None,
+        sheets_provider: SheetPushPort | None = None,
+        tasks: BackgroundTaskRunner | None = None,
     ) -> None:
         self._contact = contact_repo
         self._onboarding = onboarding_repo
@@ -94,6 +98,7 @@ class SalesbookService:
         self._comments = comment_repo
         self._pins = pin_repo
         self._sheets = sheets_provider
+        self._tasks = tasks
 
     # ---- Onboarding registry passthrough (avoids importing in route layer) ----
     def get_onboarding_registry(self, phase: int | None = None) -> dict[str, dict[str, object]]:
@@ -106,38 +111,69 @@ class SalesbookService:
         return get_phase_questions(phase)
 
     # ---- Client contact ----
-    async def get_client_contact(self, profile_id: str) -> ClientContactView | None:
+    async def get_client_contact(
+        self, profile_id: str, *, request_id: str | None = None, trace_id: str | None = None
+    ) -> ClientContactView | None:
         return await self._contact.get(profile_id)
 
     async def upsert_client_contact(
-        self, profile_id: str, request: ClientContactUpsertRequest
+        self,
+        profile_id: str,
+        request: ClientContactUpsertRequest,
+        *,
+        request_id: str | None = None,
+        trace_id: str | None = None,
     ) -> ClientContactView:
         view = await self._contact.upsert(profile_id, request)
-        self._maybe_push("upsert_client_contact", view.model_dump(mode="json"))
+        self._maybe_push(
+            "upsert_client_contact",
+            view.model_dump(mode="json"),
+            request_id=request_id,
+            trace_id=trace_id,
+        )
         return view
 
     # ---- Onboarding ----
-    async def get_onboarding_progress(self, profile_id: str) -> OnboardingProgressView:
+    async def get_onboarding_progress(
+        self, profile_id: str, *, request_id: str | None = None, trace_id: str | None = None
+    ) -> OnboardingProgressView:
         return await self._onboarding.get_progress(profile_id)
 
     async def list_responses(
-        self, profile_id: str, phase: int | None = None
+        self,
+        profile_id: str,
+        phase: int | None = None,
+        *,
+        request_id: str | None = None,
+        trace_id: str | None = None,
     ) -> list[OnboardingResponseView]:
         return await self._onboarding.list_responses(profile_id, phase=phase)
 
     async def submit_response(
-        self, profile_id: str, request: OnboardingResponseSubmit
+        self,
+        profile_id: str,
+        request: OnboardingResponseSubmit,
+        *,
+        request_id: str | None = None,
+        trace_id: str | None = None,
     ) -> OnboardingResponseView:
         view = await self._onboarding.upsert_response(profile_id, request)
         await self._recompute_progress(profile_id)
         self._maybe_push(
             "submit_onboarding_response",
             {"profile_id": profile_id, **view.model_dump(mode="json")},
+            request_id=request_id,
+            trace_id=trace_id,
         )
         return view
 
     async def submit_batch(
-        self, profile_id: str, request: OnboardingBatchSubmit
+        self,
+        profile_id: str,
+        request: OnboardingBatchSubmit,
+        *,
+        request_id: str | None = None,
+        trace_id: str | None = None,
     ) -> list[OnboardingResponseView]:
         out: list[OnboardingResponseView] = []
         for item in request.responses:
@@ -150,6 +186,8 @@ class SalesbookService:
                 "phase": request.phase,
                 "responses": [r.model_dump(mode="json") for r in out],
             },
+            request_id=request_id,
+            trace_id=trace_id,
         )
         return out
 
@@ -198,54 +236,92 @@ class SalesbookService:
         )
 
     # ---- Pipeline ----
-    async def list_deals(self, profile_id: str) -> list[PipelineDealView]:
+    async def list_deals(
+        self, profile_id: str, *, request_id: str | None = None, trace_id: str | None = None
+    ) -> list[PipelineDealView]:
         return await self._pipeline.list_deals(profile_id)
 
     async def create_deal(
-        self, profile_id: str, request: PipelineDealCreateRequest
+        self,
+        profile_id: str,
+        request: PipelineDealCreateRequest,
+        *,
+        request_id: str | None = None,
+        trace_id: str | None = None,
     ) -> PipelineDealView:
         view = await self._pipeline.create_deal(profile_id, request)
-        self._maybe_push("create_deal", view.model_dump(mode="json"))
+        self._maybe_push("create_deal", view.model_dump(mode="json"), request_id=request_id, trace_id=trace_id)
         return view
 
     async def update_deal(
-        self, deal_id: str, request: PipelineDealUpdateRequest
+        self,
+        deal_id: str,
+        request: PipelineDealUpdateRequest,
+        *,
+        request_id: str | None = None,
+        trace_id: str | None = None,
     ) -> PipelineDealView:
         view = await self._pipeline.update_deal(deal_id, request)
-        self._maybe_push("update_deal", view.model_dump(mode="json"))
+        self._maybe_push("update_deal", view.model_dump(mode="json"), request_id=request_id, trace_id=trace_id)
         return view
 
     # ---- Engagement ----
-    async def log_engagement(self, request: EngagementLogCreateRequest) -> EngagementLogView:
+    async def log_engagement(
+        self, request: EngagementLogCreateRequest, *, request_id: str | None = None, trace_id: str | None = None
+    ) -> EngagementLogView:
         view = await self._engagement.create(request)
-        self._maybe_push("log_engagement", view.model_dump(mode="json"))
+        self._maybe_push("log_engagement", view.model_dump(mode="json"), request_id=request_id, trace_id=trace_id)
         return view
 
     async def list_engagements(
-        self, profile_id: str, deal_id: str | None = None, limit: int = 100
+        self,
+        profile_id: str,
+        deal_id: str | None = None,
+        limit: int = 100,
+        *,
+        request_id: str | None = None,
+        trace_id: str | None = None,
     ) -> list[EngagementLogView]:
         return await self._engagement.list_for_profile(profile_id, deal_id=deal_id, limit=limit)
 
-    async def list_all_engagements(self, limit: int = 200) -> list[EngagementLogView]:
+    async def list_all_engagements(
+        self, limit: int = 200, *, request_id: str | None = None, trace_id: str | None = None
+    ) -> list[EngagementLogView]:
         return await self._engagement.list_all(limit=limit)
 
     # ---- Team ----
-    async def list_team(self, profile_id: str) -> list[TeamMembershipView]:
+    async def list_team(
+        self, profile_id: str, *, request_id: str | None = None, trace_id: str | None = None
+    ) -> list[TeamMembershipView]:
         return await self._team.list_team(profile_id)
 
     async def add_team_member(
-        self, profile_id: str, request: TeamMembershipCreateRequest
+        self,
+        profile_id: str,
+        request: TeamMembershipCreateRequest,
+        *,
+        request_id: str | None = None,
+        trace_id: str | None = None,
     ) -> TeamMembershipView:
         view = await self._team.add(profile_id, request)
-        self._maybe_push("add_team_member", view.model_dump(mode="json"))
+        self._maybe_push("add_team_member", view.model_dump(mode="json"), request_id=request_id, trace_id=trace_id)
         return view
 
-    async def remove_team_member(self, membership_id: str) -> None:
+    async def remove_team_member(
+        self, membership_id: str, *, request_id: str | None = None, trace_id: str | None = None
+    ) -> None:
         await self._team.remove(membership_id)
-        self._maybe_push("remove_team_member", {"membership_id": membership_id})
+        self._maybe_push(
+            "remove_team_member",
+            {"membership_id": membership_id},
+            request_id=request_id,
+            trace_id=trace_id,
+        )
 
     # ---- Exhaustive view (drives the searchable salesbook viewer) ----
-    async def get_exhaustive_view(self, profile_id: str) -> SalesbookExhaustiveView:
+    async def get_exhaustive_view(
+        self, profile_id: str, *, request_id: str | None = None, trace_id: str | None = None
+    ) -> SalesbookExhaustiveView:
         registry = self.get_onboarding_registry()
         responses = await self._onboarding.list_responses(profile_id)
         answer_by_key = {r.question_key: r for r in responses}
@@ -285,54 +361,322 @@ class SalesbookService:
 
     # ---- Moderation: comments + pins ----
     async def add_comment(
-        self, profile_id: str, request: SalesbookCommentCreateRequest
+        self,
+        profile_id: str,
+        request: SalesbookCommentCreateRequest,
+        *,
+        request_id: str | None = None,
+        trace_id: str | None = None,
     ) -> SalesbookCommentView:
         view = await self._comments.create(profile_id, request)
-        self._maybe_push("add_comment", view.model_dump(mode="json"))
+        self._maybe_push("add_comment", view.model_dump(mode="json"), request_id=request_id, trace_id=trace_id)
         return view
 
     async def list_comments(
-        self, profile_id: str, status: str | None = None,
+        self,
+        profile_id: str,
+        status: str | None = None,
         target_id: str | None = None,
+        *,
+        request_id: str | None = None,
+        trace_id: str | None = None,
     ) -> list[SalesbookCommentView]:
         return await self._comments.list_for_profile(profile_id, status=status, target_id=target_id)
 
     async def review_comment(
-        self, comment_id: str, request: SalesbookCommentApproveRequest
+        self,
+        comment_id: str,
+        request: SalesbookCommentApproveRequest,
+        *,
+        request_id: str | None = None,
+        trace_id: str | None = None,
     ) -> SalesbookCommentView:
         view = await self._comments.update_status(
             comment_id,
             status=request.decision,
             approved_by=request.approved_by if request.decision == "approved" else None,
         )
-        self._maybe_push("review_comment", view.model_dump(mode="json"))
+        self._maybe_push("review_comment", view.model_dump(mode="json"), request_id=request_id, trace_id=trace_id)
         return view
 
-    async def list_pins(self, profile_id: str) -> list[SalesbookPinView]:
+    async def list_pins(
+        self, profile_id: str, *, request_id: str | None = None, trace_id: str | None = None
+    ) -> list[SalesbookPinView]:
         return await self._pins.list_for_profile(profile_id)
 
     async def pin_entry(
-        self, profile_id: str, request: SalesbookPinRequest
+        self,
+        profile_id: str,
+        request: SalesbookPinRequest,
+        *,
+        request_id: str | None = None,
+        trace_id: str | None = None,
     ) -> SalesbookPinView:
         view = await self._pins.upsert(profile_id, request)
-        self._maybe_push("pin_entry", view.model_dump(mode="json"))
+        self._maybe_push("pin_entry", view.model_dump(mode="json"), request_id=request_id, trace_id=trace_id)
         return view
 
     async def unpin_entry(
-        self, profile_id: str, target_type: str, target_id: str
+        self,
+        profile_id: str,
+        target_type: str,
+        target_id: str,
+        *,
+        request_id: str | None = None,
+        trace_id: str | None = None,
     ) -> None:
         await self._pins.remove(profile_id, target_type, target_id)
-        self._maybe_push("unpin_entry", {
-            "profile_id": profile_id, "target_type": target_type, "target_id": target_id,
-        })
+        self._maybe_push(
+            "unpin_entry",
+            {"profile_id": profile_id, "target_type": target_type, "target_id": target_id},
+            request_id=request_id,
+            trace_id=trace_id,
+        )
 
-    # ---- Sheets sync (fire-and-forget; safe when provider is None) ----
-    def _maybe_push(self, action: str, payload: dict[str, object]) -> None:
+    # ---- Sheets sync (owned background task; safe when provider is None) ----
+    def _maybe_push(
+        self,
+        action: str,
+        payload: dict[str, object],
+        *,
+        request_id: str | None,
+        trace_id: str | None,
+    ) -> None:
         if self._sheets is None:
             return
-        # No running loop is a no-op — we only push when called from an async handler.
-        with contextlib.suppress(RuntimeError):
-            asyncio.get_running_loop().create_task(self._sheets.push(action, payload))
+        if self._tasks is None:
+            return
+        task_id = new_id()
+        metadata = TaskMetadata(
+            task_id=task_id,
+            purpose=f"salesbook.sheets.push.{action}",
+            request_id=request_id,
+            trace_id=trace_id,
+            actor_id=None,
+        )
+        try:
+            self._tasks.start(
+                metadata,
+                self._run_sheets_push(metadata=metadata, action=action, payload=payload),
+            )
+        except Exception as exc:
+            self._logger.error(
+                "salesbook.sheets.push.failed",
+                code="salesbook.sheets.push_failed",
+                component="salesbook",
+                operation=f"salesbook.sheets.push.{action}",
+                correlation_id=request_id,
+                trace_id=trace_id,
+                task_id=task_id,
+                action=action,
+                error_type=exc.__class__.__name__,
+                error_message=str(exc),
+                details={"payload_keys": list(payload.keys())},
+            )
+            self._emit_failure_event(
+                action=action,
+                task_id=task_id,
+                request_id=request_id,
+                trace_id=trace_id,
+                exc=exc,
+            )
+
+    async def _run_sheets_push(
+        self,
+        *,
+        metadata: TaskMetadata,
+        action: str,
+        payload: dict[str, object],
+    ) -> None:
+        last_error: AppError | None = None
+        for attempt in range(1, SHEETS_PUSH_MAX_ATTEMPTS + 1):
+            try:
+                await self._sheets.push(action, payload)  # type: ignore[union-attr]
+                return
+            except AppError as exc:
+                last_error = exc
+            except Exception as exc:
+                last_error = internal_error(
+                    "Salesbook sheets push failed unexpectedly",
+                    code="salesbook.sheets.push_unexpected",
+                    details={
+                        "action": action,
+                        "attempt": attempt,
+                        "max_attempts": SHEETS_PUSH_MAX_ATTEMPTS,
+                        "payload_keys": sorted(payload.keys()),
+                    },
+                    operation=f"salesbook.sheets.push.{action}",
+                    component="salesbook",
+                    exc=exc,
+                )
+
+            if last_error.retryable and attempt < SHEETS_PUSH_MAX_ATTEMPTS:
+                self._logger.warning(
+                    "salesbook.sheets.push.retry_scheduled",
+                    code="salesbook.sheets.retry_scheduled",
+                    component="salesbook",
+                    operation=f"salesbook.sheets.push.{action}",
+                    correlation_id=metadata.request_id,
+                    trace_id=metadata.trace_id,
+                    task_id=metadata.task_id,
+                    attempt=attempt,
+                    next_attempt=attempt + 1,
+                    max_attempts=SHEETS_PUSH_MAX_ATTEMPTS,
+                    issue_code=last_error.code,
+                    issue_category=last_error.category,
+                    retryable=last_error.retryable,
+                )
+                await self._emit_operational_event(
+                    event_type="salesbook.sheets.push.retry_scheduled",
+                    severity="warning",
+                    operation=f"salesbook.sheets.push.{action}",
+                    correlation_id=metadata.request_id,
+                    trace_id=metadata.trace_id,
+                    code="salesbook.sheets.retry_scheduled",
+                    payload={
+                        "task_id": metadata.task_id,
+                        "action": action,
+                        "attempt": attempt,
+                        "next_attempt": attempt + 1,
+                        "max_attempts": SHEETS_PUSH_MAX_ATTEMPTS,
+                        "issue_code": last_error.code,
+                        "issue_category": last_error.category,
+                        "retryable": last_error.retryable,
+                    },
+                )
+                await asyncio.sleep(SHEETS_PUSH_RETRY_BACKOFF_SECONDS * attempt)
+                continue
+
+            break
+
+        assert last_error is not None
+        exhausted_error = app_error(
+            "Salesbook sheets push exhausted retry budget",
+            code="salesbook.sheets.retry_exhausted" if last_error.retryable else last_error.code,
+            category="provider" if last_error.retryable else last_error.category,
+            status_code=last_error.status_code,
+            severity="error",
+            retryable=False,
+            details={
+                "action": action,
+                "attempt": SHEETS_PUSH_MAX_ATTEMPTS,
+                "max_attempts": SHEETS_PUSH_MAX_ATTEMPTS,
+                "task_id": metadata.task_id,
+                "last_issue_code": last_error.code,
+                "last_issue_category": last_error.category,
+                "last_issue_details": last_error.details,
+            },
+            operation=f"salesbook.sheets.push.{action}",
+            component="salesbook",
+            exc=last_error,
+        )
+        self._logger.error(
+            "salesbook.sheets.push.exhausted",
+            code=exhausted_error.code,
+            component="salesbook",
+            operation=exhausted_error.operation,
+            correlation_id=metadata.request_id,
+            trace_id=metadata.trace_id,
+            task_id=metadata.task_id,
+            attempt=SHEETS_PUSH_MAX_ATTEMPTS,
+            max_attempts=SHEETS_PUSH_MAX_ATTEMPTS,
+            issue_code=last_error.code,
+            issue_category=last_error.category,
+        )
+        await self._emit_operational_event(
+            event_type="salesbook.sheets.push.exhausted",
+            severity="error",
+            operation=f"salesbook.sheets.push.{action}",
+            correlation_id=metadata.request_id,
+            trace_id=metadata.trace_id,
+            code=exhausted_error.code,
+            payload={
+                "task_id": metadata.task_id,
+                "action": action,
+                "attempt": SHEETS_PUSH_MAX_ATTEMPTS,
+                "max_attempts": SHEETS_PUSH_MAX_ATTEMPTS,
+                "issue_code": last_error.code,
+                "issue_category": last_error.category,
+            },
+        )
+        raise exhausted_error
+
+    def _emit_failure_event(
+        self,
+        *,
+        action: str,
+        task_id: str,
+        request_id: str | None,
+        trace_id: str | None,
+        exc: Exception,
+    ) -> None:
+        if self._tasks is None or self._tasks._observability is None:
+            return
+        event = OperationalEvent(
+            event_type="salesbook.sheets.push.failed",
+            severity="error",
+            component="salesbook",
+            operation=f"salesbook.sheets.push.{action}",
+            correlation_id=request_id,
+            trace_id=trace_id,
+            code="salesbook.sheets.push_failed",
+            payload={
+                "task_id": task_id,
+                "action": action,
+                "error_type": exc.__class__.__name__,
+                "error_message": str(exc),
+                "severity": "error",
+            },
+        )
+        self._tasks.start(
+            TaskMetadata(
+                task_id=new_id(),
+                purpose="salesbook.operational_event.emit",
+                request_id=request_id,
+                trace_id=trace_id,
+                actor_id=None,
+            ),
+            self._tasks._observability.emit(event),
+        )
+
+    async def _emit_operational_event(
+        self,
+        *,
+        event_type: str,
+        severity: str,
+        operation: str,
+        correlation_id: str | None,
+        trace_id: str | None,
+        code: str,
+        payload: dict[str, object],
+    ) -> None:
+        if self._tasks is None or self._tasks._observability is None:
+            return
+        try:
+            await self._tasks._observability.emit(
+                OperationalEvent(
+                    event_type=event_type,
+                    severity=severity,
+                    component="salesbook",
+                    operation=operation,
+                    correlation_id=correlation_id,
+                    trace_id=trace_id,
+                    code=code,
+                    payload=payload,
+                )
+            )
+        except Exception as exc:
+            self._logger.error(
+                "salesbook.operational_event.emit_failed",
+                code="salesbook.operational_event.emit_failed",
+                component="salesbook",
+                operation=operation,
+                correlation_id=correlation_id,
+                trace_id=trace_id,
+                event_type=event_type,
+                error_type=exc.__class__.__name__,
+                error_message=str(exc),
+            )
 
 
 __all__ = ["SalesbookService"]

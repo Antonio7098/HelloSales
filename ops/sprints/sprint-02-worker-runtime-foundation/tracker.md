@@ -7,7 +7,7 @@
 ## Sprint Overview
 
 - **Sprint Name:** Worker Runtime Foundation
-- **Sprint Focus:** Introduce a bounded worker runtime as a sibling to the conversational agent runtime, while extracting a neutral LLM substrate and preserving pre-brief architectural discipline.
+- **Sprint Focus:** Introduce a bounded worker runtime as a sibling to the conversational agent runtime, while extracting a neutral LLM substrate with operational discipline.
 - **Depends On:** `ops/sprints/sprint-01-observability-foundation`
 - **Status:** Completed
 

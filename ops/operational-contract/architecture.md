@@ -12,7 +12,7 @@ It governs:
 - shared vs platform ownership
 
 It does not own every operational concern.
-Use the specialized contracts in `ops/operational-contract/` for failures, observability, testing, workflows, agents, and pre-brief scope.
+Use the specialized contracts in `ops/operational-contract/` for failures, observability, testing, workflows, and agents.
 
 ## Scope
 This contract applies when a change:
@@ -259,4 +259,3 @@ Reject a change if it:
 - [testing.md](/home/antonioborgerees/coding/HelloSales/ops/operational-contract/testing.md)
 - [workflows.md](/home/antonioborgerees/coding/HelloSales/ops/operational-contract/workflows.md)
 - [llm.md](/home/antonioborgerees/coding/HelloSales/ops/operational-contract/llm.md)
-- [pre-brief-scope.md](/home/antonioborgerees/coding/HelloSales/ops/operational-contract/pre-brief-scope.md)

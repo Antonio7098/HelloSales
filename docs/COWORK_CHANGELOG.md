@@ -4,6 +4,106 @@ A log of every Cowork-applied change on this branch. Keeps the May 3rd review to
 
 ---
 
+## 2026-05-22 — 7.1 Frontend data-provider abstraction
+
+- **By:** Antonio (/Antonio7098)
+- **Change:** Introduced a centralized, swappable data-provider layer for the frontend (`frontend-draft/`). Feature hooks and components now depend on an `AppDataProvider` interface instead of importing concrete API clients directly.
+
+  **Interface** (`src/shared/data/provider.ts`):
+  Single `AppDataProvider` interface covering all data access: auth/signup, onboarding, dashboard/company-profile, products, pipeline (deals), engagement log, team, comments, pins, exhaustive salesbook view, and chat sessions/events/approvals.
+
+  **Provider implementations:**
+  - `src/shared/data/real-data-provider.ts` — delegates to existing `getSalesbookApi()` and `requestJson()` calls; chat uses `fetch` + `EventSource` directly via the same HTTP transport.
+  - `src/shared/data/mock-data-provider.ts` — fully offline, stateful in-memory implementation with realistic seed data for every route; mutations persisted to `localStorage` per profile.
+
+  **Resolver** (`src/shared/data/get-provider.ts`): Single factory selects implementation via `VITE_DATA_PROVIDER=mock|real`. Defaults to `real`.
+
+  **React context** (`src/shared/data/context.tsx`): `AppDataProviderRoot` context + `useAppData()` hook expose the selected provider throughout the component tree. `useCurrentUser` refactored to consume from context instead of directly managing localStorage.
+
+  **Refactored features:**
+  - `useSignupForm` → calls `provider.signup()` instead of `getSalesbookApi()` directly
+  - `useOnboardingFlow` → calls `provider.getOnboardingRegistry/Progress/Responses/submitOnboardingResponse`
+  - `useDashboardData` → calls `provider.getDashboardData()`
+  - `useAgentChat` → calls `provider.createChatSession/sendChatMessage/getChatSession/getChatSessionItems/getChatSessionEvents/subscribeToChatSessionEvents/decideChatApproval`
+
+  **Mock provider coverage:** auth (localStorage user), onboarding (registry from `/onboarding-registry.json`, responses persisted, progress computed), dashboard (seed `CompanyProfileResponse`), products (CRUD, seed array), pipeline (seed deals, create/update persisted per profile), engagement log (create/list persisted per profile), team (seed + add/remove per profile), comments (add/list/review per profile), pins (seed + pin/unpin per profile), exhaustive view (aggregates mock data), chat (in-memory sessions, `setInterval`-driven mock SSE events, approval decisions).
+
+  **Auth types moved:** `CurrentUser` and `UserRole` extracted to `src/shared/auth/types.ts` so the provider interface and `useCurrentUser` share the same types without circular dependency.
+
+- **Files added:**
+  - `src/shared/data/provider.ts`
+  - `src/shared/data/real-data-provider.ts`
+  - `src/shared/data/mock-data-provider.ts`
+  - `src/shared/data/get-provider.ts`
+  - `src/shared/data/context.tsx`
+  - `src/shared/auth/types.ts`
+- **Files modified:**
+  - `src/app/providers/AppProviders.tsx` — wraps with `AppDataProviderRoot`
+  - `src/shared/auth/useCurrentUser.ts` — consumes from provider context
+  - `src/features/salesbook/hooks/useSignupForm.ts`
+  - `src/features/salesbook/hooks/useOnboardingFlow.ts`
+  - `src/features/dashboard-data/model/use-dashboard-data.ts`
+  - `src/features/chat/model/use-agent-chat.ts`
+  - `frontend-draft/.env` — added `VITE_DATA_PROVIDER=mock`
+  - `frontend-draft/.env.example` — added `VITE_DATA_PROVIDER` with comments
+- **Switch:** Set `VITE_DATA_PROVIDER=mock` in `.env` (or Docker `environment:`) to run fully offline with mock data. `VITE_DATA_PROVIDER=real` (default) hits the backend.
+- **Verified:** `npm run build` passes — 114 modules transformed, 324KB JS / 101KB gzipped.
+
+---
+
+## 2026-05-20 — 6.1 Architecture contract fixes
+
+- **By:** Antonio (/Antonio7098)
+- **Change:** Resolved all 4 architecture contract violations from the contract audit:
+  · **High** — `modules/salesbook/domain/onboarding_registry.py`: Moved JSON file loaded at module import time to lazy `_ensure_loaded()` + `lru_cache` pattern; module import now side-effect free.
+  · **High** — `platform/db/migrations.py`: Replaced star-import from module infra with `_MetadataWrapper` lazy proxy that registers salesbook models on first metadata access.
+  · **Medium** — `modules/salesbook/use_cases/salesbook_service.py`: Defined `SheetPushPort` protocol in `use_cases/ports.py`; constructor accepts `SheetPushPort | None` instead of concrete `SalesbookSheetsProvider`.
+  · **Low** — `modules/salesbook/__init__.py` + `entrypoints/http/routes/salesbook.py`: All permissions re-exported through module root; routes import from module root instead of internal submodule.
+- **Anto-file touches:** `platform/db/migrations.py` — star import replaced with lazy metadata proxy
+- **Verified:** Architecture contract now PASSes (ARCH-CORE-001/002, ARCH-LAYER-001/002, ARCH-ENTRY-001, ARCH-MODULE-001, ARCH-COMP-001, ARCH-SHARED-001).
+
+## 2026-05-20 — 6.2 Error handling & observability contract fixes
+
+- **By:** Antonio (/Antonio7098)
+- **Change:** Resolved error handling and observability contract gaps:
+  · **Structured errors:** Salesbook not-found paths now raise `AppError`-based exceptions with stable codes (`salesbook.deal.not_found`, `salesbook.comment.not_found`) in `modules/salesbook/domain/exceptions.py`, `infra/repository.py`, `infra/memory.py`.
+  · **Background task ownership:** `_maybe_push()` in `salesbook_service.py` routes sheets sync through `BackgroundTaskRunner` with task identity and terminal failure recording (eliminated swallowed failures).
+  · **Bounded retry:** Sheets sync retries through explicit bounded policy with stable retry and retry-exhaustion codes.
+  · **Correlation propagation:** Request/trace context threaded from `entrypoints/http/routes/salesbook.py` into salesbook service calls.
+  · **Structured signals:** Salesbook emits logs/events with stable codes (`salesbook.sheets.retry_scheduled`, `salesbook.sheets.retry_exhausted`, `salesbook.sheets.push_failed`).
+  · **Diagnostics:** Salesbook state exposed through canonical `/api/system/diagnostics` via `modules/salesbook/bootstrap.py`, `modules/salesbook/use_cases/ports.py`, `modules/system/use_cases/system_service.py`, `modules/system/use_cases/views.py`, `platform/composition/app_container.py`.
+- **Anto-file touches:** `platform/composition/app_container.py`, `modules/system/use_cases/system_service.py`, `modules/system/use_cases/views.py` — diagnostics wiring
+- **Verified:** Error handling (ERR-SHAPE-001, ERR-CODE-001, ERR-RETRY-001, ERR-PROVIDER-001) and observability (OBS-CORE-001, OBS-CORR-001, OBS-DIAG-001, OBS-BG-001, OBS-ALERT-001) contracts now PASS.
+
+## 2026-05-20 — 6.3 Frontend contract fixes
+
+- **By:** Antonio (/Antonio7098)
+- **Change:** Closed all structural/placement/thickness FE violations:
+  · **FE-FEATURE-001:** Vertical feature slice at `features/salesbook/` with `api/`, `components/`, `hooks/`, `model/`, `index.ts`.
+  · **FE-SHARED-001 / FE-API-001:** API client moved to `features/salesbook/api/salesbook-api.ts` (feature-owned instead of `shared/api/`).
+  · **FE-SHARED-001:** Onboarding layout moved to `features/salesbook/OnboardingLayout.tsx` (no longer in `shared/`).
+  · **FE-PAGE-001 (onboarding):** `pages/onboarding/OnboardingPage.tsx` delegates data loading, autosave, redirects, recap/progress UI to feature layer via `hooks/useOnboardingFlow.ts` and `components/`.
+  · **FE-PAGE-001 (signup):** `pages/signup/SignupPage.tsx` reduced to 5-line route assembly; funnel sections (`HeroSection`, `CompetitiveGapTable`, `ManifestoSection`, `ChallengeSolutionTable`, `SignupForm`) are feature-owned components.
+  · **Remaining (Medium):** `OnboardingPage.tsx` still owns local wizard sub-page navigation — acceptable, extractable if wizard grows.
+- **Verified:** FE-STRUCT-001, FE-BOUNDARY-001, FE-APP-001, FE-PAGE-001, FE-FEATURE-001, FE-ENTITY-001, FE-WORKFLOW-001, FE-SHARED-001, FE-DS-001, FE-STATE-001, FE-API-001 now PASS; overall frontend contract still FAILs due to test breadth.
+
+## 2026-05-20 — 6.4 Testing expansion
+
+- **By:** Antonio (/Antonio7098)
+- **Change:** Expanded test coverage across multiple seams to address TEST-UNIT-001, TEST-INT-001, TEST-FAIL-001, and FE-TEST-001:
+  · **Domain value objects:** Enum values, CLOSED_STAGES, phase question counts.
+  · **Domain entities:** Frozen dataclass behavior, enum status fields, defaults, permissions.
+  · **Domain exceptions:** All 6 subclasses, base class inheritance.
+  · **Service layer:** Contact upsert, onboarding progress, batch responses, pipeline stage updates, exhaustive-view aggregation, remove/unpin.
+  · **Registry helpers:** Loading, phase/section filtering, total counts.
+  · **HTTP integration:** Route wiring for onboarding registry and client contact round-trips with explicit permissions.
+  · **DB-backed persistence:** SQLAlchemy tests for contacts, onboarding, pipeline, engagement, team membership, comments, pins, structured not-found errors.
+  · **Failure paths:** Missing deal, missing comment, retry exhaustion, recovery before retry budget exhaustion.
+  · **Background tasks:** Failure capture and retry/exhaustion via `BackgroundTaskRunner`.
+  · **Frontend:** Vitest coverage for `useSignupForm`, `useOnboardingFlow`, `groupBySection`/`pctNumber`, feature API client transport.
+- **New files:** `backend/tests/unit/test_salesbook_error_handling.py`, various backend test additions, frontend Vitest files under `features/salesbook/`
+- **Verified:** Backend coverage spans domain/service/registry/persistence + failure paths. Frontend coverage covers hooks/model/API seams. Testing contract overall still FAILs due to remaining breadth gaps relative to branch size.
+
 ## 2026-04-26 — 1.1 Setup
 - **By:** Olivier (/Oliviercontribution)
 - **Change:** Forked Antonio7098/HelloSales → HelloSalesGreki/HelloSales. Cloned to `~/Desktop/HS/CODE/HS-Code/`. Added `upstream` remote pointing at Anto's repo. Created branch `feature/Oliviercontribution`. Added `SALESBOOK_CONTEXT.md` at repo root describing the salesbook onboarding module scope.

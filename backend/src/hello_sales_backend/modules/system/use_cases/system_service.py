@@ -18,6 +18,9 @@ from hello_sales_backend.modules.system.use_cases.ports import (
     SessionDiagnosticsPort,
     WorkerDiagnosticsPort,
 )
+from hello_sales_backend.modules.salesbook.use_cases.ports import (
+    SalesbookDiagnosticsPort,
+)
 from hello_sales_backend.modules.system.use_cases.views import (
     AgentDiagnosticsView,
     AgentProfileView,
@@ -27,6 +30,8 @@ from hello_sales_backend.modules.system.use_cases.views import (
     ObservabilityDiagnosticsView,
     OperationalEventView,
     ProviderDiagnosticsView,
+    SalesbookDiagnosticsView,
+    SalesbookRunSnapshotView,
     SessionDiagnosticsView,
     SessionSnapshotView,
     SystemDiagnosticsView,
@@ -59,6 +64,7 @@ class SystemService:
         session_diagnostics: SessionDiagnosticsPort,
         worker_diagnostics: WorkerDiagnosticsPort,
         agent_registry: AgentRegistryPort,
+        salesbook_diagnostics: SalesbookDiagnosticsPort,
     ) -> None:
         self._settings = settings
         self._clock = clock
@@ -70,6 +76,7 @@ class SystemService:
         self._session_diagnostics = session_diagnostics
         self._worker_diagnostics = worker_diagnostics
         self._agent_registry = agent_registry
+        self._salesbook_diagnostics = salesbook_diagnostics
 
     async def get_status(self) -> SystemStatusView:
         runtime_status = RuntimeStatus(
@@ -118,6 +125,7 @@ class SystemService:
         agent_summary = await self._agent_diagnostics.summarize(limit=10)
         session_summary = await self._session_diagnostics.list_sessions(limit=10)
         worker_summary = await self._worker_diagnostics.summarize(limit=10)
+        salesbook_summary = await self._salesbook_diagnostics.summarize(limit=10)
         observability_diagnostics = self._observability.diagnostics()
         return SystemDiagnosticsView(
             app_name=self._settings.app_name,
@@ -239,4 +247,23 @@ class SystemService:
                 AlertView.model_validate(asdict(alert))
                 for alert in self._observability.active_alerts(limit=20)
             ],
+            salesbook=SalesbookDiagnosticsView(
+                active_count=salesbook_summary.active_count,
+                total_count=salesbook_summary.total_count,
+                recent=[
+                    SalesbookRunSnapshotView(
+                        log_id=item.log_id,
+                        profile_id=item.profile_id,
+                        deal_id=item.deal_id,
+                        action_type=item.action_type,
+                        action_detail=item.action_detail,
+                        action_result=item.action_result,
+                        next_step=item.next_step,
+                        channel=item.channel,
+                        agent_id=item.agent_id,
+                        timestamp=item.timestamp.isoformat(),
+                    )
+                    for item in salesbook_summary.recent_runs
+                ],
+            ),
         )
