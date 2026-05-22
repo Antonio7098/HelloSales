@@ -14,7 +14,9 @@ from hello_sales_backend.modules.auth.bootstrap import build_auth_module
 from hello_sales_backend.modules.company_profile.bootstrap import build_company_profile_module
 from hello_sales_backend.modules.entity_operations.bootstrap import build_entity_operations_module
 from hello_sales_backend.modules.jobs.bootstrap import build_jobs_module
-from hello_sales_backend.modules.salesbook.bootstrap import build_salesbook_module  # /Oliviercontribution
+from hello_sales_backend.modules.salesbook.bootstrap import (
+    build_salesbook_module,  # /Oliviercontribution
+)
 from hello_sales_backend.modules.semantic_catalog.bootstrap import build_semantic_catalog_module
 from hello_sales_backend.modules.sessions.bootstrap import build_sessions_module
 from hello_sales_backend.modules.system.bootstrap import build_system_module

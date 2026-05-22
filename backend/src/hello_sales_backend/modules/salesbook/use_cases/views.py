@@ -255,8 +255,8 @@ class SalesbookExhaustiveView(BaseModel):
     pipeline: list[PipelineDealView]
     engagement: list[EngagementLogView]
     team: list[TeamMembershipView]
-    comments: list["SalesbookCommentView"] = Field(default_factory=list)
-    pinned: list["SalesbookPinView"] = Field(default_factory=list)
+    comments: list[SalesbookCommentView] = Field(default_factory=list)
+    pinned: list[SalesbookPinView] = Field(default_factory=list)
 
 
 # ────────────────────────────────────────────────────────────────────────────

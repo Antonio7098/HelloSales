@@ -10,19 +10,20 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
-_DATA: list[dict] = json.loads(
+_DATA: list[dict[str, Any]] = json.loads(
     (Path(__file__).parent / "_onboarding_registry.json").read_text(encoding="utf-8")
 )
 
-ONBOARDING_QUESTIONS: dict[str, dict] = {q["key"]: q for q in _DATA}
+ONBOARDING_QUESTIONS: dict[str, dict[str, Any]] = {q["key"]: q for q in _DATA}
 
 
-def get_phase_questions(phase: int) -> dict[str, dict]:
+def get_phase_questions(phase: int) -> dict[str, dict[str, Any]]:
     return {k: v for k, v in ONBOARDING_QUESTIONS.items() if v.get("phase") == phase}
 
 
-def get_section_questions(phase: int, section: str) -> dict[str, dict]:
+def get_section_questions(phase: int, section: str) -> dict[str, dict[str, Any]]:
     return {
         k: v for k, v in ONBOARDING_QUESTIONS.items()
         if v.get("phase") == phase and v.get("section") == section

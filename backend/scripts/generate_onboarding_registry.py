@@ -16,6 +16,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any  # noqa: F401  (used by the generated registry file)
 
 SHEET_ID = "1HGSlYMtxE9tbk15198wkg-U7n85vdO4u2oNCZP6B2Pw"
 SHEET_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=xlsx"
@@ -33,7 +34,7 @@ def fetch_sheet() -> None:
     subprocess.check_call(["curl", "-sL", "-o", str(TMP_XLSX), SHEET_URL])
 
 
-def extract() -> list[dict]:
+def extract() -> list[dict[str, Any]]:
     try:
         import openpyxl  # type: ignore[import-untyped]
     except ImportError:
@@ -44,9 +45,9 @@ def extract() -> list[dict]:
 
     def _extract(sheet: str, *, phase: int, n_col: int, sec_col: int,
                  sub_col: int | None, q_col: int, t_col: int, ex_col: int,
-                 key_col: int, header_row: int) -> list[dict]:
+                 key_col: int, header_row: int) -> list[dict[str, Any]]:
         ws = wb[sheet]
-        out: list[dict] = []
+        out: list[dict[str, Any]] = []
         for r in range(header_row + 1, ws.max_row + 1):
             row = [ws.cell(r, c).value for c in range(1, ws.max_column + 1)]
             if all(v is None for v in row):
@@ -85,7 +86,7 @@ def extract() -> list[dict]:
     return p1 + p2 + p3
 
 
-def write_outputs(all_q: list[dict]) -> None:
+def write_outputs(all_q: list[dict[str, Any]]) -> None:
     DOMAIN_DIR.mkdir(parents=True, exist_ok=True)
     DATA_OUT.write_text(json.dumps(all_q, indent=2, default=str), encoding="utf-8")
 
@@ -101,19 +102,20 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
-_DATA: list[dict] = json.loads(
+_DATA: list[dict[str, Any]] = json.loads(
     (Path(__file__).parent / "_onboarding_registry.json").read_text(encoding="utf-8")
 )
 
-ONBOARDING_QUESTIONS: dict[str, dict] = {q["key"]: q for q in _DATA}
+ONBOARDING_QUESTIONS: dict[str, dict[str, Any]] = {q["key"]: q for q in _DATA}
 
 
-def get_phase_questions(phase: int) -> dict[str, dict]:
+def get_phase_questions(phase: int) -> dict[str, dict[str, Any]]:
     return {k: v for k, v in ONBOARDING_QUESTIONS.items() if v.get("phase") == phase}
 
 
-def get_section_questions(phase: int, section: str) -> dict[str, dict]:
+def get_section_questions(phase: int, section: str) -> dict[str, dict[str, Any]]:
     return {
         k: v for k, v in ONBOARDING_QUESTIONS.items()
         if v.get("phase") == phase and v.get("section") == section

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import yaml  # type: ignore[import-untyped]
+import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from hello_sales_backend.modules.semantic_catalog.use_cases.views import (
