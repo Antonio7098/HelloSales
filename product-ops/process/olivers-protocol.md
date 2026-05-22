@@ -244,7 +244,14 @@ cd backend
 make verify-db
 make migrate
 python -m ruff check src tests scripts
-python -m mypy src
+python -m mypy src pull request.
+
+Before opening a PR:
+
+- review the diff
+- make sure generated or temporary files are not included accidentally
+- run the local equivalents of the relevant GitHub Actions workflows
+- document any checks that could n
 make test
 HELLO_SALES_RUN_POSTGRES_TESTS=1 python -m pytest tests/postgres -q
 ```
@@ -372,11 +379,12 @@ For major work:
 
 1. Create a branch.
 2. Read applicable contracts.
-3. Follow `product-ops/process/plan-sprint.md`.
-4. Stop for Antonio's review after planning unless Oliver explicitly asks to continue.
-5. Implement from the approved or acknowledged plan.
-6. Keep tracker evidence current.
-7. Run relevant checks from `.github/workflows/`.
-8. Complete review artifacts.
-9. Open a PR.
-10. Wait for review and merge approval.
+3. Plan a new feature using `product-ops/process/feature/feature-protocol.md`
+4. Follow `product-ops/process/plan-sprint.md`.
+5. Stop for Antonio's review after planning unless Oliver explicitly asks to continue.
+6. Implement from the approved or acknowledged plan.
+7. Keep tracker evidence current.
+8. Run relevant checks from `.github/workflows/`.
+9. Complete review artifacts.
+10. Open a PR.
+11. Wait for review and merge approval.
