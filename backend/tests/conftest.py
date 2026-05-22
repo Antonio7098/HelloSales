@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import sys
 from collections.abc import AsyncIterator
 from pathlib import Path
@@ -13,6 +14,15 @@ SRC_PATH = Path(__file__).resolve().parents[1] / "src"
 src_str = str(SRC_PATH)
 if src_str not in sys.path:
     sys.path.insert(0, src_str)
+
+os.environ["HELLO_SALES_AUTH_PROVIDER"] = ""
+os.environ["HELLO_SALES_OBSERVABILITY_SERVICE_NAME"] = ""
+os.environ["HELLO_SALES_OBSERVABILITY_SERVICE_VERSION"] = ""
+os.environ["HELLO_SALES_VOICE_STT_PROVIDER"] = ""
+os.environ["HELLO_SALES_VOICE_TTS_PROVIDER"] = ""
+os.environ["HELLO_SALES_VOICE_REALTIME_PROVIDER"] = ""
+os.environ["HELLO_SALES_VOICE_TURN_DETECTION_PROVIDER"] = ""
+os.environ["HELLO_SALES_VOICE_TRANSPORT_PROVIDER"] = ""
 
 from hello_sales_backend.app import create_app  # noqa: E402
 from hello_sales_backend.platform.composition.overrides import AppOverrides  # noqa: E402

@@ -227,7 +227,7 @@ class InMemorySalesbookPipelineRepository(SalesbookPipelineRepositoryPort):
         new_stage = request.stage if request.stage is not None else existing.stage
         stage_entered = now if (request.stage and request.stage != old_stage) else existing.stage_entered_at
         closed_at = existing.closed_at
-        close_reason = existing.close_reason
+        close_reason = request.close_reason if request.close_reason is not None else existing.close_reason
         if new_stage in ("closed_won", "closed_lost") and closed_at is None:
             closed_at = now
         elif new_stage not in ("closed_won", "closed_lost") and old_stage in ("closed_won", "closed_lost"):

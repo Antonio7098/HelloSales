@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import ClassVar
+from typing import Annotated, ClassVar
 
 from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -38,7 +38,10 @@ class Settings(BaseSettings):
     api_prefix: str = "/api"
     log_level: str = "INFO"
     database_url: str = "postgresql+asyncpg://hello_sales:hello_sales@localhost:5432/hello_sales"
-    cors_allowed_origins: tuple[str, ...] = ("http://localhost:3000", "http://localhost:5173")
+    cors_allowed_origins: Annotated[
+        tuple[str, ...],
+        NoDecode,
+    ] = ("http://localhost:3000", "http://localhost:5173")
     stageflow_required: bool = False
     stageflow_event_queue_size: int = Field(default=500, ge=1)
     observability_service_name: str = ""
@@ -166,6 +169,14 @@ class Settings(BaseSettings):
 
         if isinstance(value, str):
             return value.strip()
+        return value
+
+    @field_validator("cors_allowed_origins", mode="before")
+    @classmethod
+    def parse_cors_allowed_origins(cls, value: object) -> object:
+        if isinstance(value, str):
+            parts = [part.strip() for part in value.split(",") if part.strip()]
+            return tuple(parts)
         return value
 
     @field_validator("observability_metrics_endpoint_path")
