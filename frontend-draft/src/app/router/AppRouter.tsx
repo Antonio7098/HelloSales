@@ -9,6 +9,7 @@ import { NotFoundPage } from "@/pages/not-found";
 import { SignupPage } from "@/pages/signup";
 import { OnboardingPage } from "@/pages/onboarding";
 import { LandingPage } from "@/pages/landing";
+import { SalesbookPage } from "@/pages/salesbook";
 import { useCurrentUser } from "@/shared/auth/useCurrentUser";
 
 function RequireUser({ children }: { children: ReactNode }) {
@@ -61,6 +62,14 @@ export function AppRouter() {
           element={
             <RequireUser>
               <DashboardPage />
+            </RequireUser>
+          }
+        />
+        <Route
+          path="salesbook"
+          element={
+            <RequireUser>
+              <SalesbookPage />
             </RequireUser>
           }
         />
