@@ -2844,3 +2844,86 @@ button { font: inherit; color: inherit; }
   color: var(--muted);
   padding: 64px 16px;
 }
+
+
+/* Salesbook TOC + section count chips */
+.salesbook-toc {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--line);
+}
+
+.salesbook-toc-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+
+.salesbook-toc-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.salesbook-toc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+  text-decoration: none;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  padding: 5px 9px;
+  border-radius: 3px;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.salesbook-toc-chip:hover {
+  background: var(--panel-strong);
+  border-color: var(--line-strong);
+}
+
+.salesbook-toc-phase {
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+  background: var(--accent-soft);
+  padding: 1px 5px;
+  border-radius: 2px;
+}
+
+.salesbook-toc-count {
+  font-size: 10px;
+  color: var(--muted);
+  background: rgba(40, 32, 18, 0.06);
+  padding: 1px 5px;
+  border-radius: 2px;
+}
+
+.salesbook-section-title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.salesbook-section-count {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  font-weight: 500;
+  color: var(--muted);
+  background: rgba(40, 32, 18, 0.05);
+  padding: 2px 7px;
+  border-radius: 3px;
+  align-self: center;
+}
+
+/* Smooth scroll for jump links */
+html { scroll-behavior: smooth; }
+.salesbook-section { scroll-margin-top: 24px; }

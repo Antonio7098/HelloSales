@@ -33,6 +33,27 @@ function normalize(s: string): string {
   return s.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "");
 }
 
+/**
+ * Coalesce sections that are really sub-fields of a parent concept.
+ * The spreadsheet currently lists each Product field as its own "section"
+ * (Product ID, Product Name, ..., 24 of them). We collapse those into a
+ * single "Products" section so the book renders 22 logical sections, not 46.
+ */
+const PRODUCT_FIELD_SECTIONS = new Set([
+  "Product ID", "Product Name", "Product Status", "Product Category",
+  "Product Description", "Target Customer", "Primary Use Case",
+  "Pricing Model", "List Price", "Billing Frequency", "Avg Selling Price",
+  "Discount Range", "Cost to Deliver", "Gross Margin", "Sales Complexity",
+  "Product Sales Cycle", "Deal Size", "Most Sold Product",
+  "Executive Priority", "Strategic Role", "Upsell Potential",
+  "Replacement Alternative", "Revenue Contribution", "Internal Notes",
+]);
+
+function coalesceSection(phase: number, section: string): string {
+  if (phase === 1 && PRODUCT_FIELD_SECTIONS.has(section)) return "Products";
+  return section;
+}
+
 export function SalesbookPage() {
   const { user } = useCurrentUser();
   const [registry, setRegistry] = useState<Record<string, RegistryQuestion> | null>(null);
@@ -76,7 +97,7 @@ export function SalesbookPage() {
     return Object.values(registry)
       .map((q) => ({
         phase: q.phase,
-        section: q.section ?? "—",
+        section: coalesceSection(q.phase, q.section ?? "—"),
         question_key: q.key,
         question_text: q.question ?? "",
         answer: answerByKey.get(q.key) ?? null,
@@ -116,6 +137,32 @@ export function SalesbookPage() {
   const totalCount = allEntries.length;
   const filteredCount = filtered.length;
   const answeredCount = allEntries.filter((e) => e.answer).length;
+
+  // Build a flat list of all sections for the table of contents (jump links).
+  const tableOfContents = useMemo(() => {
+    const all = new Map<number, Map<string, number>>();
+    for (const e of allEntries) {
+      if (!all.has(e.phase)) all.set(e.phase, new Map());
+      const m = all.get(e.phase)!;
+      m.set(e.section, (m.get(e.section) ?? 0) + 1);
+    }
+    const out: Array<{ phase: number; section: string; count: number; anchor: string }> = [];
+    for (const [phase, sections] of all) {
+      for (const [section, count] of sections) {
+        out.push({
+          phase,
+          section,
+          count,
+          anchor: `phase-${phase}-${section.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+        });
+      }
+    }
+    return out;
+  }, [allEntries]);
+
+  function sectionAnchor(phase: number, section: string): string {
+    return `phase-${phase}-${section.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+  }
 
   if (loading) {
     return (
@@ -158,6 +205,21 @@ export function SalesbookPage() {
             autoFocus
           />
         </div>
+
+        <nav className="salesbook-toc" aria-label="Table of contents">
+          <div className="salesbook-toc-label">
+            {tableOfContents.length} sections · jump to:
+          </div>
+          <div className="salesbook-toc-chips">
+            {tableOfContents.map((item) => (
+              <a key={item.anchor} href={`#${item.anchor}`} className="salesbook-toc-chip">
+                <span className="salesbook-toc-phase">P{item.phase}</span>
+                {item.section}
+                <span className="salesbook-toc-count">{item.count}</span>
+              </a>
+            ))}
+          </div>
+        </nav>
       </header>
 
       <main className="salesbook-body">
@@ -166,9 +228,16 @@ export function SalesbookPage() {
             <div className="salesbook-chapter">{PHASE_TITLES[phase] ?? `Phase ${phase}`}</div>
 
             {Array.from(sections.entries()).map(([sectionName, entries]) => (
-              <div key={sectionName} className="salesbook-section">
+              <div
+                key={sectionName}
+                id={sectionAnchor(phase, sectionName)}
+                className="salesbook-section"
+              >
                 <hr className="salesbook-section-rule" />
-                <h2 className="salesbook-section-title">{sectionName}</h2>
+                <h2 className="salesbook-section-title">
+                  {sectionName}
+                  <span className="salesbook-section-count">{entries.length}</span>
+                </h2>
                 <dl className="salesbook-entries">
                   {entries.map((e) => (
                     <div key={e.question_key} className="salesbook-entry">
