@@ -2673,3 +2673,257 @@ button { font: inherit; color: inherit; }
   background: #777;
   cursor: not-allowed;
 }
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Salesbook page — book-aesthetic viewer with fuzzy search.
+   /Oliviercontribution. Wrapped in .theme-salesbook so all existing primitives
+   read the paper+ink palette + Lora serif overrides automatically.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.salesbook-page {
+  padding: 24px clamp(16px, 4vw, 40px);
+  min-height: 100%;
+  font-family: var(--font-book);
+  color: var(--text);
+}
+
+.salesbook-loading {
+  font-family: var(--font-book);
+  font-style: italic;
+  color: var(--muted);
+  padding: 48px 0;
+  text-align: center;
+}
+
+.salesbook-header {
+  max-width: 760px;
+  margin: 0 auto 32px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line-strong);
+}
+
+.salesbook-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.salesbook-title {
+  font-family: var(--font-book);
+  font-weight: 600;
+  font-size: clamp(28px, 4vw, 40px);
+  line-height: 1.15;
+  margin: 0 0 12px 0;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+
+.salesbook-sub {
+  font-family: var(--font-book);
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--muted);
+  max-width: 60ch;
+  margin: 0 0 20px 0;
+}
+
+.salesbook-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  margin-bottom: 18px;
+}
+.salesbook-stats strong { color: var(--ink); }
+
+.salesbook-search {
+  position: relative;
+}
+.salesbook-search-input {
+  width: 100%;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  padding: 12px 14px;
+  background: var(--panel);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  outline: 0;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.salesbook-search-input:focus,
+.salesbook-search-input:focus-visible {
+  border-color: var(--ink);
+  box-shadow: 0 0 0 3px rgba(40, 32, 18, 0.08);
+}
+
+.salesbook-body {
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.salesbook-phase {
+  margin-bottom: 56px;
+}
+
+.salesbook-chapter {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 16px;
+}
+
+.salesbook-section {
+  margin-bottom: 36px;
+}
+
+.salesbook-section-title {
+  font-family: var(--font-book);
+  font-weight: 600;
+  font-size: 22px;
+  line-height: 1.2;
+  margin: 0 0 16px 0;
+  color: var(--ink);
+  letter-spacing: -0.005em;
+}
+
+.salesbook-entries {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.salesbook-entry {
+  break-inside: avoid;
+}
+
+.salesbook-question {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.salesbook-answer {
+  font-family: var(--font-book);
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--ink);
+  margin: 0;
+}
+
+.salesbook-empty {
+  font-family: var(--font-book);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--muted-soft);
+}
+
+.salesbook-mark {
+  background: rgba(0, 80, 197, 0.15);
+  color: var(--ink);
+  padding: 0 2px;
+  border-radius: 2px;
+}
+
+.salesbook-empty-state {
+  text-align: center;
+  font-family: var(--font-book);
+  color: var(--muted);
+  padding: 64px 16px;
+}
+
+
+/* Salesbook TOC + section count chips */
+.salesbook-toc {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--line);
+}
+
+.salesbook-toc-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+
+.salesbook-toc-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.salesbook-toc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+  text-decoration: none;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  padding: 5px 9px;
+  border-radius: 3px;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.salesbook-toc-chip:hover {
+  background: var(--panel-strong);
+  border-color: var(--line-strong);
+}
+
+.salesbook-toc-phase {
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+  background: var(--accent-soft);
+  padding: 1px 5px;
+  border-radius: 2px;
+}
+
+.salesbook-toc-count {
+  font-size: 10px;
+  color: var(--muted);
+  background: rgba(40, 32, 18, 0.06);
+  padding: 1px 5px;
+  border-radius: 2px;
+}
+
+.salesbook-section-title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.salesbook-section-count {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  font-weight: 500;
+  color: var(--muted);
+  background: rgba(40, 32, 18, 0.05);
+  padding: 2px 7px;
+  border-radius: 3px;
+  align-self: center;
+}
+
+/* Smooth scroll for jump links */
+html { scroll-behavior: smooth; }
+.salesbook-section { scroll-margin-top: 24px; }
