@@ -8,6 +8,7 @@ export { SignupForm } from "./components/SignupForm";
 export { RoleButton } from "./components/RoleButton";
 export { FinalRecap } from "./components/FinalRecap";
 export { PhaseDot } from "./components/PhaseDot";
+export { OnboardingGate } from "./components/OnboardingGate";
 export { useSignupForm } from "./hooks/useSignupForm";
 export { useOnboardingFlow } from "./hooks/useOnboardingFlow";
 export { groupBySection, pctNumber, type SectionGroup } from "./model/onboarding";

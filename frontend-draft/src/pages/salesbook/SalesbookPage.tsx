@@ -14,10 +14,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useCurrentUser } from "@/shared/auth/useCurrentUser";
-import { getSalesbookApi } from "@/features/salesbook";
+import { useAppData } from "@/shared/data/context";
+import { OnboardingGate, pctNumber as pctNumberLocal } from "@/features/salesbook";
 import type {
+  OnboardingProgress,
+  OnboardingResponse,
   RegistryQuestion,
-  SalesbookExhaustiveView,
 } from "@/entities/salesbook/types";
 
 type DisplayEntry = {
@@ -56,42 +58,45 @@ function coalesceSection(phase: number, section: string): string {
 
 export function SalesbookPage() {
   const { user } = useCurrentUser();
+  const provider = useAppData();
   const [registry, setRegistry] = useState<Record<string, RegistryQuestion> | null>(null);
-  const [exhaustive, setExhaustive] = useState<SalesbookExhaustiveView | null>(null);
+  const [responses, setResponses] = useState<OnboardingResponse[]>([]);
+  const [progress, setProgress] = useState<OnboardingProgress | null>(null);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
 
-  // Pull data. Try the live exhaustive view first (if backend is reachable);
-  // always fall back to the static registry so the page works offline.
+  // Pull from the same demo data source onboarding writes to, so the answers
+  // the user typed during onboarding show up here.
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const api = getSalesbookApi();
-
-      // Static registry (always loads — committed to public/)
-      const reg = await api.getOnboardingRegistry().catch(() => null);
+      const reg = await provider.getOnboardingRegistry().catch(() => null);
       if (!cancelled && reg) setRegistry(reg);
 
-      // Live answers (best-effort; silently skips if no user or no backend)
       if (user?.profileId) {
-        const live = await api.getExhaustiveView(user.profileId).catch(() => null);
-        if (!cancelled && live) setExhaustive(live);
+        const [resp, prog] = await Promise.all([
+          provider.listOnboardingResponses(user.profileId).catch(() => []),
+          provider.getOnboardingProgress(user.profileId).catch(() => null),
+        ]);
+        if (!cancelled) {
+          setResponses(resp);
+          setProgress(prog);
+        }
       }
-
       if (!cancelled) setLoading(false);
     })();
     return () => {
       cancelled = true;
     };
-  }, [user?.profileId]);
+  }, [user?.profileId, provider]);
 
   // Compose the unified display list
   const allEntries: DisplayEntry[] = useMemo(() => {
     if (!registry) return [];
     const answerByKey = new Map<string, string>();
-    if (exhaustive?.onboarding) {
-      for (const a of exhaustive.onboarding) {
-        if (a.response_value) answerByKey.set(a.question_key, a.response_value);
+    for (const r of responses) {
+      if (r.response_value && r.response_value.trim() !== "") {
+        answerByKey.set(r.question_key, r.response_value);
       }
     }
     return Object.values(registry)
@@ -104,7 +109,7 @@ export function SalesbookPage() {
         answer_type: q.answer_type ?? null,
       }))
       .sort((a, b) => a.phase - b.phase);
-  }, [registry, exhaustive]);
+  }, [registry, responses]);
 
   // Filter
   const filtered = useMemo(() => {
@@ -172,6 +177,23 @@ export function SalesbookPage() {
     );
   }
 
+  // Gate: if onboarding isn't complete, prompt the user to finish it first.
+  const overallPct = progress
+    ? pctNumberLocal(progress.total_completion_pct)
+    : (totalCount > 0 ? (answeredCount / totalCount) * 100 : 0);
+  if (overallPct < 100) {
+    return (
+      <div className="theme-salesbook salesbook-page">
+        <OnboardingGate
+          surface="salesbook"
+          pct={overallPct}
+          answered={answeredCount}
+          total={totalCount}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="theme-salesbook salesbook-page">
       <header className="salesbook-header">
@@ -187,12 +209,6 @@ export function SalesbookPage() {
         <div className="salesbook-stats">
           <span><strong>{answeredCount}</strong> / {totalCount} answered</span>
           {query ? <span>· <strong>{filteredCount}</strong> match "{query}"</span> : null}
-          {exhaustive?.pipeline?.length ? (
-            <span>· <strong>{exhaustive.pipeline.length}</strong> deals</span>
-          ) : null}
-          {exhaustive?.engagement?.length ? (
-            <span>· <strong>{exhaustive.engagement.length}</strong> activities</span>
-          ) : null}
         </div>
 
         <div className="salesbook-search">

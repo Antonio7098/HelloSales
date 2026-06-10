@@ -14,6 +14,8 @@ type Props = {
   question: RegistryQuestion;
   value: string;
   onChange: (next: string) => void;
+  /** When true, render only the control (no field label / question text). */
+  hideLabel?: boolean;
 };
 
 function asArray(value: string): string[] {
@@ -26,17 +28,19 @@ function asArray(value: string): string[] {
   }
 }
 
-export function QuestionInput({ question, value, onChange }: Props) {
+export function QuestionInput({ question, value, onChange, hideLabel = false }: Props) {
   const t = (question.answer_type ?? "Text").toLowerCase();
 
   return (
     <Field
       label={
-        <span>
-          <strong>Q{question.n}.</strong> {question.question}
-        </span>
+        hideLabel ? undefined : (
+          <span>
+            <strong>Q{question.n}.</strong> {question.question}
+          </span>
+        )
       }
-      hint={question.example ? `e.g. ${question.example}` : undefined}
+      hint={!hideLabel && question.example ? `e.g. ${question.example}` : undefined}
     >
       {({ id }) => renderControl(id, t, value, onChange, question)}
     </Field>

@@ -1,97 +1,111 @@
 /**
- * OnboardingPage — section-by-section, focus-mode wizard. /Oliviercontribution.
+ * OnboardingPage — one question at a time. /Oliviercontribution.
  *
- * One section per page. Question/answer only — no app sidebar. Long sections
- * are sub-paged (page through groups of ~6 questions) instead of one giant
- * scroll. Auto-save on every change. Final recap appears ONLY at the very end
- * (when the wizard has actually built something worth showing).
+ * Modern beige canvas, black question prominent on top, a single input below,
+ * Back / Next at the bottom. Every answer auto-saves. At the end, the answers
+ * are rolled up into the company Salesbook (final recap → "create your
+ * company salesbook").
  *
- * Section navigation lives at the bottom (Prev/Next) with a slim phase-progress
- * indicator at the top.
+ * Drives off a flat, ordered list of all registry questions (phase + section
+ * are shown as context above each question) rather than per-section routing.
  */
 
-import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { FinalRecap, PhaseDot, pctNumber, useOnboardingFlow } from "@/features/salesbook";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useNavigate } from "react-router-dom";
+import { FinalRecap, pctNumber, useOnboardingFlow } from "@/features/salesbook";
+import { useCurrentUser } from "@/shared/auth/useCurrentUser";
 import { IconArrow, IconArrowLeft } from "@/shared/icons/NavIcons";
 import { QuestionInput } from "@/pages/onboarding/QuestionInput";
-import { Button, Stack } from "@/design-system";
+import type { RegistryQuestion } from "@/entities/salesbook/types";
 
-const QUESTIONS_PER_PAGE = 6;
+/**
+ * Persist the full answer set to git (via the Vercel serverless function).
+ * Best-effort: on local dev (/api not running) or any failure it silently
+ * no-ops — the answers are already in the demo store from per-question saves.
+ */
+async function persistToGit(
+  user: { profileId: string; name: string; email: string; companyName: string; role: string } | null,
+  questions: RegistryQuestion[],
+  responses: Record<string, string>,
+  progress: { total_completion_pct?: number | string | null } | null,
+) {
+  if (!user) return;
+  const payload = {
+    profileId: user.profileId,
+    name: user.name,
+    email: user.email,
+    companyName: user.companyName,
+    role: user.role,
+    progress,
+    responses: questions.map((q) => ({
+      phase: q.phase,
+      question_key: q.key,
+      question_text: q.question ?? null,
+      response_value: responses[q.key] ?? "",
+      response_type: q.answer_type ?? null,
+    })),
+  };
+  try {
+    await fetch("/api/save-onboarding", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  } catch (err) {
+    console.warn("[onboarding] git save skipped:", err);
+  }
+}
+
+const PHASE_LABEL: Record<number, string> = {
+  1: "Phase 1 · Company Onboarding",
+  2: "Phase 2 · Sales Book",
+  3: "Phase 3 · VP Conversion",
+};
 
 export function OnboardingPage() {
   const navigate = useNavigate();
-  const { sectionIndex } = useParams<{ sectionIndex?: string }>();
   const flow = useOnboardingFlow();
-  const [pageInSection, setPageInSection] = useState(0);
+  const { user } = useCurrentUser();
+  const [index, setIndex] = useState(0);
+  const [started, setStarted] = useState(false);
 
+  // Flat, ordered question list across all sections.
+  const questions: RegistryQuestion[] = useMemo(() => {
+    if (!flow || !flow.sections) return [];
+    return flow.sections.flatMap((s) =>
+      s.questions.map((q) => ({ ...q, phase: s.phase, section: s.section })),
+    );
+  }, [flow]);
+
+  // On first load, jump to the first unanswered question (resume where you left off).
   useEffect(() => {
-    setPageInSection(0);
-  }, [sectionIndex]);
+    if (started || questions.length === 0 || !flow) return;
+    const firstUnanswered = questions.findIndex(
+      (q) => (flow.responses[q.key] ?? "").trim() === "",
+    );
+    setIndex(firstUnanswered === -1 ? 0 : firstUnanswered);
+    setStarted(true);
+  }, [questions, flow, started]);
 
-  if (flow === null) {
-    return null;
-  }
+  if (flow === null) return null;
 
   const {
     loading,
     progress,
     registry,
     responses,
-    sections,
     setAnswer,
     showFinalRecap,
     setShowFinalRecap,
-    goToDashboard,
-    goToSection,
   } = flow;
 
-  if (loading || !registry) {
+  if (loading || !registry || questions.length === 0) {
     return (
       <div className="onboarding-loading">
         <div className="onboarding-eyebrow">Hello Sales · onboarding</div>
         <h1 className="onboarding-title">Loading your sales intelligence…</h1>
       </div>
     );
-  }
-
-  const idx = Math.max(0, Math.min(sections.length - 1, Number(sectionIndex ?? "0")));
-  const currentSection = sections[idx];
-
-  const sectionQuestions = currentSection.questions;
-  const totalSubPages = Math.max(1, Math.ceil(sectionQuestions.length / QUESTIONS_PER_PAGE));
-  const safePage = Math.max(0, Math.min(totalSubPages - 1, pageInSection));
-  const pageStart = safePage * QUESTIONS_PER_PAGE;
-  const pageQuestions = sectionQuestions.slice(pageStart, pageStart + QUESTIONS_PER_PAGE);
-  const isLastSubPage = safePage === totalSubPages - 1;
-  const isFirstSubPage = safePage === 0;
-  const isLastSection = idx === sections.length - 1;
-
-  const answeredInSection = sectionQuestions.filter((q) => (responses[q.key] ?? "").trim() !== "").length;
-
-  function goToNext() {
-    if (!isLastSubPage) {
-      setPageInSection(safePage + 1);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-      return;
-    }
-    if (isLastSection) {
-      setShowFinalRecap(true);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-      return;
-    }
-    goToSection(idx + 1);
-  }
-
-  function goToPrev() {
-    if (!isFirstSubPage) {
-      setPageInSection(safePage - 1);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-      return;
-    }
-    if (idx > 0) {
-      goToSection(idx - 1);
-    }
   }
 
   if (showFinalRecap) {
@@ -101,78 +115,102 @@ export function OnboardingPage() {
         responses={responses}
         progress={progress}
         onBackToOnboarding={() => setShowFinalRecap(false)}
-        onDone={goToDashboard}
+        onDone={() => navigate("/salesbook", { replace: true })}
       />
     );
   }
 
+  const total = questions.length;
+  const safeIndex = Math.max(0, Math.min(total - 1, index));
+  const q = questions[safeIndex];
+  const isFirst = safeIndex === 0;
+  const isLast = safeIndex === total - 1;
+  const answeredCount = questions.filter((x) => (responses[x.key] ?? "").trim() !== "").length;
+  const barPct = Math.round(((safeIndex + 1) / total) * 100);
+
+  function goNext() {
+    if (isLast) {
+      // Publish the completed answer set to the git-backed store, then recap.
+      void persistToGit(user, questions, responses, progress);
+      setShowFinalRecap(true);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+    setIndex(safeIndex + 1);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function goPrev() {
+    if (isFirst) return;
+    setIndex(safeIndex - 1);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    goNext();
+  }
+
   return (
-    <div className="onboarding-page">
-      <div className="onboarding-progress">
-        <div className="onboarding-progress-phases">
-          <PhaseDot
-            label="1"
-            active={currentSection.phase === 1}
-            pct={pctNumber(progress?.phase1_pct)}
-          />
-          <PhaseDot
-            label="2"
-            active={currentSection.phase === 2}
-            pct={pctNumber(progress?.phase2_pct)}
-          />
-          <PhaseDot
-            label="3"
-            active={currentSection.phase === 3}
-            pct={pctNumber(progress?.phase3_pct)}
-          />
-        </div>
-        <div className="onboarding-progress-meta">
-          Section {idx + 1} / {sections.length}
-          {totalSubPages > 1 ? ` · page ${safePage + 1} / ${totalSubPages}` : null}
-          {" · "}
-          {answeredInSection}/{sectionQuestions.length} answered
-        </div>
+    <div className="onboarding-q">
+      {/* Progress */}
+      <div className="onboarding-q-progressbar" aria-hidden="true">
+        <span style={{ width: `${barPct}%` }} />
+      </div>
+      <div className="onboarding-q-meta">
+        <span className="onboarding-q-count">Question {safeIndex + 1} of {total}</span>
+        <span className="onboarding-q-overall">
+          {pctNumber(progress?.total_completion_pct).toFixed(0)}% complete · {answeredCount}/{total} answered · auto-saved
+        </span>
       </div>
 
-      <header className="onboarding-section-header">
-        <div className="onboarding-eyebrow">
-          Phase {currentSection.phase}
-          {currentSection.questions[0]?.subsection
-            ? ` · ${currentSection.questions[0].subsection}`
-            : null}
+      {/* The question — black, big, on top */}
+      <form className="onboarding-q-card" onSubmit={handleSubmit}>
+        <div className="onboarding-q-context">
+          {PHASE_LABEL[q.phase] ?? `Phase ${q.phase}`}
+          {q.section ? ` · ${q.section}` : ""}
+          {q.subsection ? ` · ${q.subsection}` : ""}
         </div>
-        <h1 className="onboarding-title">{currentSection.section}</h1>
-        <p className="onboarding-sub">
-          Take your time. The depth here is what makes your sales agents sharp downstream.
-        </p>
-      </header>
 
-      <Stack gap="lg">
-        {pageQuestions.map((q) => (
+        <h1 className="onboarding-q-text">{q.question}</h1>
+
+        {q.example ? (
+          <p className="onboarding-q-example">e.g. {q.example}</p>
+        ) : null}
+
+        <div className="onboarding-q-control">
           <QuestionInput
             key={q.key}
             question={q}
             value={responses[q.key] ?? ""}
             onChange={(v) => setAnswer(q.key, v, q)}
+            hideLabel
           />
-        ))}
-      </Stack>
-
-      <footer className="onboarding-footer">
-        <Button variant="ghost" onClick={goToPrev} disabled={idx === 0 && isFirstSubPage} leading={<IconArrowLeft />}>
-          Previous
-        </Button>
-        <div className="onboarding-footer-meta">
-          {pctNumber(progress?.total_completion_pct).toFixed(0)}% complete · auto-saved
         </div>
-        <Button variant="primary" onClick={goToNext} trailing={<IconArrow />}>
-          {!isLastSubPage
-            ? "Continue"
-            : isLastSection
-              ? "Finish onboarding"
-              : `Next: ${sections[idx + 1].section}`}
-        </Button>
-      </footer>
+
+        <div className="onboarding-q-footer">
+          <button
+            type="button"
+            className="onboarding-q-back"
+            onClick={goPrev}
+            disabled={isFirst}
+          >
+            <IconArrowLeft /> Back
+          </button>
+
+          <button type="submit" className="onboarding-q-next">
+            {isLast ? "Create my salesbook" : "Next"} <IconArrow />
+          </button>
+        </div>
+      </form>
+
+      <button
+        type="button"
+        className="onboarding-q-skip"
+        onClick={goNext}
+      >
+        {isLast ? "Finish" : "Skip for now"}
+      </button>
     </div>
   );
 }
